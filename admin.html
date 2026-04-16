@@ -227,7 +227,7 @@
                     itemEditor.innerHTML = `
                         <div>
                             <label>組織名</label>
-                            <input type="text" value="${escapeHtml(item['組織名'])}" onblur="updateData(${idx}, '組織名', this.value)">
+                            <input type="text" value="${escapeHtml(item['組織名'])}" onchange="updateData(${idx}, '組織名', this.value)">
                         </div>
                         <div>
                             <label>構築環境名</label>
@@ -301,10 +301,6 @@
 
         function updateData(index, field, value) {
             currentData[index][field] = value;
-            if (field === '組織名') {
-                initFilter();
-                renderEditor();
-            }
         }
 
         function deleteRow(index) {
@@ -327,6 +323,10 @@
                 'DBユーザー名': '',
                 'DBパスワード': ''
             });
+            
+            // 新規追加時は確実に1ページ目に戻す
+            currentOrgPage = 1;
+
             initFilter();
             renderEditor();
             window.scrollTo({ top: 0, behavior: 'smooth' });
