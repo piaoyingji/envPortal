@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>環境データ管理 - 組織環境ナビゲーション</title>
+    <title>RDP情報管理 - 組織環境ナビゲーション</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -33,7 +33,7 @@
         }
         .editor-grid {
             display: grid; 
-            grid-template-columns: 1.2fr 1.2fr 2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr auto; 
+            grid-template-columns: 2fr 1.5fr 1.5fr 3fr auto; 
             gap: 0.5rem; 
             align-items: center; 
             background-color: #ffffff; 
@@ -111,14 +111,14 @@
 <body>
     <header class="top-header">
         <div class="logo-area">
-            <h1>環境データ<span>管理</span></h1>
-            <p>既存の環境情報を修正、または新しい組織の情報を追加します</p>
+            <h1>RDP情報<span>管理</span></h1>
+            <p>リモートデスクトップ(RDP)の接続情報を管理します</p>
         </div>
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html">環境検索</a>
-                <a href="admin.html" class="active">データ管理</a>
-                <a href="rdp.html">RDP情報管理</a>
+                <a href="admin.html">データ管理</a>
+                <a href="rdp.html" class="active">RDP情報管理</a>
             </div>
         </nav>
     </header>
@@ -167,7 +167,7 @@
         });
 
         function loadAdminData() {
-            fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
+            fetch('rdp.csv?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error('Network response was not ok');
                     return response.text();
@@ -184,7 +184,7 @@
                     });
                 })
                 .catch(error => {
-                    console.error('data.csv の読み込みに失敗しました:', error);
+                    console.error('rdp.csv の読み込みに失敗しました:', error);
                     document.getElementById('editorArea').innerHTML = '<div style="text-align:center; color:red; padding: 2rem;">データの読み込みに失敗しました。</div>';
                 });
         }
@@ -248,32 +248,16 @@
                             <input type="text" value="${escapeHtml(item['組織名'])}" onchange="updateData(${idx}, '組織名', this.value)">
                         </div>
                         <div>
-                            <label>構築環境名</label>
-                            <input type="text" value="${escapeHtml(item['構築環境名'])}" onchange="updateData(${idx}, '構築環境名', this.value)">
+                            <label>RDPユーザー名</label>
+                            <input type="text" value="${escapeHtml(item['RDPユーザー名'])}" onchange="updateData(${idx}, 'RDPユーザー名', this.value)">
                         </div>
                         <div>
-                            <label>URL</label>
-                            <input type="text" value="${escapeHtml(item['URL'])}" onchange="updateData(${idx}, 'URL', this.value)">
+                            <label>RDPパスワード</label>
+                            <input type="text" value="${escapeHtml(item['RDPパスワード'])}" onchange="updateData(${idx}, 'RDPパスワード', this.value)">
                         </div>
                         <div>
-                            <label>ログインID</label>
-                            <input type="text" value="${escapeHtml(item['ログインID'])}" onchange="updateData(${idx}, 'ログインID', this.value)">
-                        </div>
-                        <div>
-                            <label>パスワード</label>
-                            <input type="text" value="${escapeHtml(item['ログインパスワード'])}" onchange="updateData(${idx}, 'ログインパスワード', this.value)">
-                        </div>
-                        <div>
-                            <label>DB名</label>
-                            <input type="text" value="${escapeHtml(item['DB名'])}" onchange="updateData(${idx}, 'DB名', this.value)">
-                        </div>
-                        <div>
-                            <label>DBユーザ</label>
-                            <input type="text" value="${escapeHtml(item['DBユーザー名'])}" onchange="updateData(${idx}, 'DBユーザー名', this.value)">
-                        </div>
-                        <div>
-                            <label>DB Pwd</label>
-                            <input type="text" value="${escapeHtml(item['DBパスワード'])}" onchange="updateData(${idx}, 'DBパスワード', this.value)">
+                            <label>接続先(IP:Port)</label>
+                            <input type="text" value="${escapeHtml(item['接続先(IP:Port)'])}" onchange="updateData(${idx}, '接続先(IP:Port)', this.value)">
                         </div>
                         <div>
                             <button type="button" class="del-btn" onclick="deleteRow(${idx})" title="削除">削除</button>
@@ -335,13 +319,9 @@
             const filterVal = document.getElementById('orgFilter').value;
             currentData.unshift({
                 '組織名': filterVal || '',
-                '構築環境名': '',
-                'URL': '',
-                'ログインID': '',
-                'ログインパスワード': '',
-                'DB名': '',
-                'DBユーザー名': '',
-                'DBパスワード': ''
+                'RDPユーザー名': '',
+                'RDPパスワード': '',
+                '接続先(IP:Port)': ''
             });
             
             // 新規追加時は確実に1ページ目に戻す
@@ -377,16 +357,16 @@
 
         function saveToServer() {
             const filteredData = currentData.filter(row => {
-                return (row['組織名'] || '').trim() !== '' || (row['構築環境名'] || '').trim() !== '' || (row['URL'] || '').trim() !== '';
+                return (row['組織名'] || '').trim() !== '';
             });
             
-            const fields = ["組織名", "構築環境名", "URL", "ログインID", "ログインパスワード", "DB名", "DBユーザー名", "DBパスワード"];
+            const fields = ["組織名", "RDPユーザー名", "RDPパスワード", "接続先(IP:Port)"];
             const csv = Papa.unparse({
                 fields: fields,
                 data: filteredData
             }, { quotes: true });
             
-            fetch('update_csv.jsp', {
+            fetch('update_rdp.jsp', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'text/plain; charset=UTF-8'
