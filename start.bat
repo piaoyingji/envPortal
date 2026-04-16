@@ -1,5 +1,5 @@
 @echo off
-title 组织环境导航系统 - 服务端
-echo 正在启动本地 Python 服务器...
-python server.py
+title Environment Server Deployer
+echo Starting independent PowerShell Web Server...
+powershell -ExecutionPolicy Bypass -File "%~dp0server.ps1"
 pause
