@@ -127,7 +127,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
             
-            fetch('data.csv')
+            fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error('ネットワークリクエストに失敗しました');
                     return response.text();
