@@ -307,10 +307,9 @@
         }
 
         function deleteRow(index) {
-            if(confirm("このデータを削除してもよろしいですか？")) {
+            if(confirm("このデータを完全に削除してもよろしいですか？（※即座にサーバーから削除されます）")) {
                 currentData.splice(index, 1);
-                initFilter();
-                renderEditor();
+                saveToServer();
             }
         }
 
@@ -379,8 +378,9 @@
             .then(res => {
                 if (res.ok) {
                     currentData = filteredData;
+                    initFilter();
                     renderEditor();
-                    showToast('保存成功。サーバーのデータが一括更新されました。');
+                    showToast('保存成功。サーバーのデータが更新されました。');
                 } else {
                     res.text().then(text => alert('サーバーエラー: ' + text));
                 }
