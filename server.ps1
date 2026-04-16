@@ -1,4 +1,4 @@
-$baseDir = $PSScriptRoot
+﻿$baseDir = $PSScriptRoot
 if ([string]::IsNullOrEmpty($baseDir)) { $baseDir = $PWD }
 
 $port = 8080
@@ -7,7 +7,7 @@ $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
 
 Write-Host "================================================="
-Write-Host " Environment Info Tool - Independent Server"
+Write-Host " EnvPortal - Environment & RDP Navigation Server"
 Write-Host " Server is running on http://localhost:$port/"
 Write-Host " Press Ctrl+C to stop."
 Write-Host "================================================="
