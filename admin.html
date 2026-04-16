@@ -131,8 +131,9 @@
                 </select>
             </div>
             <div style="flex-grow: 1;"></div>
-            <button type="button" class="secondary-btn" onclick="addNewRow()">＋ 新規行を追加</button>
-            <button type="button" class="primary-btn" onclick="saveToServer()">保存する (一括更新)</button>
+            <button id="btnEdit" type="button" class="primary-btn" style="background-color: #ff9800; border: none;" onclick="unlockEditor()">ロック解除 (編集開始)</button>
+            <button id="btnAdd" type="button" class="secondary-btn" style="display:none;" onclick="addNewRow()">＋ 新規行を追加</button>
+            <button id="btnSave" type="button" class="primary-btn" style="display:none;" onclick="saveToServer()">保存する (一括更新)</button>
         </div>
 
         <div id="editorArea">
@@ -147,6 +148,7 @@
         let currentData = [];
         let currentOrgPage = 1;
         const ORGS_PER_PAGE = 6;
+        let isEditMode = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
@@ -227,38 +229,38 @@
                     itemEditor.innerHTML = `
                         <div>
                             <label>組織名</label>
-                            <input type="text" value="${escapeHtml(item['組織名'])}" onchange="updateData(${idx}, '組織名', this.value)">
+                            <input type="text" value="${escapeHtml(item['組織名'])}" onchange="updateData(${idx}, '組織名', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>構築環境名</label>
-                            <input type="text" value="${escapeHtml(item['構築環境名'])}" onchange="updateData(${idx}, '構築環境名', this.value)">
+                            <input type="text" value="${escapeHtml(item['構築環境名'])}" onchange="updateData(${idx}, '構築環境名', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>URL</label>
-                            <input type="text" value="${escapeHtml(item['URL'])}" onchange="updateData(${idx}, 'URL', this.value)">
+                            <input type="text" value="${escapeHtml(item['URL'])}" onchange="updateData(${idx}, 'URL', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>ログインID</label>
-                            <input type="text" value="${escapeHtml(item['ログインID'])}" onchange="updateData(${idx}, 'ログインID', this.value)">
+                            <input type="text" value="${escapeHtml(item['ログインID'])}" onchange="updateData(${idx}, 'ログインID', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>パスワード</label>
-                            <input type="text" value="${escapeHtml(item['ログインパスワード'])}" onchange="updateData(${idx}, 'ログインパスワード', this.value)">
+                            <input type="text" value="${escapeHtml(item['ログインパスワード'])}" onchange="updateData(${idx}, 'ログインパスワード', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>DB名</label>
-                            <input type="text" value="${escapeHtml(item['DB名'])}" onchange="updateData(${idx}, 'DB名', this.value)">
+                            <input type="text" value="${escapeHtml(item['DB名'])}" onchange="updateData(${idx}, 'DB名', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>DBユーザ</label>
-                            <input type="text" value="${escapeHtml(item['DBユーザー名'])}" onchange="updateData(${idx}, 'DBユーザー名', this.value)">
+                            <input type="text" value="${escapeHtml(item['DBユーザー名'])}" onchange="updateData(${idx}, 'DBユーザー名', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
                             <label>DB Pwd</label>
-                            <input type="text" value="${escapeHtml(item['DBパスワード'])}" onchange="updateData(${idx}, 'DBパスワード', this.value)">
+                            <input type="text" value="${escapeHtml(item['DBパスワード'])}" onchange="updateData(${idx}, 'DBパスワード', this.value)" ${isEditMode ? '' : 'disabled'}>
                         </div>
                         <div>
-                            <button type="button" class="del-btn" onclick="deleteRow(${idx})" title="削除">削除</button>
+                            ${isEditMode ? `<button type="button" class="del-btn" onclick="deleteRow(${idx})" title="削除">削除</button>` : ''}
                         </div>
                     `;
                     orgBlock.appendChild(itemEditor);
@@ -399,6 +401,36 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        function unlockEditor() {
+            const pwd = prompt("編集用のパスワードを入力してください：");
+            if (!pwd) return;
+
+            const fd = new FormData();
+            fd.append("pwd", pwd);
+
+            fetch('auth.jsp', {
+                method: 'POST',
+                body: fd
+            })
+            .then(res => res.text())
+            .then(txt => {
+                if (txt.trim() === "OK") {
+                    isEditMode = true;
+                    document.getElementById("btnEdit").style.display = "none";
+                    document.getElementById("btnAdd").style.display = "inline-block";
+                    document.getElementById("btnSave").style.display = "inline-block";
+                    renderEditor();
+                    showToast("ロックを解除しました。編集操作が可能です。");
+                } else {
+                    alert("パスワードが正しくありません。");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("認証でエラーが発生しました。サーバーと通信できません。");
+            });
         }
 
         function showToast(msg) {

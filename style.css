@@ -131,6 +131,13 @@ input:focus, select:focus {
     box-shadow: 0 0 5px var(--ring);
 }
 
+input:disabled, select:disabled {
+    background-color: #f7f7f7;
+    color: #999999;
+    cursor: not-allowed;
+    border-color: #e0e0e0;
+}
+
 button.primary-btn {
     background-color: var(--primary);
     color: white;
