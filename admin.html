@@ -141,6 +141,19 @@
         </div>
     </div>
 
+    <!-- パスワード モーダル -->
+    <div id="pwdModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:#fff; padding:2rem; border-radius:3px; width:320px; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.2); border-top: 5px solid var(--primary);">
+            <h3 style="margin-bottom:0.5rem; font-size:1.2rem; color:var(--text-main);">ロック解除</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">編集用のパスワードを入力してください</p>
+            <input type="password" id="modalPwdInput" style="margin-bottom:1.5rem; text-align:center; font-size:1.2rem; letter-spacing:5px; padding: 0.8rem;" onkeypress="if(event.key==='Enter') submitPwdModal()">
+            <div style="display:flex; justify-content:space-between; gap:1rem;">
+                <button type="button" class="secondary-btn" style="flex:1;" onclick="closePwdModal()">キャンセル</button>
+                <button type="button" class="primary-btn" style="flex:1;" onclick="submitPwdModal()">確認</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 弹窗提示 -->
     <div id="toast">保存成功。</div>
 
@@ -404,15 +417,25 @@
         }
 
         function unlockEditor() {
-            const pwd = prompt("編集用のパスワードを入力してください：");
-            if (!pwd) return;
+            document.getElementById('pwdModal').style.display = 'flex';
+            document.getElementById('modalPwdInput').value = '';
+            document.getElementById('modalPwdInput').focus();
+        }
 
-            const fd = new FormData();
-            fd.append("pwd", pwd);
+        function closePwdModal() {
+            document.getElementById('pwdModal').style.display = 'none';
+        }
+
+        function submitPwdModal() {
+            const pwd = document.getElementById('modalPwdInput').value;
+            if (!pwd) return;
 
             fetch('auth.jsp', {
                 method: 'POST',
-                body: fd
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'pwd=' + encodeURIComponent(pwd)
             })
             .then(res => res.text())
             .then(txt => {
@@ -421,10 +444,13 @@
                     document.getElementById("btnEdit").style.display = "none";
                     document.getElementById("btnAdd").style.display = "inline-block";
                     document.getElementById("btnSave").style.display = "inline-block";
+                    closePwdModal();
                     renderEditor();
                     showToast("ロックを解除しました。編集操作が可能です。");
                 } else {
                     alert("パスワードが正しくありません。");
+                    document.getElementById('modalPwdInput').value = '';
+                    document.getElementById('modalPwdInput').focus();
                 }
             })
             .catch(err => {
