@@ -301,6 +301,9 @@
 
         function updateData(index, field, value) {
             currentData[index][field] = value;
+            if (field === '組織名') {
+                initFilter();
+            }
         }
 
         function deleteRow(index) {
