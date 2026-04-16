@@ -163,7 +163,14 @@
         const ORGS_PER_PAGE = 6;
 
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('modalPwdInput').focus();
+            const expiry = localStorage.getItem('authExpiry');
+            if (expiry && new Date().getTime() < parseInt(expiry)) {
+                document.getElementById('pwdModal').style.display = 'none';
+                document.getElementById('adminContainer').style.display = 'block';
+                loadAdminData();
+            } else {
+                document.getElementById('modalPwdInput').focus();
+            }
         });
 
         function loadAdminData() {
@@ -437,6 +444,7 @@
             .then(res => res.text())
             .then(txt => {
                 if (txt.trim() === "OK") {
+                    localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
                     document.getElementById('pwdModal').style.display = 'none';
                     document.getElementById('adminContainer').style.display = 'block';
                     loadAdminData();
