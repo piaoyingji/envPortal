@@ -1,10 +1,21 @@
-﻿$baseDir = $PSScriptRoot
+$baseDir = $PSScriptRoot
 if ([string]::IsNullOrEmpty($baseDir)) { $baseDir = $PWD }
 
 $port = 8080
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:$port/")
-$listener.Start()
+$listener.Prefixes.Add("http://+:$port/")
+
+try {
+    $listener.Start()
+} catch {
+    Write-Host "========================== WARNING ==========================" -ForegroundColor Red
+    Write-Host " IP バインディングに失敗しました (Access Denied)" -ForegroundColor Yellow
+    Write-Host " サーバーの外部IPからアクセスするには、管理者権限が必要です。" -ForegroundColor Yellow
+    Write-Host " 'start.bat' を右クリックし、「管理者として実行」してください。" -ForegroundColor Yellow
+    Write-Host "=============================================================" -ForegroundColor Red
+    Read-Host "Enterキーを押して終了します..."
+    exit
+}
 
 Write-Host "================================================="
 Write-Host " EnvPortal - Environment & RDP Navigation Server"
