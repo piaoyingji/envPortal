@@ -302,10 +302,22 @@
                 
                 const pwdId = 'pwd_' + Math.random().toString(36).substr(2, 9);
                 
+                const statusStr = sanitizeHTML(env['稼働状態']) || '稼働中';
+                const isRunning = statusStr === '稼働中';
+                const pillBg = isRunning ? '#e8f5e9' : '#ffebee';
+                const pillColor = isRunning ? '#2e7d32' : '#c62828';
+                const pillBorder = isRunning ? '#a5d6a7' : '#ef9a9a';
+                const dotColor = isRunning ? '#4caf50' : '#f44336';
+
                 card.innerHTML = `
-                    <h3>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        ${sanitizeHTML(env['構築環境名'])}
+                    <h3 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            ${sanitizeHTML(env['構築環境名'])}
+                        </span>
+                        <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: ${pillBg}; color: ${pillColor}; font-weight: bold; border: 1px solid ${pillBorder}; display: flex; align-items: center; gap: 5px;">
+                            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:${dotColor};"></span>${statusStr}
+                        </span>
                     </h3>
                     
                     <div class="env-detail-wrapper">
