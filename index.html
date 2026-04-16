@@ -301,22 +301,16 @@
                 const dbPwd = sanitizeHTML(env['DBパスワード']);
                 
                 const pwdId = 'pwd_' + Math.random().toString(36).substr(2, 9);
+                const statusBadgeId = 'status_' + Math.random().toString(36).substr(2, 9);
                 
-                const statusStr = sanitizeHTML(env['稼働状態']) || '稼働中';
-                const isRunning = statusStr === '稼働中';
-                const pillBg = isRunning ? '#e8f5e9' : '#ffebee';
-                const pillColor = isRunning ? '#2e7d32' : '#c62828';
-                const pillBorder = isRunning ? '#a5d6a7' : '#ef9a9a';
-                const dotColor = isRunning ? '#4caf50' : '#f44336';
-
                 card.innerHTML = `
                     <h3 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
                         <span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                             ${sanitizeHTML(env['構築環境名'])}
                         </span>
-                        <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: ${pillBg}; color: ${pillColor}; font-weight: bold; border: 1px solid ${pillBorder}; display: flex; align-items: center; gap: 5px;">
-                            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:${dotColor};"></span>${statusStr}
+                        <span id="${statusBadgeId}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: #f7f7f7; color: #888; font-weight: bold; border: 1px solid #e0e0e0; display: none; align-items: center; gap: 5px;">
+                            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#ccc;"></span>確認中...
                         </span>
                     </h3>
                     
@@ -369,6 +363,35 @@
                     </div>
                 `;
                 resultsArea.appendChild(card);
+
+                // Asynchronously ping the URL for real-time status check
+                if (safeUrl) {
+                    const badge = document.getElementById(statusBadgeId);
+                    if (badge) badge.style.display = 'flex';
+                    fetch('ping.jsp?url=' + encodeURIComponent(safeUrl))
+                        .then(res => res.text())
+                        .then(txt => {
+                            if (!badge) return;
+                            if (txt.trim() === '200') {
+                                badge.style.backgroundColor = '#e8f5e9';
+                                badge.style.color = '#2e7d32';
+                                badge.style.border = '1px solid #a5d6a7';
+                                badge.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#4caf50;"></span>稼働中`;
+                            } else {
+                                badge.style.backgroundColor = '#ffebee';
+                                badge.style.color = '#c62828';
+                                badge.style.border = '1px solid #ef9a9a';
+                                badge.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#f44336;"></span>停止 (HTTP ${txt.trim()})`;
+                            }
+                        })
+                        .catch(() => {
+                            if (!badge) return;
+                            badge.style.backgroundColor = '#ffebee';
+                            badge.style.color = '#c62828';
+                            badge.style.border = '1px solid #ef9a9a';
+                            badge.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#f44336;"></span>停止 (エラー)`;
+                        });
+                }
             });
 
             const backBtnWrapper = document.createElement('div');
