@@ -3,129 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>環境データ管理 - 組織環境管理システム</title>
+    <title>環境データ管理 - 組織環境ナビゲーション</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
+        .actions-bar {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            border-top: 3px solid var(--primary);
+        }
+        .org-header-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--text-main);
+            border-left: 6px solid var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-left: 0.8rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
         .editor-grid {
             display: grid; 
-            grid-template-columns: 1.2fr 1.2fr 2.5fr 1fr 1fr auto; 
+            grid-template-columns: 1.2fr 1.2fr 2fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr auto; 
             gap: 0.5rem; 
-            align-items: start; 
-            background: rgba(0,0,0,0.25); 
-            padding: 1rem; 
-            border-radius: 8px;
-            margin-bottom: 0.75rem;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: all 0.2s;
+            align-items: center; 
+            background-color: #ffffff; 
+            padding: 0.75rem 0.5rem; 
+            border-bottom: 1px dashed var(--border);
+            margin-bottom: 0;
         }
-        .editor-grid:hover {
-            background: rgba(0,0,0,0.4);
-            border-color: rgba(255,255,255,0.15);
+        .editor-grid:nth-child(even) {
+            background-color: var(--bg-subtle);
         }
         .editor-grid input {
-            padding: 0.6rem; 
+            padding: 0.45rem; 
             font-size: 0.85rem;
-            background: rgba(15, 23, 42, 0.8);
-            width: 100%;
-            box-sizing: border-box;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
         }
         .editor-grid label {
             font-size: 0.75rem; 
-            color: var(--text-secondary);
-            margin-bottom: 0.3rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            margin-bottom: 0.2rem;
             display: block;
-        }
-        .actions-bar {
-            display: flex; 
-            gap: 1rem; 
-            margin-bottom: 2rem;
-            justify-content: center;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 1.2rem;
-            border-radius: 12px;
-            border: 1px solid var(--card-border);
-            backdrop-filter: blur(12px);
-            position: sticky;
-            top: 1rem;
-            z-index: 100;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            white-space: nowrap;
         }
         .del-btn {
-            background: transparent;
-            color: #ef4444; 
-            border: 1px solid #ef4444; 
-            padding: 0.5rem; 
-            border-radius: 6px; 
+            background: #ffffff;
+            color: #cc0000; 
+            border: 1px solid #cc0000; 
+            padding: 0.25rem 0.5rem; 
+            border-radius: 2px; 
             cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 18px;
             transition: all 0.2s;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .del-btn:hover {
-            background: #ef4444;
+            background-color: #cc0000;
             color: white;
         }
         .pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
             margin-top: 2rem;
-            margin-bottom: 2rem;
+            padding-bottom: 2rem;
         }
         .pagination button {
-            background: rgba(255, 255, 255, 0.1);
-            color: #f8fafc;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: #ffffff;
+            color: var(--text-main);
+            border: 1px solid var(--border);
             padding: 0.5rem 1rem;
-            border-radius: 6px;
+            border-radius: 2px;
             cursor: pointer;
-            transition: all 0.2s;
             font-size: 0.9rem;
-            width: auto;
+            font-weight: bold;
         }
         .pagination button:hover:not(:disabled) {
-            background: rgba(59, 130, 246, 0.4);
-            border-color: #60a5fa;
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
         .pagination button:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
         .pagination span {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 1300px;">
-        <div class="header">
-            <h1>環境データ管理</h1>
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>環境データ<span>管理</span></h1>
             <p>既存の環境情報を修正、または新しい組織の情報を追加します</p>
         </div>
-        
-        <nav>
-            <a href="index.html">環境検索</a>
-            <a href="admin.html" class="active">データ管理</a>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html">環境検索</a>
+                <a href="admin.html" class="active">データ管理</a>
+            </div>
         </nav>
+    </header>
 
-        <div class="actions-bar" style="align-items: center;">
+    <div class="container" style="max-width: 1400px; width: 95%; margin: 0 auto;">
+        
+        <div class="actions-bar">
             <div>
-                <select id="orgFilter" style="width: 260px; padding: 0.65rem; border-radius: 6px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary);" onchange="currentOrgPage = 1; renderEditor()">
-                    <option value="">-- 全ての組織を表示 --</option>
+                <select id="orgFilter" style="width: 250px; padding: 0.6rem; color: var(--primary); font-weight: bold;" onchange="currentOrgPage = 1; renderEditor()">
+                    <option value="">▼ 全ての組織を表示</option>
                 </select>
             </div>
             <div style="flex-grow: 1;"></div>
-            <button type="button" class="primary-btn" style="width: auto; background: #3b82f6;" onclick="addNewRow()">＋ 新規データの追加</button>
-            <button type="button" class="primary-btn" style="width: auto; background: #10b981;" onclick="saveToServer()">💾 サーバーに保存する (一括更新)</button>
+            <button type="button" class="secondary-btn" onclick="addNewRow()">＋ 新規行を追加</button>
+            <button type="button" class="primary-btn" onclick="saveToServer()">保存する (一括更新)</button>
         </div>
 
         <div id="editorArea">
-            <div style="text-align:center; color:#94a3b8; padding: 2rem;">データを読み込んでいます...</div>
+            <div style="text-align:center; color:var(--text-muted); padding: 4rem; border: 1px solid var(--border); background: var(--card); font-weight: bold;">データを読み込んでいます...</div>
         </div>
     </div>
 
@@ -156,7 +167,7 @@
                 })
                 .catch(error => {
                     console.error('data.csv の読み込みに失敗しました:', error);
-                    document.getElementById('editorArea').innerHTML = '<div style="text-align:center; color:#ef4444; padding: 2rem;">データの読み込みに失敗しました。</div>';
+                    document.getElementById('editorArea').innerHTML = '<div style="text-align:center; color:red; padding: 2rem;">データの読み込みに失敗しました。</div>';
                 });
         });
 
@@ -165,7 +176,7 @@
             editorArea.innerHTML = '';
 
             if(currentData.length === 0) {
-                editorArea.innerHTML = '<div class="glass-panel" style="text-align:center; padding:3rem; color:var(--text-secondary);">データがありません。「新規データの追加」をクリックして開始してください。</div>';
+                editorArea.innerHTML = '<div class="card" style="text-align:center; padding:4rem; color:var(--text-muted); font-weight: bold;">データがありません。「新規行を追加」をクリックして開始してください。</div>';
                 return;
             }
 
@@ -200,17 +211,12 @@
 
             orgsToShow.forEach(org => {
                 const orgBlock = document.createElement('div');
-                orgBlock.className = 'glass-panel';
+                orgBlock.className = 'card';
                 orgBlock.style.padding = '1.5rem';
-                orgBlock.style.marginBottom = '2rem';
 
                 const orgHeader = document.createElement('h2');
-                orgHeader.textContent = '🏢 ' + org;
-                orgHeader.style.color = '#a78bfa';
-                orgHeader.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
-                orgHeader.style.paddingBottom = '0.5rem';
-                orgHeader.style.marginBottom = '1.2rem';
-                orgHeader.style.fontSize = '1.25rem';
+                orgHeader.className = 'org-header-title';
+                orgHeader.textContent = org;
                 orgBlock.appendChild(orgHeader);
 
                 const rows = orgMap.get(org);
@@ -221,28 +227,38 @@
                     itemEditor.innerHTML = `
                         <div>
                             <label>組織名</label>
-                            <input type="text" value="${escapeHtml(item['組織名'])}" onblur="updateData(${idx}, '組織名', this.value)" placeholder="組織名">
+                            <input type="text" value="${escapeHtml(item['組織名'])}" onblur="updateData(${idx}, '組織名', this.value)">
                         </div>
                         <div>
                             <label>構築環境名</label>
-                            <input type="text" value="${escapeHtml(item['構築環境名'])}" onchange="updateData(${idx}, '構築環境名', this.value)" placeholder="例:UATテスト環境">
+                            <input type="text" value="${escapeHtml(item['構築環境名'])}" onchange="updateData(${idx}, '構築環境名', this.value)">
                         </div>
                         <div>
                             <label>URL</label>
-                            <input type="text" value="${escapeHtml(item['URL'])}" onchange="updateData(${idx}, 'URL', this.value)" placeholder="https://...">
+                            <input type="text" value="${escapeHtml(item['URL'])}" onchange="updateData(${idx}, 'URL', this.value)">
                         </div>
                         <div>
-                            <label>ID</label>
-                            <input type="text" value="${escapeHtml(item['ログインID'])}" onchange="updateData(${idx}, 'ログインID', this.value)" placeholder="ID">
+                            <label>ログインID</label>
+                            <input type="text" value="${escapeHtml(item['ログインID'])}" onchange="updateData(${idx}, 'ログインID', this.value)">
                         </div>
                         <div>
                             <label>パスワード</label>
-                            <input type="text" value="${escapeHtml(item['ログインパスワード'])}" onchange="updateData(${idx}, 'ログインパスワード', this.value)" placeholder="Password">
+                            <input type="text" value="${escapeHtml(item['ログインパスワード'])}" onchange="updateData(${idx}, 'ログインパスワード', this.value)">
                         </div>
-                        <div style="padding-top: 19px;">
-                            <button type="button" class="del-btn" onclick="deleteRow(${idx})" title="このデータを削除">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
-                            </button>
+                        <div>
+                            <label>DB名</label>
+                            <input type="text" value="${escapeHtml(item['DB名'])}" onchange="updateData(${idx}, 'DB名', this.value)">
+                        </div>
+                        <div>
+                            <label>DBユーザ</label>
+                            <input type="text" value="${escapeHtml(item['DBユーザー名'])}" onchange="updateData(${idx}, 'DBユーザー名', this.value)">
+                        </div>
+                        <div>
+                            <label>DB Pwd</label>
+                            <input type="text" value="${escapeHtml(item['DBパスワード'])}" onchange="updateData(${idx}, 'DBパスワード', this.value)">
+                        </div>
+                        <div>
+                            <button type="button" class="del-btn" onclick="deleteRow(${idx})" title="削除">削除</button>
                         </div>
                     `;
                     orgBlock.appendChild(itemEditor);
@@ -251,13 +267,13 @@
                 editorArea.appendChild(orgBlock);
             });
 
-            // 渲染分页控件
+            // 分页
             if (totalPages > 1) {
                 const paginationDiv = document.createElement('div');
                 paginationDiv.className = 'pagination';
                 
                 const prevBtn = document.createElement('button');
-                prevBtn.textContent = '前へ';
+                prevBtn.textContent = '≪ 前へ';
                 prevBtn.onclick = () => changePage(-1);
                 if (currentOrgPage === 1) prevBtn.disabled = true;
 
@@ -265,7 +281,7 @@
                 pageSpan.textContent = `ページ ${currentOrgPage} / ${totalPages}`;
 
                 const nextBtn = document.createElement('button');
-                nextBtn.textContent = '次へ';
+                nextBtn.textContent = '次へ ≫';
                 nextBtn.onclick = () => changePage(1);
                 if (currentOrgPage === totalPages) nextBtn.disabled = true;
 
@@ -300,16 +316,16 @@
         }
 
         function addNewRow() {
-            // 如果当前在按照特定机构进行过滤检索，则新增的记录自动附加上该机构名
             const filterVal = document.getElementById('orgFilter').value;
-            
-            // 在数组开头追加
             currentData.unshift({
                 '組織名': filterVal || '',
                 '構築環境名': '',
                 'URL': '',
                 'ログインID': '',
-                'ログインパスワード': ''
+                'ログインパスワード': '',
+                'DB名': '',
+                'DBユーザー名': '',
+                'DBパスワード': ''
             });
             initFilter();
             renderEditor();
@@ -326,7 +342,7 @@
                 if(val !== '') orgSet.add(val);
             });
             
-            orgSelect.innerHTML = '<option value="">-- 全ての組織を表示 --</option>';
+            orgSelect.innerHTML = '<option value="">▼ 全ての組織を表示</option>';
             Array.from(orgSet).sort().forEach(org => {
                 const opt = document.createElement('option');
                 opt.value = org;
@@ -340,12 +356,15 @@
         }
 
         function saveToServer() {
-            // 清理并过滤掉空白行
             const filteredData = currentData.filter(row => {
                 return (row['組織名'] || '').trim() !== '' || (row['構築環境名'] || '').trim() !== '' || (row['URL'] || '').trim() !== '';
             });
             
-            const csv = Papa.unparse(filteredData, { quotes: true });
+            const fields = ["組織名", "構築環境名", "URL", "ログインID", "ログインパスワード", "DB名", "DBユーザー名", "DBパスワード"];
+            const csv = Papa.unparse({
+                fields: fields,
+                data: filteredData
+            }, { quotes: true });
             
             fetch('update_csv.jsp', {
                 method: 'POST',

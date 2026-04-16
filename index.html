@@ -3,98 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>組織環境管理システム</title>
+    <title>組織環境ナビゲーション</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         .org-summary-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 2px;
             padding: 1.5rem;
-            transition: transform 0.2s, background 0.2s;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.2s;
         }
         .org-summary-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-color: var(--primary);
         }
         .org-name-header {
             font-size: 1.25rem;
-            color: #60a5fa;
+            font-weight: bold;
+            color: var(--primary);
             cursor: pointer;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            display: inline-block;
-            transition: all 0.2s;
+            padding: 0.2rem 0.5rem 0.2rem 0.8rem;
+            margin-bottom: 1.25rem;
+            display: block;
+            border-left: 6px solid var(--primary);
+            border-bottom: 1px solid var(--border);
         }
         .org-name-header:hover {
-            color: #93c5fd;
-            text-decoration: underline;
+            color: var(--primary-hover);
+        }
+        .org-badges-wrapper {
+            padding-left: 0.5rem;
         }
         .env-badge {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(59, 130, 246, 0.15);
-            color: #e2e8f0;
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            margin-right: 0.75rem;
-            margin-bottom: 0.75rem;
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            display: inline-block;
+            background-color: var(--bg-subtle);
+            color: var(--text-main);
+            padding: 0.3rem 0.6rem;
+            font-size: 0.85rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 2px;
         }
         .pagination {
             grid-column: 1 / -1;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 1.5rem;
-            margin-top: 1rem;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-bottom: 2rem;
         }
         .pagination button {
-            background: rgba(255, 255, 255, 0.1);
-            color: #f8fafc;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: #ffffff;
+            color: var(--text-main);
+            border: 1px solid var(--border);
             padding: 0.5rem 1rem;
-            border-radius: 6px;
+            border-radius: 2px;
             cursor: pointer;
-            transition: all 0.2s;
             font-size: 0.9rem;
-            width: auto;
+            font-weight: bold;
+            transition: all 0.2s;
         }
         .pagination button:hover:not(:disabled) {
-            background: rgba(59, 130, 246, 0.4);
-            border-color: #60a5fa;
+            background-color: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
         }
         .pagination button:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
         .pagination span {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>組織環境管理システム</h1>
-            <p>特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索します</p>
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>組織環境<span>ナビゲーション</span></h1>
+            <p>特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索</p>
         </div>
-        
-        <nav>
-            <a href="index.html" class="active">環境検索</a>
-            <a href="admin.html">データ管理</a>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html" class="active">環境検索</a>
+                <a href="admin.html">データ管理</a>
+            </div>
         </nav>
+    </header>
 
-        <div class="glass-panel">
+    <div class="container" style="max-width: 1000px; margin: 0 auto; padding: 0 1rem;">
+        <div class="card">
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="orgSelect" style="font-size: 1.1rem; margin-bottom: 1rem; color: #f8fafc;">対象組織を選択</label>
-                <div style="position: relative;">
-                    <select id="orgSelect">
+                <label for="orgSelect" style="color: var(--primary); font-size: 1.05rem;">対象組織を選択</label>
+                <div style="margin-top: 10px;">
+                    <select id="orgSelect" style="padding: 0.8rem; font-size: 1rem;">
                         <option value="">-- データ読み込み中... --</option>
                     </select>
                 </div>
@@ -153,7 +161,7 @@
                 }
             });
 
-            orgSelect.innerHTML = '<option value="">-- 全ての組織の概要を表示 --</option>';
+            orgSelect.innerHTML = '<option value="">▼ 全ての組織の概要を表示</option>';
             
             const sortedOrgs = Array.from(orgSet).sort();
             
@@ -174,19 +182,16 @@
             });
         }
 
-        // ページを切り替える関数
         function changePage(direction) {
             currentOrgPage += direction;
             renderInitialSummary();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 以机构为单位显示机构名和构筑环境名，带分页
         function renderInitialSummary() {
             const resultsArea = document.getElementById('resultsArea');
             resultsArea.innerHTML = ''; 
             
-            // 确保下拉框值为空
             document.getElementById('orgSelect').value = '';
 
             const orgMap = new Map();
@@ -219,19 +224,19 @@
             const orgsToShow = allOrgs.slice(startIndex, endIndex);
 
             const wrapper = document.createElement('div');
-            wrapper.style.gridColumn = '1 / -1'; // 占满整个 grid 行
+            wrapper.style.gridColumn = '1 / -1'; 
             
             orgsToShow.forEach(org => {
                 const envs = orgMap.get(org);
-                const envHtml = envs.map(e => `<span class="env-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>${sanitizeHTML(e)}</span>`).join('');
+                const envHtml = envs.map(e => `<span class="env-badge">◆ ${sanitizeHTML(e)}</span>`).join('');
                 
                 const card = document.createElement('div');
                 card.className = 'org-summary-card';
                 card.innerHTML = `
                     <div class="org-name-header" onclick="selectOrg('${sanitizeHTML(org)}')">
-                        🏢 ${sanitizeHTML(org)}
+                        ${sanitizeHTML(org)}
                     </div>
-                    <div>
+                    <div class="org-badges-wrapper">
                         ${envHtml}
                     </div>
                 `;
@@ -245,7 +250,7 @@
                 paginationDiv.className = 'pagination';
                 
                 const prevBtn = document.createElement('button');
-                prevBtn.textContent = '前へ';
+                prevBtn.textContent = '≪ 前へ';
                 prevBtn.onclick = () => changePage(-1);
                 if (currentOrgPage === 1) prevBtn.disabled = true;
 
@@ -253,7 +258,7 @@
                 pageSpan.textContent = `ページ ${currentOrgPage} / ${totalPages}`;
 
                 const nextBtn = document.createElement('button');
-                nextBtn.textContent = '次へ';
+                nextBtn.textContent = '次へ ≫';
                 nextBtn.onclick = () => changePage(1);
                 if (currentOrgPage === totalPages) nextBtn.disabled = true;
 
@@ -265,15 +270,12 @@
             }
         }
 
-        // クリックで特定組織の詳細を表示
         function selectOrg(orgName) {
             document.getElementById('orgSelect').value = orgName;
             renderEnvironments(orgName);
-            // ページ上部にスクロール
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 机构具体登录信息显示
         function renderEnvironments(selectedOrg) {
             const resultsArea = document.getElementById('resultsArea');
             resultsArea.innerHTML = ''; 
@@ -294,39 +296,81 @@
                 const safeUrl = sanitizeHTML(env['URL']);
                 const safeId = sanitizeHTML(env['ログインID']);
                 const safePwd = sanitizeHTML(env['ログインパスワード']);
+                const dbName = sanitizeHTML(env['DB名']);
+                const dbUser = sanitizeHTML(env['DBユーザー名']);
+                const dbPwd = sanitizeHTML(env['DBパスワード']);
                 
                 const pwdId = 'pwd_' + Math.random().toString(36).substr(2, 9);
                 
                 card.innerHTML = `
                     <h3>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                         ${sanitizeHTML(env['構築環境名'])}
                     </h3>
                     
-                    <div class="env-detail">
-                        <div class="env-detail-label">URL</div>
-                        <div class="env-detail-value">
-                            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>
+                    <div class="env-detail-wrapper">
+                        <div class="env-detail">
+                            <div class="env-detail-label">URL</div>
+                            <div class="env-detail-value">
+                                <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>
+                            </div>
+                            <button class="copy-btn" onclick="copyText('${safeUrl}')" title="URLをコピー">コピー</button>
                         </div>
-                        <button class="copy-btn" onclick="copyText('${safeUrl}')" title="URLをコピー">コピー</button>
-                    </div>
-                    
-                    <div class="env-detail">
-                        <div class="env-detail-label">ID</div>
-                        <div class="env-detail-value">${safeId}</div>
-                        <button class="copy-btn" onclick="copyText('${safeId}')" title="IDをコピー">コピー</button>
-                    </div>
-                    
-                    <div class="env-detail">
-                        <div class="env-detail-label">PWD</div>
-                        <div class="env-detail-value">
-                            <span id="${pwdId}">${safePwd}</span>
+                        
+                        <div class="env-detail">
+                            <div class="env-detail-label">ID</div>
+                            <div class="env-detail-value">${safeId}</div>
+                            <button class="copy-btn" onclick="copyText('${safeId}')" title="IDをコピー">コピー</button>
                         </div>
-                        <button class="copy-btn" onclick="copyText('${safePwd}')" title="パスワードをコピー">コピー</button>
+                        
+                        <div class="env-detail">
+                            <div class="env-detail-label">PWD</div>
+                            <div class="env-detail-value">
+                                <span id="${pwdId}">${safePwd}</span>
+                            </div>
+                            <button class="copy-btn" onclick="copyText('${safePwd}')" title="パスワードをコピー">コピー</button>
+                        </div>
+
+                    ${(dbName || dbUser || dbPwd) ? `
+                        <div style="background-color: var(--bg-subtle); padding: 1rem; border-radius: 2px; border: 1px solid var(--border); margin-top: 1rem;">
+                            <div style="color: var(--primary); font-weight: bold; font-size: 0.85rem; margin-bottom: 0.75rem;">▼ データベース情報</div>
+                            
+                            <div class="env-detail">
+                                <div class="env-detail-label" style="color:var(--text-main);">DB名</div>
+                                <div class="env-detail-value">${dbName}</div>
+                                <button class="copy-btn" onclick="copyText('${dbName}')" title="DB名をコピー">コピー</button>
+                            </div>
+                            
+                            <div class="env-detail">
+                                <div class="env-detail-label" style="color:var(--text-main);">DBユーザ</div>
+                                <div class="env-detail-value">${dbUser}</div>
+                                <button class="copy-btn" onclick="copyText('${dbUser}')" title="DBユーザー名をコピー">コピー</button>
+                            </div>
+                            
+                            <div class="env-detail" style="border: none;">
+                                <div class="env-detail-label" style="color:var(--text-main);">DB Pwd</div>
+                                <div class="env-detail-value">
+                                    <span>${dbPwd}</span>
+                                </div>
+                                <button class="copy-btn" onclick="copyText('${dbPwd}')" title="DBパスワードをコピー">コピー</button>
+                            </div>
+                        </div>` : ''}
                     </div>
                 `;
                 resultsArea.appendChild(card);
             });
+
+            const backBtnWrapper = document.createElement('div');
+            backBtnWrapper.style.gridColumn = '1 / -1';
+            backBtnWrapper.style.textAlign = 'center';
+            backBtnWrapper.style.marginTop = '2rem';
+            backBtnWrapper.style.paddingBottom = '2rem';
+            backBtnWrapper.innerHTML = `
+                <button type="button" class="secondary-btn" onclick="renderInitialSummary()">
+                    ≪ 一覧に戻る
+                </button>
+            `;
+            resultsArea.appendChild(backBtnWrapper);
         }
 
         function sanitizeHTML(str) {
@@ -342,10 +386,9 @@
                     showToast('コピーしました: ' + text);
                 }).catch(err => {
                     console.error('コピー失敗:', err);
-                    fallbackCopyText(text); // 剪贴板API因为权限或者非HTTPS拒绝时使用降级方案
+                    fallbackCopyText(text);
                 });
             } else {
-                // 如果运行在内网非 HTTPS 下，navigator.clipboard 会变为 undefined
                 fallbackCopyText(text);
             }
         }
@@ -354,7 +397,7 @@
             try {
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
-                textArea.style.position = "fixed";  // 防止页面滚动和闪烁
+                textArea.style.position = "fixed"; 
                 textArea.style.top = "-9999px";
                 document.body.appendChild(textArea);
                 textArea.focus();
