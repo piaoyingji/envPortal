@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -117,38 +117,69 @@
         </div>
     </div>
 
+    <!-- パスワード モーダル -->
+    <div id="pwdModal" style="display:none;">
+        <div class="modal-content">
+            <h3>RDP情報 解除</h3>
+            <p>RDP情報を表示するにはパスワードを入力してください</p>
+            <input type="password" id="modalPwdInput" onkeypress="if(event.key==='Enter') submitPwdModal()">
+            <div class="modal-btns">
+                <button type="button" class="secondary-btn" onclick="closePwdModal()">キャンセル</button>
+                <button type="button" class="primary-btn" onclick="submitPwdModal()">解除</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 弹窗提示 -->
     <div id="toast">コピーしました</div>
 
     <script>
         let fullData = [];
+        let rdpData = []; // RDP情報を保持
+        let isAuthenticated = false; // RDP表示の認証状態
         let currentOrgPage = 1;
         const ORGS_PER_PAGE = 6;
 
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
             
-            fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(response => {
-                    if (!response.ok) throw new Error('ネットワークリクエストに失敗しました');
-                    return response.text();
-                })
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            fullData = results.data;
-                            initDropdown();
-                            renderInitialSummary(); // 初期化時に概要を表示
-                        }
+            // 認証状態の確認
+            const expiry = localStorage.getItem('authExpiry');
+            if (expiry && new Date().getTime() < parseInt(expiry)) {
+                isAuthenticated = true;
+            }
+
+            // data.csv の読み込み
+            const p1 = fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.text());
+            
+            // rdp.csv の読み込み
+            const p2 = fetch('rdp.csv?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.text());
+
+            Promise.all([p1, p2])
+                .then(([dataCsv, rdpCsv]) => {
+                    // data.csv 解析
+                    Papa.parse(dataCsv, {
+                        header: true, skipEmptyLines: true,
+                        complete: function(results) { fullData = results.data; }
                     });
+                    // rdp.csv 解析
+                    Papa.parse(rdpCsv, {
+                        header: true, skipEmptyLines: true,
+                        complete: function(results) { rdpData = results.data; }
+                    });
+                    
+                    // 少し待ってから初期化（PapaParseが非同期のためPromise.all内でも少しラグがある場合がある）
+                    setTimeout(() => {
+                        initDropdown();
+                        renderInitialSummary();
+                    }, 100);
                 })
                 .catch(error => {
-                    console.error('CSVの取得または解析に失敗しました:', error);
-                    orgSelect.innerHTML = '<option value="">読み込み失敗。data.csvが存在するか確認してください</option>';
+                    console.error('データの取得に失敗しました:', error);
+                    orgSelect.innerHTML = '<option value="">読み込み失敗</option>';
                     orgSelect.disabled = true;
-                    document.getElementById('resultsArea').innerHTML = '<div style="grid-column: 1 / -1;" class="empty-state">エラーが発生しました。</div>';
                 });
         });
 
@@ -303,12 +334,50 @@
                 
                 const pwdId = 'pwd_' + Math.random().toString(36).substr(2, 9);
                 const statusBadgeId = 'status_' + Math.random().toString(36).substr(2, 9);
+
+                // --- IP/Host マッチングロジック ---
+                const envHost = getHost(safeUrl);
+                const matchedRdp = rdpData.find(rdp => getHost(rdp['接続先(IP:Port)']) === envHost && envHost !== '');
+                
+                let rdpTagHtml = '';
+                let rdpInfoHtml = '';
+
+                if (matchedRdp) {
+                    if (isAuthenticated) {
+                        rdpInfoHtml = `
+                            <div style="background-color: var(--bg-subtle); padding: 1rem; border-radius: 2px; border: 1px solid var(--border); margin-top: 1rem;">
+                                <div style="color: var(--primary); font-weight: bold; font-size: 0.85rem; margin-bottom: 0.75rem;">▼ RDP 接続情報</div>
+                                
+                                <div class="env-detail">
+                                    <div class="env-detail-label" style="color:var(--text-main);">ユーザー</div>
+                                    <div class="env-detail-value">${sanitizeHTML(matchedRdp['RDPユーザー名']) || '<span style="color:#aaa;">(未設定)</span>'}</div>
+                                    <button class="copy-btn" onclick="copyText('${sanitizeHTML(matchedRdp['RDPユーザー名'])}')" title="コピー">コピー</button>
+                                </div>
+                                
+                                <div class="env-detail">
+                                    <div class="env-detail-label" style="color:var(--text-main);">Pwd</div>
+                                    <div class="env-detail-value">${sanitizeHTML(matchedRdp['RDPパスワード']) || '<span style="color:#aaa;">(未設定)</span>'}</div>
+                                    <button class="copy-btn" onclick="copyText('${sanitizeHTML(matchedRdp['RDPパスワード'])}')" title="コピー">コピー</button>
+                                </div>
+                                
+                                <div class="env-detail" style="border: none;">
+                                    <div class="env-detail-label" style="color:var(--text-main);">接続先</div>
+                                    <div class="env-detail-value">${sanitizeHTML(matchedRdp['接続先(IP:Port)']) || '<span style="color:#aaa;">(未設定)</span>'}</div>
+                                    <button class="copy-btn" onclick="copyText('${sanitizeHTML(matchedRdp['接続先(IP:Port)'])}')" title="コピー">コピー</button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="クリックして認証しRDP情報を表示">RDP</span>`;
+                    }
+                }
                 
                 card.innerHTML = `
                     <h3 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
                         <span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                             ${sanitizeHTML(env['構築環境名'])}
+                            ${rdpTagHtml}
                         </span>
                         <span id="${statusBadgeId}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: #f7f7f7; color: #888; font-weight: bold; border: 1px solid #e0e0e0; display: none; align-items: center; gap: 5px;">
                             <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#ccc;"></span>確認中...
@@ -361,6 +430,8 @@
                                 <button class="copy-btn" onclick="copyText('${dbPwd}')" title="DBパスワードをコピー" ${!dbPwd ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>コピー</button>
                             </div>
                         </div>
+
+                        ${rdpInfoHtml}
                     </div>
                 `;
                 resultsArea.appendChild(card);
@@ -413,6 +484,62 @@
             const temp = document.createElement('div');
             temp.textContent = str;
             return temp.innerHTML;
+        }
+
+        // --- RDP追加機能用関数 ---
+        function getHost(str) {
+            if (!str) return '';
+            // URLからホスト名抽出、または IP:Port から IP抽出
+            try {
+                if (str.includes('://')) {
+                    return new URL(str).hostname;
+                }
+                return str.split(':')[0].trim();
+            } catch (e) {
+                return str.split('/')[0].split(':')[0].trim();
+            }
+        }
+
+        function openPwdModal() {
+            document.getElementById('pwdModal').style.display = 'flex';
+            document.getElementById('modalPwdInput').focus();
+        }
+
+        function closePwdModal() {
+            document.getElementById('pwdModal').style.display = 'none';
+            document.getElementById('modalPwdInput').value = '';
+        }
+
+        function submitPwdModal() {
+            const pwd = document.getElementById('modalPwdInput').value;
+            if (!pwd) return;
+
+            fetch('auth.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'pwd=' + encodeURIComponent(pwd)
+            })
+            .then(res => res.text())
+            .then(txt => {
+                if (txt.trim() === "OK") {
+                    localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
+                    isAuthenticated = true;
+                    closePwdModal();
+                    showToast("認証成功！RDP情報を表示します。");
+                    // 現在の表示を更新
+                    const currentOrg = document.getElementById('orgSelect').value;
+                    if (currentOrg) renderEnvironments(currentOrg);
+                    else renderInitialSummary();
+                } else {
+                    alert("パスワードが正しくありません。");
+                    document.getElementById('modalPwdInput').value = '';
+                    document.getElementById('modalPwdInput').focus();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("認証エラーが発生しました。");
+            });
         }
 
         function copyText(text) {
