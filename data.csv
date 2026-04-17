@@ -1,0 +1,6 @@
+組織名,構築環境名,URL,ログインID,ログインパスワード,DB名,DBユーザー名,DBパスワード
+ABCテクノロジー株式会社,財務システムUATテスト環境,https://uat.example.com/login,admin_test,Password123!,UAT_FIN_DB,db_admin,dbpwd_123
+ABCテクノロジー株式会社,財務システム本番環境,https://prod.example.com/login,admin,ProdPwd!,PROD_FIN_DB,db_admin,dbpwd_prod
+XYZグループ,人事システム開発環境,https://dev.xyz.com,dev_user,dev123,DEV_HR_DB,hr_dev,hrdevpwd
+XYZグループ,人事システムテスト環境,https://test.xyz.com,test_user,test123,TEST_HR_DB,hr_test,testpwd
+DEF物流,倉庫システム本番環境,https://wms.def.com,admin,wms!admin,WMS_PROD_DB,wms_admin,wmsprod
