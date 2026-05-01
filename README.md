@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.1.9`
+当前版本：`2.1.10`
 
 ## 核心能力
 
@@ -139,3 +139,5 @@ Guacamole 自动启动后，启动器会在服务器本机等待 `127.0.0.1:8088
 首页的浏览器远程控制按钮只会在 Guacamole 实际可达时显示。若 `.env` 已配置但 `8088` 服务未就绪，EnvPortal 会隐藏按钮并在后端接口返回不可达原因。
 
 EnvPortal 内置的 Guacamole 实例使用 Guacamole 官方 PostgreSQL 初始化脚本。若启动时发现旧版本创建的 Guacamole schema 不兼容，会自动重建 EnvPortal 管理的 Guacamole Docker volume。
+
+从 EnvPortal 打开 Guacamole 时，若 `.env` 配置了 `GUACAMOLE_USERNAME` 和 `GUACAMOLE_PASSWORD`，EnvPortal 会自动换取 Guacamole token 并跳转，避免停在 Guacamole 原生登录页。

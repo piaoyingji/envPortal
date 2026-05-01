@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.10] - 2026-05-01
+
+### Added
+
+- Added `guacamole_auto_login.jsp` to redirect users into Guacamole with a backend-issued auth token when Guacamole credentials are configured.
+- Changed the Guacamole URL exposed to the frontend to use the EnvPortal auto-login endpoint by default.
+
 ## [2.1.9] - 2026-05-01
 
 ### Fixed

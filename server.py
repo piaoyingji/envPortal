@@ -106,6 +106,23 @@ def guacamole_status(ttl_seconds=10):
     return {"available": available, "message": message}
 
 
+def guacamole_token():
+    if not GUACAMOLE_URL or not GUACAMOLE_USERNAME or not GUACAMOLE_PASSWORD:
+        return "", "Guacamole credentials are not configured."
+    try:
+        token_response = http_post_form(
+            f"{GUACAMOLE_URL}/api/tokens",
+            {"username": GUACAMOLE_USERNAME, "password": GUACAMOLE_PASSWORD},
+            timeout=5,
+        )
+        token = token_response.get("authToken", "") if isinstance(token_response, dict) else ""
+        if not token:
+            return "", "Guacamole token was not returned."
+        return token, ""
+    except Exception as exc:
+        return "", str(exc)
+
+
 def build_guacamole_uri(target, user="", password=""):
     target = str(target or "").strip()
     user = str(user or "").strip()
@@ -174,13 +191,9 @@ def guacamole_quickconnect(target, user="", password="", public_url=""):
         return fallback
 
     try:
-        token_response = http_post_form(
-            f"{GUACAMOLE_URL}/api/tokens",
-            {"username": GUACAMOLE_USERNAME, "password": GUACAMOLE_PASSWORD},
-        )
-        token = token_response.get("authToken", "")
+        token, token_error = guacamole_token()
         if not token:
-            return {**fallback, "message": "Guacamole token was not returned."}
+            return {**fallback, "message": token_error or "Guacamole token was not returned."}
         created = http_post_form(
             f"{GUACAMOLE_URL}/api/session/ext/quickconnect/create?token={urllib.parse.quote(token)}",
             {"uri": quickconnect_uri},
@@ -756,6 +769,18 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
             pass
 
+    def send_redirect(self, url):
+        payload = b""
+        try:
+            self.send_response(302)
+            self.send_header("Location", url)
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            pass
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length).decode("utf-8", errors="replace")
@@ -847,9 +872,22 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "guacamoleEnabled": bool(GUACAMOLE_URL),
                 "guacamoleAvailable": guac_status["available"],
                 "guacamoleStatus": guac_status["message"],
-                "guacamoleUrl": public_guacamole_url(self.headers.get("Host", "")),
+                "guacamoleUrl": "/guacamole_auto_login.jsp" if GUACAMOLE_USERNAME and GUACAMOLE_PASSWORD else public_guacamole_url(self.headers.get("Host", "")),
                 "guacamoleAutoLogin": bool(GUACAMOLE_URL and GUACAMOLE_USERNAME and GUACAMOLE_PASSWORD),
             }), "application/json; charset=utf-8")
+            return
+
+        if path == "/guacamole_auto_login.jsp":
+            public_url = public_guacamole_url(self.headers.get("Host", ""))
+            if not public_url:
+                self.send_bytes(b"Guacamole is not configured.", status=404)
+                return
+            token, token_error = guacamole_token()
+            if not token:
+                self.send_bytes(("Guacamole auto-login failed: " + token_error).encode("utf-8"), status=503)
+                return
+            redirect_url = public_url + "/#/?token=" + urllib.parse.quote(token)
+            self.send_redirect(redirect_url)
             return
 
         if path == "/rdp_signing_cert.cer":
