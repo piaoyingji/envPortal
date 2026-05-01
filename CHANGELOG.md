@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.27] - 2026-05-01
+
+### Changed
+
+- Clarified remote action icons: RDP file generation now uses a file-download icon, while browser remote control uses the connection icon.
+
 ## [2.1.26] - 2026-05-01
 
 ### Added

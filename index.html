@@ -948,11 +948,11 @@
             const remoteTarget = matchedRdp ? sanitizeHTML(matchedRdp['接続先(IP:Port)']) : '';
             const remoteUser = matchedRdp ? sanitizeHTML(matchedRdp['RDPユーザー名']) : '';
             const rdpDownloadBtn = matchedRdp && remoteType === 'RDP' && remoteTarget
-                ? `<button id="${rdpDownloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}')" title="${t('button.connectRdp')}" aria-label="${t('button.connectRdp')}">${remoteConnectIcon()}</button>`
+                ? `<button id="${rdpDownloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
                 : '';
             const guacamoleAvailable = portalConfig.guacamoleEnabled && portalConfig.guacamoleAvailable !== false;
             const guacamoleBtn = matchedRdp && remoteType === 'RDP' && remoteTarget && guacamoleAvailable
-                ? `<button id="${rdpDownloadBtnId}_guac" class="icon-btn" disabled onclick="openGuacamoleConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}')" title="${t('button.openGuacamole')}" aria-label="${t('button.openGuacamole')}">${browserRemoteIcon()}</button>`
+                ? `<button id="${rdpDownloadBtnId}_guac" class="icon-btn" disabled onclick="openGuacamoleConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}')" title="${t('button.openGuacamole')}" aria-label="${t('button.openGuacamole')}">${remoteConnectIcon()}</button>`
                 : '';
             const rdpCertBtn = matchedRdp && remoteType === 'RDP'
                 ? `<button id="${rdpCertBtnId}" class="icon-btn" disabled onclick="downloadRdpSigningCert()" title="${t('button.downloadRdpCert')}" aria-label="${t('button.downloadRdpCert')}">${certificateIcon()}</button>`
@@ -1234,6 +1234,10 @@
 
         function remoteConnectIcon() {
             return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="6" rx="1"></rect><rect x="13" y="14" width="8" height="6" rx="1"></rect><path d="M7 10v2a2 2 0 0 0 2 2h4"></path><path d="m11 12 2 2-2 2"></path></svg>';
+        }
+
+        function rdpFileDownloadIcon() {
+            return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M12 11v6"></path><path d="m9 14 3 3 3-3"></path></svg>';
         }
 
         function certificateIcon() {
