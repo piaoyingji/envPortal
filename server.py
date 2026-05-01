@@ -80,12 +80,21 @@ def guacamole_status(ttl_seconds=10):
             "available": GUACAMOLE_STATUS_CACHE["available"],
             "message": GUACAMOLE_STATUS_CACHE["message"],
         }
-    check_url = GUACAMOLE_URL + "/"
     try:
-        context = ssl._create_unverified_context()
-        with urllib.request.urlopen(check_url, timeout=1.5, context=context) as response:
-            available = 200 <= response.status < 500
-            message = f"HTTP {response.status}"
+        if GUACAMOLE_USERNAME and GUACAMOLE_PASSWORD:
+            token_response = http_post_form(
+                f"{GUACAMOLE_URL}/api/tokens",
+                {"username": GUACAMOLE_USERNAME, "password": GUACAMOLE_PASSWORD},
+                timeout=3,
+            )
+            available = bool(isinstance(token_response, dict) and token_response.get("authToken"))
+            message = "API token ok" if available else "Guacamole token was not returned."
+        else:
+            check_url = GUACAMOLE_URL + "/"
+            context = ssl._create_unverified_context()
+            with urllib.request.urlopen(check_url, timeout=1.5, context=context) as response:
+                available = 200 <= response.status < 500
+                message = f"HTTP {response.status}"
     except Exception as exc:
         available = False
         message = str(exc)

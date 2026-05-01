@@ -410,6 +410,57 @@ def print_compose_diagnostics(command, compose_file):
         print(output or "(no output)")
 
 
+def guacamole_schema_state(command, compose_file, timeout_seconds=45):
+    query = (
+        "SELECT CASE WHEN "
+        "EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='guacamole_user' AND column_name='entity_id') "
+        "AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='guacamole_user_group') "
+        "AND EXISTS (SELECT 1 FROM pg_type WHERE typname='guacamole_entity_type') "
+        "THEN 'ok' ELSE 'bad' END;"
+    )
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        result = run_compose(
+            command,
+            [
+                "-f",
+                compose_file,
+                "exec",
+                "-T",
+                "guacamole-db",
+                "sh",
+                "-lc",
+                f"PGPASSWORD=guacamole_pass psql -U guacamole_user -d guacamole_db -tAc {shlex.quote(query)}",
+            ],
+            capture=True,
+        )
+        output = ((result.stdout or "") + (result.stderr or "")).strip().lower()
+        if result.returncode == 0 and "ok" in output:
+            return "ok"
+        if result.returncode == 0 and "bad" in output:
+            return "bad"
+        time.sleep(3)
+    return "unknown"
+
+
+def reset_guacamole_volume_if_bad_schema(command, compose_file):
+    if load_env_value("GUACAMOLE_RESET_BAD_DB", "true").lower() not in ("1", "true", "yes", "on"):
+        return
+    state = guacamole_schema_state(command, compose_file)
+    if state == "ok":
+        print("Guacamole database schema: ok")
+        return
+    if state == "unknown":
+        print("Guacamole database schema could not be verified yet.")
+        return
+
+    print("Guacamole database schema is incompatible. Recreating EnvPortal Guacamole volume...")
+    run_compose(command, ["-f", compose_file, "down", "-v"])
+    run_compose(command, ["-f", compose_file, "up", "-d"])
+    state = guacamole_schema_state(command, compose_file)
+    print(f"Guacamole database schema after reset: {state}")
+
+
 def start_guacamole_if_available():
     if load_env_value("GUACAMOLE_AUTO_START", "true").lower() not in ("1", "true", "yes", "on"):
         return
@@ -439,6 +490,7 @@ def start_guacamole_if_available():
             print("Starting Guacamole with Docker...")
             print("Docker command:", " ".join(command["command"]))
         run_compose(command, ["-f", compose_file, "up", "-d"])
+        reset_guacamole_volume_if_bad_schema(command, compose_file)
         port = guacamole_port()
         check_local_tcp_port(port, "Guacamole")
         url = f"http://127.0.0.1:{port}/guacamole/"
