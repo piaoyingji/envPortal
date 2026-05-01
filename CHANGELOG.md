@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.13] - 2026-05-01
+
+### Fixed
+
+- Ensured Guacamole REST temporary connection creation runs even when QuickConnect throws an exception.
+- Added server-side diagnostics for Guacamole token, QuickConnect, and REST connection creation failures.
+- Displayed Guacamole fallback messages in the frontend instead of silently opening the Guacamole home page.
+
 ## [2.1.12] - 2026-05-01
 
 ### Fixed

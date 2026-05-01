@@ -277,38 +277,46 @@ def guacamole_quickconnect(target, user="", password="", public_url=""):
     if not GUACAMOLE_USERNAME or not GUACAMOLE_PASSWORD:
         return fallback
 
+    token, data_source, token_error = guacamole_token()
+    if not token:
+        print("Guacamole token failed:", token_error or "token was not returned")
+        return {**fallback, "message": token_error or "Guacamole token was not returned."}
+
+    quickconnect_error = ""
     try:
-        token, data_source, token_error = guacamole_token()
-        if not token:
-            return {**fallback, "message": token_error or "Guacamole token was not returned."}
         created = http_post_form(
             f"{GUACAMOLE_URL}/api/session/ext/quickconnect/create?token={urllib.parse.quote(token)}",
             {"uri": quickconnect_uri},
         )
         identifier = created.get("identifier", "") if isinstance(created, dict) else ""
-        if not identifier:
-            created_id, create_error = create_guacamole_rdp_connection(target, user, password, token, data_source)
-            if not created_id:
-                return {**fallback, "message": create_error or "Guacamole connection could not be created."}
-            client_id = guacamole_client_identifier(created_id, data_source)
+        if identifier:
             return {
                 "ok": True,
                 "mode": "direct",
-                "url": f"{display_url}/#/client/{urllib.parse.quote(client_id)}?token={urllib.parse.quote(token)}",
+                "url": f"{display_url}/#/client/{urllib.parse.quote(identifier)}?token={urllib.parse.quote(token)}",
                 "guacamoleUrl": display_url,
                 "quickconnectUri": quickconnect_uri,
                 "message": "",
             }
-        return {
-            "ok": True,
-            "mode": "direct",
-            "url": f"{display_url}/#/client/{urllib.parse.quote(identifier)}?token={urllib.parse.quote(token)}",
-            "guacamoleUrl": display_url,
-            "quickconnectUri": quickconnect_uri,
-            "message": "",
-        }
+        quickconnect_error = "Guacamole QuickConnect did not return an identifier."
     except Exception as exc:
-        return {**fallback, "message": str(exc)}
+        quickconnect_error = str(exc)
+        print("Guacamole QuickConnect failed, trying REST connection creation:", quickconnect_error)
+
+    created_id, create_error = create_guacamole_rdp_connection(target, user, password, token, data_source)
+    if not created_id:
+        print("Guacamole REST connection creation failed:", create_error)
+        return {**fallback, "message": create_error or quickconnect_error or "Guacamole connection could not be created."}
+    print(f"Guacamole temporary RDP connection created: {created_id}")
+    client_id = guacamole_client_identifier(created_id, data_source)
+    return {
+        "ok": True,
+        "mode": "direct",
+        "url": f"{display_url}/#/client/{urllib.parse.quote(client_id)}?token={urllib.parse.quote(token)}",
+        "guacamoleUrl": display_url,
+        "quickconnectUri": quickconnect_uri,
+        "message": "",
+    }
 
 
 def safe_filename(value, fallback="remote"):

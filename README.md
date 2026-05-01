@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.1.12`
+当前版本：`2.1.13`
 
 ## 核心能力
 
@@ -143,3 +143,5 @@ EnvPortal 内置的 Guacamole 实例使用 Guacamole 官方 PostgreSQL 初始化
 从 EnvPortal 打开 Guacamole 时，若 `.env` 配置了 `GUACAMOLE_USERNAME` 和 `GUACAMOLE_PASSWORD`，EnvPortal 会通过 Guacamole 前端原生支持的登录参数跳转，避免停在 Guacamole 原生登录页。
 
 点击浏览器远程控制时，EnvPortal 会优先使用 Guacamole QuickConnect 创建会话。如果 QuickConnect 未返回可打开的连接，EnvPortal 会通过 Guacamole REST API 创建一个临时 RDP 连接，并直接跳转到该连接页面。
+
+QuickConnect 失败或抛错时，EnvPortal 会继续尝试 REST 临时连接创建，并在服务器控制台输出失败原因；前端也会显示 fallback 的具体消息。

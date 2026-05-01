@@ -1206,7 +1206,7 @@
                     }
                     if (data.quickconnectUri) {
                         return copyTextSilently(data.quickconnectUri).then(() => {
-                            showToast(t('toast.guacamoleManual'));
+                            showToast(data.message || t('toast.guacamoleManual'));
                             window.open(data.guacamoleUrl || portalConfig.guacamoleUrl, '_blank', 'noopener,noreferrer');
                         });
                     }
