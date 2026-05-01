@@ -243,6 +243,7 @@ button.secondary-btn:hover {
     border-radius: 8px;
     padding: 1.25rem;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), var(--shadow-card);
+    min-width: 0;
     transition: all 0.2s;
 }
 
@@ -270,6 +271,7 @@ button.secondary-btn:hover {
     align-items: center;
     border-bottom: 1px solid #f0f0f0;
     padding-bottom: 0.5rem;
+    min-width: 0;
 }
 
 .env-detail:last-child {
@@ -286,6 +288,7 @@ button.secondary-btn:hover {
 
 .env-detail-value {
     flex: 1;
+    min-width: 0;
     font-family: Consolas, monospace;
     color: var(--text-main);
     font-size: 0.9rem;

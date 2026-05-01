@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.23] - 2026-05-01
+
+### Fixed
+
+- Fixed overlapping expanded environment cards by increasing the home page grid column minimum and constraining card detail flex overflow.
+
 ## [2.1.22] - 2026-05-01
 
 ### Changed
