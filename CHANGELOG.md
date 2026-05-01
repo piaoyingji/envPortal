@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.14] - 2026-05-01
+
+### Fixed
+
+- Explicitly enabled Guacamole RDP copy/paste channels for temporary browser remote connections.
+- Added Windows clipboard newline normalization for Guacamole RDP sessions.
+
 ## [2.1.13] - 2026-05-01
 
 ### Fixed
