@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.16] - 2026-05-01
+
+### Added
+
+- Added Guacamole RDP file transfer support through an `EnvPortal` virtual drive.
+- Added the Docker shared directory `guacamole-drive/` for Guacamole file upload/download exchange.
+
 ## [2.1.15] - 2026-05-01
 
 ### Added

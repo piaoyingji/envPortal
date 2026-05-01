@@ -3,6 +3,8 @@ services:
     image: guacamole/guacd:1.5.5
     container_name: envportal-guacd
     restart: unless-stopped
+    volumes:
+      - ./guacamole-drive:/drive
 
   guacamole-db:
     image: postgres:15-alpine
@@ -30,6 +32,8 @@ services:
       POSTGRESQL_USER: guacamole_user
       POSTGRESQL_PASSWORD: guacamole_pass
       QUICKCONNECT_ENABLED: "true"
+    volumes:
+      - ./guacamole-drive:/drive
     ports:
       - "0.0.0.0:8088:8080"
 

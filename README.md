@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.1.15`
+当前版本：`2.1.16`
 
 ## 核心能力
 
@@ -149,3 +149,5 @@ QuickConnect 失败或抛错时，EnvPortal 会继续尝试 REST 临时连接创
 Guacamole 临时 RDP 连接会显式启用复制/粘贴通道，并按 Windows 剪贴板换行格式规范化文本。
 
 内置 Guacamole 会额外通过 nginx 提供 HTTPS 入口，默认端口为 `8443`。启动器会自动生成 `certs/guacamole.crt` 和 `certs/guacamole.key`；如已有站点证书，可替换这两个文件。`.env` 默认使用 `GUACAMOLE_PUBLIC_URL=https://localhost:8443/guacamole`，局域网访问时会自动替换为服务器主机名。
+
+Guacamole 临时 RDP 连接会启用文件传输虚拟盘，远程桌面内显示为 `EnvPortal` 盘，对应服务器目录 `guacamole-drive/`。
