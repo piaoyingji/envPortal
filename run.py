@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -7,13 +8,49 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def docker_desktop_candidates():
+    candidates = []
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    docker_path = Path(program_files) / "Docker" / "Docker" / "resources" / "bin" / "docker.exe"
+    compose_path = Path(program_files) / "Docker" / "Docker" / "resources" / "bin" / "docker-compose.exe"
+    if docker_path.exists():
+        candidates.append([str(docker_path), "compose"])
+    if compose_path.exists():
+        candidates.append([str(compose_path)])
+    return candidates
+
+
+def wsl_path(path):
+    resolved = Path(path).resolve()
+    drive = resolved.drive.rstrip(":").lower()
+    parts = [part for part in resolved.parts[1:]]
+    return "/mnt/" + drive + "/" + "/".join(part.replace("\\", "/") for part in parts)
+
+
 def docker_command():
-    for command in (["docker", "compose", "version"], ["docker-compose", "--version"]):
+    checks = [
+        (["docker", "compose"], ["docker", "compose", "version"], "windows"),
+        (["docker-compose"], ["docker-compose", "--version"], "windows"),
+    ]
+    for candidate in docker_desktop_candidates():
+        if len(candidate) == 2:
+            checks.append((candidate, candidate + ["version"], "windows"))
+        else:
+            checks.append((candidate, candidate + ["--version"], "windows"))
+
+    for command, check, kind in checks:
         try:
-            subprocess.run(command, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-            return command[:2] if command[0] == "docker" else ["docker-compose"]
+            subprocess.run(check, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            return {"kind": kind, "command": command}
         except Exception:
             continue
+
+    wsl_check = "command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1"
+    try:
+        subprocess.run(["wsl.exe", "-e", "sh", "-lc", wsl_check], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return {"kind": "wsl", "command": ["docker", "compose"]}
+    except Exception:
+        pass
     return None
 
 
@@ -39,11 +76,17 @@ def start_guacamole_if_available():
         return
     command = docker_command()
     if not command:
-        print("Docker was not found. Guacamole integration is disabled.")
+        print("Docker was not found in PATH, Docker Desktop, or WSL. Guacamole integration is disabled.")
         return
     try:
-        print("Starting Guacamole with Docker...")
-        subprocess.run(command + ["-f", str(compose_file), "up", "-d"], cwd=BASE_DIR, check=True)
+        if command["kind"] == "wsl":
+            print("Starting Guacamole with Docker via WSL...")
+            script = f"cd {shlex.quote(wsl_path(BASE_DIR))} && docker compose -f docker-compose.guacamole.yml up -d"
+            subprocess.run(["wsl.exe", "-e", "sh", "-lc", script], cwd=BASE_DIR, check=True)
+        else:
+            print("Starting Guacamole with Docker...")
+            print("Docker command:", " ".join(command["command"]))
+            subprocess.run(command["command"] + ["-f", str(compose_file), "up", "-d"], cwd=BASE_DIR, check=True)
     except Exception as exc:
         print(f"Guacamole auto-start failed: {exc}")
 

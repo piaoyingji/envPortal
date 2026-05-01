@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.1.0`
+当前版本：`2.1.1`
 
 ## 核心能力
 
@@ -41,6 +41,7 @@ PORT=8999
 BIND_ADDRESS=0.0.0.0
 AUTH_PASSWORD=...
 GUACAMOLE_URL=
+GUACAMOLE_PUBLIC_URL=
 GUACAMOLE_USERNAME=
 GUACAMOLE_PASSWORD=
 ```
@@ -95,6 +96,7 @@ EnvPortal 支持 Apache Guacamole QuickConnect 试集成。配置 `.env`：
 
 ```env
 GUACAMOLE_URL=http://192.168.20.38:8080/guacamole
+GUACAMOLE_PUBLIC_URL=
 GUACAMOLE_USERNAME=guacadmin
 GUACAMOLE_PASSWORD=...
 ```
@@ -115,10 +117,12 @@ GUACAMOLE_USERNAME=guacadmin
 GUACAMOLE_PASSWORD=guacadmin
 ```
 
+`GUACAMOLE_URL` 是 EnvPortal 后端访问 Guacamole API 用的地址，可以保留 `localhost`。如果用户从局域网访问 EnvPortal，系统会自动把前端打开的 Guacamole 地址换成 EnvPortal 服务器的主机名。需要固定公网或反向代理地址时，设置 `GUACAMOLE_PUBLIC_URL`。
+
 启动时会执行：
 
 ```sh
 docker compose -f docker-compose.guacamole.yml up -d
 ```
 
-如果未检测到 Docker，EnvPortal 不会报错，只是不显示浏览器远程控制能力，仍保留 RDP 文件下载和密码复制。
+如果未检测到 Docker，EnvPortal 不会报错，只是不显示浏览器远程控制能力，仍保留 RDP 文件下载和密码复制。启动器会依次检查 Windows PATH、Docker Desktop 标准安装目录以及 WSL 内的 Docker。

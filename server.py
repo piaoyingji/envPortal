@@ -39,6 +39,7 @@ AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
 GUACAMOLE_URL = CONFIG.get("GUACAMOLE_URL", "").rstrip("/")
+GUACAMOLE_PUBLIC_URL = CONFIG.get("GUACAMOLE_PUBLIC_URL", "").rstrip("/")
 GUACAMOLE_USERNAME = CONFIG.get("GUACAMOLE_USERNAME", "")
 GUACAMOLE_PASSWORD = CONFIG.get("GUACAMOLE_PASSWORD", "")
 
@@ -87,8 +88,26 @@ def build_guacamole_uri(target, user="", password=""):
     return f"rdp://{authority}/?{params}"
 
 
-def guacamole_quickconnect(target, user="", password=""):
+def public_guacamole_url(request_host=""):
+    if GUACAMOLE_PUBLIC_URL:
+        return GUACAMOLE_PUBLIC_URL
+    if not GUACAMOLE_URL:
+        return ""
+    parsed = urllib.parse.urlparse(GUACAMOLE_URL)
+    if parsed.hostname not in ("localhost", "127.0.0.1", "::1"):
+        return GUACAMOLE_URL
+    host_header = str(request_host or "").split(":")[0].strip()
+    if not host_header or host_header in ("localhost", "127.0.0.1", "::1"):
+        return GUACAMOLE_URL
+    netloc = host_header
+    if parsed.port:
+        netloc += f":{parsed.port}"
+    return urllib.parse.urlunparse((parsed.scheme, netloc, parsed.path, "", "", ""))
+
+
+def guacamole_quickconnect(target, user="", password="", public_url=""):
     quickconnect_uri = build_guacamole_uri(target, user, password)
+    display_url = public_url or GUACAMOLE_URL
     if not GUACAMOLE_URL:
         return {
             "ok": False,
@@ -101,7 +120,7 @@ def guacamole_quickconnect(target, user="", password=""):
     fallback = {
         "ok": True,
         "mode": "manual",
-        "guacamoleUrl": GUACAMOLE_URL,
+        "guacamoleUrl": display_url,
         "quickconnectUri": quickconnect_uri,
         "message": "Open Guacamole and paste the QuickConnect URI.",
     }
@@ -126,8 +145,8 @@ def guacamole_quickconnect(target, user="", password=""):
         return {
             "ok": True,
             "mode": "direct",
-            "url": f"{GUACAMOLE_URL}/#/client/{urllib.parse.quote(identifier)}?token={urllib.parse.quote(token)}",
-            "guacamoleUrl": GUACAMOLE_URL,
+            "url": f"{display_url}/#/client/{urllib.parse.quote(identifier)}?token={urllib.parse.quote(token)}",
+            "guacamoleUrl": display_url,
             "quickconnectUri": quickconnect_uri,
             "message": "",
         }
@@ -711,7 +730,12 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             if not target.strip():
                 self.send_bytes(json_bytes({"ok": False, "message": "Missing RDP target"}), "application/json; charset=utf-8", status=400)
                 return
-            result = guacamole_quickconnect(target, form.get("user", ""), form.get("password", ""))
+            result = guacamole_quickconnect(
+                target,
+                form.get("user", ""),
+                form.get("password", ""),
+                public_guacamole_url(self.headers.get("Host", "")),
+            )
             self.send_bytes(json_bytes(result), "application/json; charset=utf-8", status=200 if result.get("ok") else 500)
             return
 
@@ -746,7 +770,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         if path == "/portal_config.jsp":
             self.send_bytes(json_bytes({
                 "guacamoleEnabled": bool(GUACAMOLE_URL),
-                "guacamoleUrl": GUACAMOLE_URL,
+                "guacamoleUrl": public_guacamole_url(self.headers.get("Host", "")),
                 "guacamoleAutoLogin": bool(GUACAMOLE_URL and GUACAMOLE_USERNAME and GUACAMOLE_PASSWORD),
             }), "application/json; charset=utf-8")
             return

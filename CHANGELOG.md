@@ -2,6 +2,15 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.1] - 2026-05-01
+
+### Fixed
+
+- Improved Guacamole Docker detection by checking PATH, Docker Desktop's standard Windows install path, and WSL Docker.
+- Added WSL Docker Compose startup support for Guacamole when Windows cannot see Docker directly.
+- Changed Guacamole public URLs so LAN users are sent to the EnvPortal server address instead of `localhost`.
+- Made startup logging clearer when Docker is unavailable and Guacamole is disabled.
+
 ## [2.1.0] - 2026-05-01
 
 ### Added
