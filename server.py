@@ -14,6 +14,7 @@ import time
 import urllib.parse
 import urllib.request
 import base64
+import uuid
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -45,6 +46,7 @@ GUACAMOLE_PUBLIC_URL = CONFIG.get("GUACAMOLE_PUBLIC_URL", "").rstrip("/")
 GUACAMOLE_USERNAME = CONFIG.get("GUACAMOLE_USERNAME", "")
 GUACAMOLE_PASSWORD = CONFIG.get("GUACAMOLE_PASSWORD", "")
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
+GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 
 
 def json_bytes(payload):
@@ -142,7 +144,17 @@ def guacamole_token():
         return "", "", str(exc)
 
 
-def build_guacamole_uri(target, user="", password=""):
+def new_guacamole_drive_path():
+    session_id = uuid.uuid4().hex
+    host_path = GUACAMOLE_DRIVE_ROOT / "sessions" / session_id
+    try:
+        host_path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return f"/drive/sessions/{session_id}"
+
+
+def build_guacamole_uri(target, user="", password="", drive_path=""):
     target = str(target or "").strip()
     user = str(user or "").strip()
     password = str(password or "")
@@ -152,12 +164,20 @@ def build_guacamole_uri(target, user="", password=""):
         if password:
             credential += ":" + urllib.parse.quote(password, safe="")
         authority = credential + "@" + target
-    params = urllib.parse.urlencode({
+    params = {
         "ignore-cert": "true",
         "security": "any",
         "disable-audio": "true",
         "enable-wallpaper": "false",
-    })
+    }
+    if drive_path:
+        params.update({
+            "enable-drive": "true",
+            "drive-name": "EnvPortal",
+            "drive-path": drive_path,
+            "create-drive-path": "true",
+        })
+    params = urllib.parse.urlencode(params)
     return f"rdp://{authority}/?{params}"
 
 
@@ -183,11 +203,12 @@ def guacamole_client_identifier(connection_id, data_source):
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
-def create_guacamole_rdp_connection(target, user="", password="", token="", data_source="postgresql"):
+def create_guacamole_rdp_connection(target, user="", password="", token="", data_source="postgresql", drive_path=""):
     host, port = parse_remote_target(target)
     if not host:
         return "", "Missing RDP target"
     name = safe_filename(f"EnvPortal_{host}_{int(time.time())}", "EnvPortal_RDP")
+    drive_path = drive_path or new_guacamole_drive_path()
     payload = {
         "parentIdentifier": "ROOT",
         "name": name,
@@ -204,7 +225,7 @@ def create_guacamole_rdp_connection(target, user="", password="", token="", data
             "normalize-clipboard": "windows",
             "enable-drive": "true",
             "drive-name": "EnvPortal",
-            "drive-path": "/drive",
+            "drive-path": drive_path,
             "create-drive-path": "true",
             "enable-wallpaper": "false",
             "disable-audio": "true",
@@ -252,7 +273,8 @@ def public_guacamole_url(request_host=""):
 
 
 def guacamole_quickconnect(target, user="", password="", public_url=""):
-    quickconnect_uri = build_guacamole_uri(target, user, password)
+    drive_path = new_guacamole_drive_path()
+    quickconnect_uri = build_guacamole_uri(target, user, password, drive_path)
     display_url = public_url or GUACAMOLE_URL
     auto_login_url = "/guacamole_auto_login.jsp" if GUACAMOLE_USERNAME and GUACAMOLE_PASSWORD else display_url
     status = guacamole_status(ttl_seconds=0)
@@ -309,7 +331,7 @@ def guacamole_quickconnect(target, user="", password="", public_url=""):
         quickconnect_error = str(exc)
         print("Guacamole QuickConnect failed, trying REST connection creation:", quickconnect_error)
 
-    created_id, create_error = create_guacamole_rdp_connection(target, user, password, token, data_source)
+    created_id, create_error = create_guacamole_rdp_connection(target, user, password, token, data_source, drive_path)
     if not created_id:
         print("Guacamole REST connection creation failed:", create_error)
         return {**fallback, "message": create_error or quickconnect_error or "Guacamole connection could not be created."}

@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.18] - 2026-05-01
+
+### Changed
+
+- Changed Guacamole file transfer drives to use a per-connection session directory instead of one shared `guacamole-drive/` root.
+- Added the same isolated drive path to both QuickConnect URI generation and REST-created temporary RDP connections.
+
 ## [2.1.17] - 2026-05-01
 
 ### Changed
