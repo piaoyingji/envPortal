@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.12] - 2026-05-01
+
+### Fixed
+
+- Added a Guacamole REST fallback that creates a temporary RDP connection and opens it directly when QuickConnect does not return a usable client identifier.
+- Fixed Guacamole fallback behavior that previously logged in successfully but left users on the empty Guacamole home page.
+
 ## [2.1.11] - 2026-05-01
 
 ### Fixed

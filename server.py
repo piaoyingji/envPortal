@@ -13,6 +13,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import base64
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -71,6 +72,23 @@ def http_post_form(url, data, timeout=8):
         return body
 
 
+def http_json_request(url, method="GET", payload=None, token="", timeout=8):
+    data = None
+    headers = {}
+    if payload is not None:
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    if token:
+        headers["Guacamole-Token"] = token
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    context = ssl._create_unverified_context()
+    with urllib.request.urlopen(req, timeout=timeout, context=context) as res:
+        body = res.read().decode("utf-8", errors="replace")
+        if not body.strip():
+            return {}
+        return json.loads(body)
+
+
 def guacamole_status(ttl_seconds=10):
     if not GUACAMOLE_URL:
         return {"available": False, "message": "Guacamole is not configured."}
@@ -108,7 +126,7 @@ def guacamole_status(ttl_seconds=10):
 
 def guacamole_token():
     if not GUACAMOLE_URL or not GUACAMOLE_USERNAME or not GUACAMOLE_PASSWORD:
-        return "", "Guacamole credentials are not configured."
+        return "", "", "Guacamole credentials are not configured."
     try:
         token_response = http_post_form(
             f"{GUACAMOLE_URL}/api/tokens",
@@ -117,10 +135,11 @@ def guacamole_token():
         )
         token = token_response.get("authToken", "") if isinstance(token_response, dict) else ""
         if not token:
-            return "", "Guacamole token was not returned."
-        return token, ""
+            return "", "", "Guacamole token was not returned."
+        data_source = token_response.get("dataSource", "") or "postgresql"
+        return token, data_source, ""
     except Exception as exc:
-        return "", str(exc)
+        return "", "", str(exc)
 
 
 def build_guacamole_uri(target, user="", password=""):
@@ -140,6 +159,73 @@ def build_guacamole_uri(target, user="", password=""):
         "enable-wallpaper": "false",
     })
     return f"rdp://{authority}/?{params}"
+
+
+def parse_remote_target(target, default_port=3389):
+    text = str(target or "").strip()
+    if not text:
+        return "", str(default_port)
+    if "/" in text:
+        text = text.split("/", 1)[0]
+    if text.startswith("[") and "]" in text:
+        host = text[1:text.index("]")]
+        rest = text[text.index("]") + 1:]
+        port = rest[1:] if rest.startswith(":") and rest[1:] else str(default_port)
+        return host, port
+    if ":" in text:
+        host, port = text.rsplit(":", 1)
+        return host.strip(), port.strip() or str(default_port)
+    return text, str(default_port)
+
+
+def guacamole_client_identifier(connection_id, data_source):
+    raw = f"{connection_id}\0c\0{data_source}".encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def create_guacamole_rdp_connection(target, user="", password="", token="", data_source="postgresql"):
+    host, port = parse_remote_target(target)
+    if not host:
+        return "", "Missing RDP target"
+    name = safe_filename(f"EnvPortal_{host}_{int(time.time())}", "EnvPortal_RDP")
+    payload = {
+        "parentIdentifier": "ROOT",
+        "name": name,
+        "protocol": "rdp",
+        "parameters": {
+            "hostname": host,
+            "port": port,
+            "username": user or "",
+            "password": password or "",
+            "security": "any",
+            "ignore-cert": "true",
+            "enable-wallpaper": "false",
+            "disable-audio": "true",
+            "resize-method": "display-update",
+        },
+        "attributes": {
+            "max-connections": "",
+            "max-connections-per-user": "",
+            "weight": "",
+            "failover-only": "",
+            "guacd-hostname": "",
+            "guacd-port": "",
+            "guacd-encryption": "",
+        },
+    }
+    try:
+        created = http_json_request(
+            f"{GUACAMOLE_URL}/api/session/data/{urllib.parse.quote(data_source)}/connections",
+            method="POST",
+            payload=payload,
+            token=token,
+        )
+        identifier = created.get("identifier", "") if isinstance(created, dict) else ""
+        if not identifier:
+            return "", "Guacamole connection identifier was not returned."
+        return identifier, ""
+    except Exception as exc:
+        return "", str(exc)
 
 
 def public_guacamole_url(request_host=""):
@@ -192,7 +278,7 @@ def guacamole_quickconnect(target, user="", password="", public_url=""):
         return fallback
 
     try:
-        token, token_error = guacamole_token()
+        token, data_source, token_error = guacamole_token()
         if not token:
             return {**fallback, "message": token_error or "Guacamole token was not returned."}
         created = http_post_form(
@@ -201,7 +287,18 @@ def guacamole_quickconnect(target, user="", password="", public_url=""):
         )
         identifier = created.get("identifier", "") if isinstance(created, dict) else ""
         if not identifier:
-            return {**fallback, "message": "Guacamole QuickConnect did not return an identifier."}
+            created_id, create_error = create_guacamole_rdp_connection(target, user, password, token, data_source)
+            if not created_id:
+                return {**fallback, "message": create_error or "Guacamole connection could not be created."}
+            client_id = guacamole_client_identifier(created_id, data_source)
+            return {
+                "ok": True,
+                "mode": "direct",
+                "url": f"{display_url}/#/client/{urllib.parse.quote(client_id)}?token={urllib.parse.quote(token)}",
+                "guacamoleUrl": display_url,
+                "quickconnectUri": quickconnect_uri,
+                "message": "",
+            }
         return {
             "ok": True,
             "mode": "direct",
