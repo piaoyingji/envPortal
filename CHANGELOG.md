@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.3] - 2026-05-01
+
+### Fixed
+
+- Changed Windows Firewall rules to explicitly allow all local and remote addresses for EnvPortal-managed ports.
+- Updated existing EnvPortal firewall rules instead of leaving mismatched old rules untouched.
+- Clarified that `BIND_ADDRESS=0.0.0.0` and automatic Guacamole public URL detection avoid per-server `.env` changes.
+
 ## [2.1.2] - 2026-05-01
 
 ### Added

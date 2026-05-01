@@ -113,7 +113,7 @@ def ensure_windows_firewall_ports(ports):
         print("Windows Firewall was not changed because this terminal is not running as Administrator.")
         print("Run these commands in an elevated PowerShell if LAN clients cannot connect:")
         for port in unique_ports:
-            print(f"  New-NetFirewallRule -DisplayName 'EnvPortal TCP {port}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} -Profile Any")
+            print(f"  New-NetFirewallRule -DisplayName 'EnvPortal TCP {port}' -Direction Inbound -Action Allow -Protocol TCP -LocalAddress Any -RemoteAddress Any -LocalPort {port} -Profile Any")
         return
 
     for port in unique_ports:
@@ -122,9 +122,14 @@ def ensure_windows_firewall_ports(ports):
             f"$name = '{display_name}'; "
             "$rule = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue; "
             "if (-not $rule) { "
-            f"New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} -Profile Any | Out-Null; "
+            f"New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow -Protocol TCP -LocalAddress Any -RemoteAddress Any -LocalPort {port} -Profile Any | Out-Null; "
             "Write-Output 'created' "
-            "} else { Write-Output 'exists' }"
+            "} else { "
+            "$rule | Set-NetFirewallRule -Enabled True -Direction Inbound -Action Allow -Profile Any | Out-Null; "
+            "$rule | Get-NetFirewallAddressFilter | Set-NetFirewallAddressFilter -LocalAddress Any -RemoteAddress Any | Out-Null; "
+            f"$rule | Get-NetFirewallPortFilter | Set-NetFirewallPortFilter -Protocol TCP -LocalPort {port} | Out-Null; "
+            "Write-Output 'updated' "
+            "}"
         )
         try:
             result = subprocess.run(
