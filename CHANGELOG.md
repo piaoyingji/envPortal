@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.21] - 2026-05-01
+
+### Changed
+
+- Moved the expanded home page environment collapse button into the right side of the card title area.
+
 ## [2.1.20] - 2026-05-01
 
 ### Added
