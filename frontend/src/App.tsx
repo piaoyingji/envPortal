@@ -45,7 +45,7 @@ export default function App({ initialLang }: { initialLang: string }) {
   }, [data.organizations.length, selectedOrgExists]);
 
   const organizations = useMemo(() => filterOrganizations(data.organizations, selectedOrg, selectedTags), [data.organizations, selectedOrg, selectedTags]);
-  const allEnvs = organizations.flatMap((org) => org.environments);
+  const isGlobalView = selectedOrg === 'all' && selectedTags.length === 0;
 
   const changeLang = (value: Lang) => {
     localStorage.setItem('onecrm.lang', value);
@@ -154,7 +154,7 @@ export default function App({ initialLang }: { initialLang: string }) {
         <div className="workbench-layout">
           <Content className="content-wrap">
             {page === 'environments' && (
-              <EnvironmentPage lang={lang} organizations={organizations} allOrganizations={data.organizations} tags={data.tags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} allEnvs={allEnvs} />
+              <EnvironmentPage lang={lang} organizations={organizations} allOrganizations={data.organizations} tags={data.tags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} isGlobalView={isGlobalView} />
             )}
             <Suspense fallback={null}>
               {page === 'data' && <DataAdminPage lang={lang} organizations={data.organizations} />}

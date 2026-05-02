@@ -18,7 +18,7 @@ type Props = {
   tags: TagItem[];
   selectedTags: string[];
   setSelectedTags: (tags: string[]) => void;
-  allEnvs: Environment[];
+  isGlobalView: boolean;
 };
 
 type EnvironmentDraft = {
@@ -36,7 +36,7 @@ type EnvironmentDraft = {
   db_password: string;
 };
 
-export default function EnvironmentPage({ lang, organizations, allOrganizations, tags, selectedTags, setSelectedTags, allEnvs }: Props) {
+export default function EnvironmentPage({ lang, organizations, allOrganizations, tags, selectedTags, setSelectedTags, isGlobalView }: Props) {
   const queryClient = useQueryClient();
   const stats = useMemo(() => {
     const envs = allOrganizations.flatMap((org) => org.environments);
@@ -70,7 +70,12 @@ export default function EnvironmentPage({ lang, organizations, allOrganizations,
         <span className="filter-hint">{t(lang, 'tagAndHint')}</span>
       </Card>
 
-      <DashboardStats lang={lang} customers={stats.customers} servers={stats.envs} vpns={stats.vpns} issues={stats.issues} />
+      {isGlobalView && (
+        <section className="global-overview">
+          <DashboardStats lang={lang} customers={stats.customers} servers={stats.envs} vpns={stats.vpns} issues={stats.issues} />
+          <ConnectionSection lang={lang} organizations={allOrganizations} />
+        </section>
+      )}
 
       <div className="org-list">
         {organizations.map((org) => (
@@ -100,7 +105,6 @@ export default function EnvironmentPage({ lang, organizations, allOrganizations,
           </section>
         ))}
       </div>
-      <ConnectionSection lang={lang} organizations={organizations} />
       <ChangeLog lang={lang} />
     </div>
   );

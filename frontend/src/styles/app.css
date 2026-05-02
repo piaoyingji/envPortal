@@ -1728,6 +1728,14 @@ select {
   margin-bottom: 20px;
 }
 
+.global-overview {
+  margin-bottom: 24px;
+}
+
+.global-overview .connection-section {
+  margin-top: 0;
+}
+
 .stat-card {
   height: 94px;
   border-radius: var(--radius-card);

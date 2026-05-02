@@ -8,6 +8,21 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.7] - 2026-05-03
+
+### Changed
+
+- Raised the current application version to `2.5.7`.
+- Changed the dashboard statistics and connection/VPN summary into a global overview that appears only when all customers are shown without customer or tag filtering.
+- Moved the connection/VPN summary from the bottom of the page into the global overview area below the statistic cards.
+- Hid the global overview when the page is filtered by customer or tags, so single-customer views focus on that customer's VPN guides and server cards.
+
+### Verification
+
+- `npm run test:connection-summary` passed.
+- `npm run build` passed.
+- `python -m compileall onecrm hermes` passed.
+
 ## [2.5.6] - 2026-05-03
 
 ### Added
