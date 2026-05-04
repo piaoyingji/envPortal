@@ -436,7 +436,6 @@ def clean_vpn_raw_text(raw_text: str, organization: dict[str, Any] | None) -> st
             continue
         if (
             stripped.startswith("===== Source:")
-            or stripped.startswith("Source precedence:")
             or re.match(r"^\d+\.\s+role=", stripped)
             or stripped.startswith("Source role:")
             or stripped.startswith("Client modified:")
@@ -444,10 +443,8 @@ def clean_vpn_raw_text(raw_text: str, organization: dict[str, Any] | None) -> st
             or stripped.startswith("Type:")
             or stripped.startswith("[Sheet:")
         ):
-            cleaned_lines.append(line)
             continue
         if stripped.startswith("Path context:"):
-            cleaned_lines.append(line)
             carry_value_lines = 0
             continue
         if "|" in line:
@@ -731,26 +728,6 @@ def api_reanalyze_vpn_guide(organization_id: str, guide_id: str, request: Reques
     manual_text = str(guide.get("manualRawText") or "")
     source_text = str(guide.get("sourceRawText") or "")
     current_text = str(guide.get("analysisRawText") or guide.get("rawText") or "")
-    sources = vpn_guide_source_files(guide_id)
-    if sources:
-        pending = save_vpn_guide_raw(
-            organization_id,
-            current_text,
-            guide_id=guide_id,
-            status="analyzing",
-            source="hermes",
-            analysis_raw_text=current_text,
-        )
-        job = create_vpn_import_job(organization_id, guide_id, sources, mode="rebuild")
-        pending["sourceFiles"] = sources
-        threading.Thread(
-            target=run_vpn_import_job,
-            args=(str(job["id"]), guide_id, organization_id, manual_text),
-            daemon=True,
-            name=f"vpn-guide-reanalyze-{guide_id}",
-        ).start()
-        audit_as(request, "reanalyze_vpn_guide", "organization", organization_id, payload={"guideId": guide_id, "jobId": job.get("id"), "sources": len(sources)})
-        return {"guide": pending, "job": job}
     analysis_raw_text = clean_vpn_raw_text(
         merge_vpn_raw_text(manual_text, source_text) if (manual_text.strip() or source_text.strip()) else current_text,
         get_organization(organization_id),

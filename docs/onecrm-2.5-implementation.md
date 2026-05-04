@@ -65,7 +65,7 @@ Large-model calls should be used for consolidation, deduplication, contradiction
 
 ### Reanalysis
 
-Users can rerun AI analysis from the VPN guide header without entering edit mode. When the guide has source files, the backend creates a rebuild job for the full current source-file set and calls Hermes again. When no source files exist, the backend reuses the current `analysisRawText` or the combination of `manualRawText` and `sourceRawText` and starts the AI workflow task directly. Reanalysis must set the guide to `analyzing` immediately so the frontend can show progress without requiring another upload.
+Users can rerun AI analysis from the VPN guide header without entering edit mode. Reanalysis means "rerun workflow AI against the current saved analysis text"; it must not call Hermes or rebuild source extraction. Hermes rebuilds are reserved for file upload/import paths, where the source set has actually changed. Reanalysis reuses the current `analysisRawText` or the cleaned combination of `manualRawText` and `sourceRawText`, strips parser metadata markers, and starts the AI workflow task directly. Reanalysis must set the guide to `analyzing` immediately so the frontend can show progress without requiring another upload.
 
 ### Source Text Fields
 

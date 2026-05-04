@@ -8,6 +8,14 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.12] - 2026-05-04
+
+### Changed
+
+- Raised the current application version to `2.5.12`.
+- Corrected VPN guide reanalysis so it reruns AI against the already saved analysis text instead of rebuilding Hermes source extraction from archived files.
+- Tightened VPN raw-text cleaning so file metadata markers such as source headers, path context, source role, client modified time, and type are not treated as workflow procedure lines.
+
 ## [2.5.11] - 2026-05-04
 
 ### Added

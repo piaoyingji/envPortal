@@ -65,11 +65,11 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - Enabling a VPN guide adds an automatic `VPN` tag to the server.
 - If the selected VPN workflow contains application/request/contact/mail/phone approval requirements, the server inherits the automatic `申请必要` tag.
 - VPN guide saving must not block on AI or file parsing. Save returns quickly, then the guide enters parsing/analyzing status.
-- Existing VPN guides must support explicit reanalysis without requiring users to edit text or re-upload files.
+- Existing VPN guides must support explicit reanalysis without requiring users to edit text or re-upload files. Reanalysis reruns workflow AI against current saved analysis text; it does not reparse archived files.
 - VPN source files are stored in MinIO by SHA-256 and associated with the guide in PostgreSQL.
 - `.dmp` uploads are rejected; `.dmp` files inside ZIP archives are skipped with warnings.
 - Adding more files to an existing VPN guide triggers source-set rebuild analysis, not incremental-only analysis.
-- Reanalysis of a file-backed guide reloads every currently associated source file and rebuilds the derived workflow.
+- Reanalysis of a file-backed guide reuses the current derived text. Full source-file rebuild happens only when uploading or adding source files.
 - Original files are read-only source archives. Cleaning and AI preparation only modify derived text.
 - Hermes parses files into `sourceRawText` and `sourceMeta`, preserving filename, recursive relative path, client modified time, uploaded time, source role, date hints, and source fragments.
 - The backend combines `sourceRawText` and `manualRawText`, cleans irrelevant context, and stores `analysisRawText` for AI workflow analysis.
