@@ -1553,7 +1553,7 @@ function EnvVpnDetail({ lang, guide, enabled }: { lang: Lang; guide: VpnGuide; e
 }
 
 function EnvVpnSetting({ lang, vpnRequired, vpnGuides, selectedVpnGuideId, loading, disabled, onChange }: { lang: Lang; vpnRequired: boolean; vpnGuides: VpnGuide[]; selectedVpnGuideId?: string; loading: boolean; disabled?: boolean; onChange: (vpnRequired: boolean, vpnGuideId?: string | null) => void }) {
-  const visibleGuideId = selectedVpnGuideId || vpnGuides[0]?.id;
+  const visibleGuideId = vpnRequired ? selectedVpnGuideId || vpnGuides[0]?.id : undefined;
 
   return (
     <div className="env-vpn-setting">
@@ -1570,7 +1570,7 @@ function EnvVpnSetting({ lang, vpnRequired, vpnGuides, selectedVpnGuideId, loadi
       <Select
         size="small"
         popupMatchSelectWidth={false}
-        disabled={disabled || loading || vpnGuides.length === 0}
+        disabled={disabled || loading || !vpnRequired || vpnGuides.length === 0}
         value={visibleGuideId}
         placeholder={t(lang, 'selectVpnGuide')}
         className={vpnRequired ? 'vpn-guide-select active' : 'vpn-guide-select available'}
