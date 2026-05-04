@@ -76,6 +76,8 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - AI must use source precedence, file/folder date semantics, content date hints, and source role to decide current effective procedure.
 - Jump hosts, bastion hosts, gateways, proxies, relay servers, `踏み台`, `経由`, and `中継` must be split into ordered connection steps, with credentials attached to the matching host/hop.
 - VPN guide references and source references are traceability metadata. They must not cause repeated workflow rendering or encourage read-only users to download raw source files when structured AI output is available.
+- VPN workflow AI output must default to Japanese for all operator-facing text. English output is not acceptable unless the value is a literal technical token from the source.
+- VPN workflow AI must keep the main procedure coarse-grained. Server lists and credentials belong in details or credential groups, not as one top-level step per server row.
 
 ## i18n Requirements
 

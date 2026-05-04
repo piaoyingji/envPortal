@@ -8,6 +8,15 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.13] - 2026-05-04
+
+### Changed
+
+- Raised the current application version to `2.5.13`.
+- Strengthened the VPN workflow AI prompt to output Japanese by default for all operator-facing fields.
+- Constrained VPN workflow analysis to coarse-grained operator steps, keeping server rows and credentials inside `credentialGroups` instead of expanding each server or parser line into a separate main step.
+- Added explicit prompt rules to ignore parser metadata as workflow steps.
+
 ## [2.5.12] - 2026-05-04
 
 ### Changed
