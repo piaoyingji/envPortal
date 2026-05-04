@@ -563,6 +563,71 @@ def delete_environment(environment_id: str) -> dict[str, Any]:
     return result
 
 
+def normalize_organization(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": row.get("id"),
+        "code": row.get("code") or "",
+        "name": row.get("name") or "",
+        "createdAt": row.get("created_at"),
+        "updatedAt": row.get("updated_at"),
+    }
+
+
+def create_organization(code: str, name: str) -> dict[str, Any]:
+    clean_code = (code or "").strip()
+    clean_name = (name or "").strip()
+    if not clean_code:
+        raise ValueError("Customer code is required")
+    if not clean_name:
+        raise ValueError("Customer name is required")
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    """
+                    insert into organizations(id, code, name)
+                    values(%s,%s,%s)
+                    returning id, code, name, created_at, updated_at
+                    """,
+                    (uuid.uuid4(), clean_code, clean_name),
+                )
+            except psycopg.errors.UniqueViolation as exc:
+                raise ValueError("Customer code already exists") from exc
+            row = cur.fetchone()
+        conn.commit()
+    return normalize_organization(dict(row))
+
+
+def update_organization(organization_id: str, code: str, name: str) -> dict[str, Any]:
+    clean_code = (code or "").strip()
+    clean_name = (name or "").strip()
+    if not clean_code:
+        raise ValueError("Customer code is required")
+    if not clean_name:
+        raise ValueError("Customer name is required")
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    """
+                    update organizations
+                    set code=%s, name=%s, updated_at=now()
+                    where id=%s
+                    returning id, code, name, created_at, updated_at
+                    """,
+                    (clean_code, clean_name, organization_id),
+                )
+            except psycopg.errors.UniqueViolation as exc:
+                raise ValueError("Customer code already exists") from exc
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("Customer not found")
+        conn.commit()
+    return normalize_organization(dict(row))
+
+
 def organizations_with_environments() -> list[dict[str, Any]]:
     with connect() as conn:
         with conn.cursor() as cur:
@@ -627,19 +692,21 @@ def organizations_with_environments() -> list[dict[str, Any]]:
             or (not remote.get("environment_id") and remote.get("organization_id") == env["organization_id"])
         ]
         envs_by_org.setdefault(env["organization_id"], []).append(env)
-    for org in orgs:
-        org["environments"] = envs_by_org.get(org["id"], [])
-        org["vpnGuides"] = guides_by_org.get(org["id"], [])
-        org["vpnGuide"] = org["vpnGuides"][0] if org["vpnGuides"] else None
+    for index, org in enumerate(orgs):
+        normalized = normalize_organization(org)
+        normalized["environments"] = envs_by_org.get(org["id"], [])
+        normalized["vpnGuides"] = guides_by_org.get(org["id"], [])
+        normalized["vpnGuide"] = normalized["vpnGuides"][0] if normalized["vpnGuides"] else None
+        orgs[index] = normalized
     return orgs
 
 
 def get_organization(organization_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("select id, code, name from organizations where id=%s", (organization_id,))
+            cur.execute("select id, code, name, created_at, updated_at from organizations where id=%s", (organization_id,))
             row = cur.fetchone()
-    return dict(row) if row else None
+    return normalize_organization(dict(row)) if row else None
 
 
 def normalize_vpn_guide(row: dict[str, Any]) -> dict[str, Any]:

@@ -34,7 +34,7 @@ def env_int(name: str, default: int) -> int:
 
 
 APP_NAME = "OneCRM"
-VERSION = "2.5.14"
+VERSION = "2.5.15"
 PORT = env_int("PORT", 8999)
 BIND_ADDRESS = env("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = env("AUTH_PASSWORD", "nho1234567")

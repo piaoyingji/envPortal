@@ -1,4 +1,4 @@
-import { BellOutlined, DoubleLeftOutlined, DoubleRightOutlined, QuestionCircleOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { BellOutlined, DoubleLeftOutlined, DoubleRightOutlined, IdcardOutlined, QuestionCircleOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { Avatar, Badge, Button, ConfigProvider, Layout, Select } from 'antd';
 import jaJP from 'antd/locale/ja_JP';
 import zhCN from 'antd/locale/zh_CN';
@@ -8,6 +8,7 @@ import { fetchMe, fetchPortalData } from './lib/api';
 import { t } from './lib/i18n';
 import type { CurrentUser, Environment, Lang, Organization } from './lib/types';
 import EnvironmentPage from './pages/EnvironmentPage';
+import CustomerMasterPage from './pages/CustomerMasterPage';
 import DataNavigator from './components/DataNavigator';
 import onecrmLogo from './assets/onecrm-logo.svg';
 import LoginPage from './pages/LoginPage';
@@ -17,9 +18,10 @@ const { Sider, Content } = Layout;
 const DataAdminPage = lazy(() => import('./pages/DataAdminPage'));
 const RemoteAdminPage = lazy(() => import('./pages/RemoteAdminPage'));
 
-type PageKey = 'environments' | 'data' | 'remote';
+type PageKey = 'customers' | 'environments' | 'data' | 'remote';
 
 const navItems = [
+  { key: 'customers', icon: <IdcardOutlined /> },
   { key: 'environments', icon: <UserOutlined /> },
 ] as const;
 
@@ -30,7 +32,7 @@ export default function App({ initialLang }: { initialLang: string }) {
   }, []);
 
   const [lang, setLang] = useState<Lang>(initialLang === 'zh' ? 'zh' : 'ja');
-  const [page, setPage] = useState<PageKey>(() => location.pathname.includes('admin') ? 'data' : location.pathname.includes('rdp') ? 'remote' : 'environments');
+  const [page, setPage] = useState<PageKey>(() => location.pathname.includes('customers') ? 'customers' : location.pathname.includes('admin') ? 'data' : location.pathname.includes('rdp') ? 'remote' : 'environments');
   const [selectedOrg, setSelectedOrgState] = useState<string>(() => localStorage.getItem('onecrm.selectedOrg') || 'all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [navCollapsed, setNavCollapsed] = useState(() => localStorage.getItem('onecrm.navCollapsed') === '1');
@@ -119,12 +121,12 @@ export default function App({ initialLang }: { initialLang: string }) {
         </div>
         <nav className="nav-list">
           {navItems.map((item) => {
-            const enabledPage = item.key === 'environments' ? 'environments' : undefined;
+            const enabledPage = item.key;
             const active = page === enabledPage;
             return (
-              <button key={item.key} className={active ? 'nav-item active' : 'nav-item'} onClick={() => enabledPage && setPage(enabledPage)}>
+              <button key={item.key} className={active ? 'nav-item active' : 'nav-item'} onClick={() => setPage(enabledPage)}>
                 {item.icon}<span className="nav-label">{t(lang, item.key)}</span>
-                {item.key === 'environments' && <span className="nav-chevron">›</span>}
+                {active && <span className="nav-chevron">›</span>}
               </button>
             );
           })}
@@ -149,7 +151,7 @@ export default function App({ initialLang }: { initialLang: string }) {
       <Layout className="main-layout">
         <div className="hero-top">
           <div>
-            <h1>{page === 'data' ? t(lang, 'dataAdmin') : page === 'remote' ? t(lang, 'remoteAdmin') : t(lang, 'title')}</h1>
+            <h1>{page === 'customers' ? t(lang, 'customerMaster') : page === 'data' ? t(lang, 'dataAdmin') : page === 'remote' ? t(lang, 'remoteAdmin') : t(lang, 'title')}</h1>
             <p>{t(lang, 'subtitle')}</p>
           </div>
           <div className="top-actions">
@@ -171,8 +173,11 @@ export default function App({ initialLang }: { initialLang: string }) {
             </Space>
           </div>
         */}
-        <div className="workbench-layout">
+        <div className={page === 'environments' ? 'workbench-layout' : 'workbench-layout no-data-nav'}>
           <Content className="content-wrap">
+            {page === 'customers' && (
+              <CustomerMasterPage lang={lang} organizations={data.organizations} canWrite={currentUser.role === 'Admins'} />
+            )}
             {page === 'environments' && (
               <EnvironmentPage lang={lang} organizations={organizations} allOrganizations={data.organizations} tags={data.tags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} isGlobalView={isGlobalView} canWrite={currentUser.role === 'Admins'} />
             )}
@@ -181,12 +186,14 @@ export default function App({ initialLang }: { initialLang: string }) {
               {page === 'remote' && <RemoteAdminPage lang={lang} organizations={data.organizations} />}
             </Suspense>
           </Content>
-          <DataNavigator
-            lang={lang}
-            organizations={data.organizations}
-            selectedOrg={selectedOrg}
-            setSelectedOrg={setSelectedOrg}
-          />
+          {page === 'environments' && (
+            <DataNavigator
+              lang={lang}
+              organizations={data.organizations}
+              selectedOrg={selectedOrg}
+              setSelectedOrg={setSelectedOrg}
+            />
+          )}
         </div>
       </Layout>
     </Layout>

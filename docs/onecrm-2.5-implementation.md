@@ -23,6 +23,18 @@ OneCRM 2.5 replaces the static EnvPortal UI with a React/Ant Design enterprise i
 - Avatars are stored in MinIO and referenced by object key in PostgreSQL.
 - Forgot-password sends an SMTP reset link built from `ONECRM_PUBLIC_URL`; `http://192.168.20.38:5000/` can be used to inspect test mails.
 
+## Customer Master
+
+2.5.15 adds the customer master as a first-class business page beside customer environment.
+
+- Data remains in the existing `organizations` table: `id`, `code`, `name`, `created_at`, and `updated_at`.
+- `GET /api/organizations` continues to be the read model for both customer environment and customer master. It returns customer metadata, VPN guides, and environments.
+- `POST /api/organizations` creates a customer with required trimmed `code` and `name`.
+- `PATCH /api/organizations/{organization_id}` updates customer code and name. Code remains case-preserving and database-unique.
+- Both write APIs are protected by the existing Admin-only write gate. `Users` can open the customer master page but cannot create or edit customers.
+- Customer deletion is intentionally omitted in this phase because it would need explicit cascade policy for environments, VPN guides, source files, remote connections, and audit history.
+- The frontend customer master page shows existing environment summaries as read-only context and reserves non-mock placeholders for contracts, implemented products, custom development, and code comparison.
+
 ## VPN Credential Groups
 
 AI workflow steps may include `credentialGroups`, an array of server/hop credential objects. Each group binds host/address, port, protocol, username, password, note, and auxiliary details to one exact connection target. This prevents the UI from showing unrelated lists of servers and passwords that operators cannot safely associate.

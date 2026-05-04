@@ -1,4 +1,4 @@
-import type { AppServer, AuthState, CurrentUser, Environment, HealthResult, PortalConfig, PortalData, VpnGuide, VpnImportJob } from './types';
+import type { AppServer, AuthState, CurrentUser, Environment, HealthResult, Organization, PortalConfig, PortalData, VpnGuide, VpnImportJob } from './types';
 
 async function readJson<T>(response: Response, fallback: string): Promise<T> {
   const result = await response.json().catch(() => ({}));
@@ -138,6 +138,24 @@ export async function createEnvironment(organizationId: string, values: { title:
   });
   if (!response.ok) throw new Error('Failed to create server');
   return response.json();
+}
+
+export async function createOrganization(values: { code: string; name: string }): Promise<Organization> {
+  const response = await fetch('/api/organizations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values)
+  });
+  return readJson(response, 'Failed to create customer');
+}
+
+export async function updateOrganization(organizationId: string, values: { code: string; name: string }): Promise<Organization> {
+  const response = await fetch(`/api/organizations/${encodeURIComponent(organizationId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values)
+  });
+  return readJson(response, 'Failed to update customer');
 }
 
 export async function deleteEnvironment(environmentId: string): Promise<{ ok?: boolean; id?: string; deleted?: Record<string, number> }> {

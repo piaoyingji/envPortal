@@ -135,6 +135,8 @@ export type Organization = {
   id: string;
   code: string;
   name: string;
+  createdAt?: string;
+  updatedAt?: string;
   vpnGuide?: VpnGuide | null;
   vpnGuides: VpnGuide[];
   environments: Environment[];

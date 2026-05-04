@@ -16,7 +16,9 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 
 - Use React, Vite, TypeScript, and Ant Design v5.
 - Use the OneCRM design language: deep navy navigation, gold accent, warm light workspace, rounded but restrained panels, and dense operational cards.
-- The customer environment page is the primary workspace. Data management and remote-connection management are hidden from the main navigation until they become full product surfaces.
+- The customer master page and customer environment page are the two current business workspaces. Data management and remote-connection management are hidden from the main navigation until they become full product surfaces.
+- The customer master page maintains customer code and customer name. It also shows the customer's registered server/environment summaries as read-only relationship context.
+- Customer master detail reserves lightweight future areas for contract information, implemented products, custom development, and code comparison. These areas must not display mock business data.
 - The main navigation must only expose usable entries. Inactive future modules must not look clickable.
 - The right-side data navigator is the customer navigation surface. It contains customer search, customer code, customer name, and all-customer selection.
 - Language is global, not page-scoped. Default language is Japanese; Chinese is used only when the user explicitly selects it. The selection is cached per browser user.
@@ -41,6 +43,8 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 ## Data Requirements
 
 - Organizations have a stable customer/organization code and name.
+- Customer code and customer name are maintained in customer master. Code is required, preserves user-entered case, and must be unique.
+- Customer deletion is not exposed in 2.5 because deleting a customer would affect environments, VPN guides, source files, remote connections, and audit history.
 - Servers/environments belong to organizations and have independent tags.
 - Tags are free grouping attributes and may cross organization boundaries. Tags can be manual, migration-derived, or automatic.
 - Automatic tags include VPN, request-required VPN, database type/version, remote connection type, and other future system-derived attributes.

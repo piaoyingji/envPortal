@@ -8,6 +8,23 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.15] - 2026-05-04
+
+### Added
+
+- Added the `Customer Master` (`顧客マスタ` / `客户主档`) main navigation entry beside `Customer Environment`.
+- Added a customer master page for Admins to create customers and edit customer code/name.
+- Added read-only customer master access for Users.
+- Added customer detail summaries for existing environments, including tags, app URL, database summary, remote connection, and service role hints.
+- Added reserved customer master sections for contracts, implemented products, custom development, and code comparison without fake business data.
+- Added `POST /api/organizations` and `PATCH /api/organizations/{organization_id}` for Admin-only customer code/name maintenance.
+
+### Changed
+
+- Raised the current application version to `2.5.15`.
+- Updated the main navigation to expose only two real business functions: customer master and customer environment.
+- Hid the environment data navigator on the customer master page because customer master maintenance is not tag-filter scoped.
+
 ## [2.5.14] - 2026-05-04
 
 ### Changed

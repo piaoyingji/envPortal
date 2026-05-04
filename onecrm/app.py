@@ -21,7 +21,7 @@ from . import __version__
 from .ai import summarize_vpn_workflow_with_ai
 from .auth import ROLE_ADMINS, ROLE_USERS, SESSION_COOKIE, authenticate, change_own_password, create_password_reset, create_session, create_user, delete_session, get_user, list_users, reset_password_by_token, reset_user_password, set_user_disabled, update_avatar, update_own_profile, update_user, user_from_session
 from .cache import get_json, set_json
-from .db import all_tags, attach_file_to_vpn_guide, audit, create_environment, create_vpn_import_job, delete_environment, file_objects_by_ids, get_organization, get_vpn_guide, get_vpn_import_job, init_db, organizations_with_environments, save_file_object, save_vpn_guide_raw, summarize_vpn_workflow, update_app_servers, update_environment_details, update_environment_vpn, update_vpn_guide_file_metadata, update_vpn_guide_workflow, update_vpn_import_job, vpn_guide_source_files
+from .db import all_tags, attach_file_to_vpn_guide, audit, create_environment, create_organization, create_vpn_import_job, delete_environment, file_objects_by_ids, get_organization, get_vpn_guide, get_vpn_import_job, init_db, organizations_with_environments, save_file_object, save_vpn_guide_raw, summarize_vpn_workflow, update_app_servers, update_environment_details, update_environment_vpn, update_organization, update_vpn_guide_file_metadata, update_vpn_guide_workflow, update_vpn_import_job, vpn_guide_source_files
 from .mail import send_password_reset_mail
 from .settings import APP_NAME, BASE_DIR, HERMES_TIMEOUT_SECONDS, HERMES_URL, MINIO_BUCKET, PUBLIC_URL, UPLOAD_MAX_FILE_MB, UPLOAD_MAX_JOB_MB, UPLOAD_REJECT_EXTENSIONS, VERSION
 from .storage import ensure_bucket, get_object_bytes, put_bytes_if_missing
@@ -282,6 +282,29 @@ def api_enable_user(user_id: str, request: Request) -> dict[str, Any]:
 @app.get("/api/organizations")
 def api_organizations() -> dict[str, Any]:
     return {"organizations": organizations_with_environments(), "tags": all_tags()}
+
+
+@app.post("/api/organizations")
+async def api_create_organization(request: Request) -> dict[str, Any]:
+    payload = await request.json()
+    try:
+        result = create_organization(str(payload.get("code") or ""), str(payload.get("name") or ""))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit_as(request, "create_organization", "organization", result["id"], payload={"code": result["code"], "name": result["name"]})
+    return result
+
+
+@app.patch("/api/organizations/{organization_id}")
+async def api_update_organization(organization_id: str, request: Request) -> dict[str, Any]:
+    payload = await request.json()
+    try:
+        result = update_organization(organization_id, str(payload.get("code") or ""), str(payload.get("name") or ""))
+    except ValueError as exc:
+        status = 404 if "not found" in str(exc).lower() else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    audit_as(request, "update_organization", "organization", organization_id, payload={"code": result["code"], "name": result["name"]})
+    return result
 
 
 @app.get("/api/tags")
