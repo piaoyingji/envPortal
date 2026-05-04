@@ -1368,9 +1368,12 @@ function normalizeAppServerDetails(details: AppServer['details']): Array<{ key: 
 
 function EnvVpnDetail({ lang, guide, enabled }: { lang: Lang; guide: VpnGuide; enabled: boolean }) {
   const steps = guide.workflow || [];
+  const sourceCount = (guide.sourceFiles || []).length;
+  const stepLabel = lang === 'zh' ? `${steps.length} 个步骤` : `${steps.length} 手順`;
+  const sourceLabel = lang === 'zh' ? `${sourceCount} 个来源文件` : `${sourceCount} 件の原資料`;
 
   return (
-    <div className={enabled ? 'env-vpn-detail enabled' : 'env-vpn-detail'}>
+    <div className={enabled ? 'env-vpn-reference enabled' : 'env-vpn-reference'}>
       <div className="env-vpn-detail-head">
         <Space wrap>
           <SafetyCertificateOutlined />
@@ -1380,23 +1383,14 @@ function EnvVpnDetail({ lang, guide, enabled }: { lang: Lang; guide: VpnGuide; e
           {guide.workflowStatus === 'analyzing' && <Tag color="processing">{t(lang, 'aiAnalyzing')}</Tag>}
         </Space>
       </div>
-      {guide.workflowStatus === 'analyzing' && steps.length === 0 ? (
-        <div className="vpn-analysis-note">{t(lang, 'aiAnalyzing')}</div>
-      ) : steps.length > 0 ? (
-        <div className="vpn-step-flow env-vpn-step-flow">
-          {steps.map((step, index) => (
-            <VpnStep key={`${guide.id}-env-${step.order}-${step.description}`} lang={lang} step={step} index={index} showArrow={index < steps.length - 1} />
-          ))}
-        </div>
-      ) : (
-        <div className="vpn-analysis-note">{guide.rawText || t(lang, 'noVpnGuide')}</div>
-      )}
-      {guide.rawText?.trim() && (
-        <details className="vpn-original compact">
-          <summary>{t(lang, 'originalText')}</summary>
-          <pre>{guide.rawText}</pre>
-        </details>
-      )}
+      <div className="env-vpn-reference-body">
+        <span>{t(lang, 'vpnReferenceHint')}</span>
+        <Space wrap size={6}>
+          {steps.length > 0 && <Tag>{stepLabel}</Tag>}
+          {sourceCount > 0 && <Tag icon={<FileTextOutlined />}>{sourceLabel}</Tag>}
+          {guide.workflowStatus === 'ready' && <Tag color="gold">{t(lang, 'aiReady')}</Tag>}
+        </Space>
+      </div>
     </div>
   );
 }

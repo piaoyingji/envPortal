@@ -4,14 +4,18 @@ All notable changes to OneCRM are documented here.
 
 ## [Unreleased]
 
-### Changed
-
-- Removed source-file download buttons from the connection/VPN overview. The section now shows parsed AI source counts/status instead of encouraging users to download raw source files.
-- Added structured VPN credential groups so AI-recognized server hosts, users, passwords, ports, and protocols can stay visually bound to the exact server or connection hop they belong to.
-
 ### Versioning
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
+
+## [2.5.10] - 2026-05-04
+
+### Changed
+
+- Raised the current application version to `2.5.10`.
+- Removed source-file download buttons from the connection/VPN overview. The section now shows parsed AI source counts/status instead of encouraging users to download raw source files.
+- Added structured VPN credential groups so AI-recognized server hosts, users, passwords, ports, and protocols can stay visually bound to the exact server or connection hop they belong to.
+- Changed server-card VPN guide references to compact summaries. The complete VPN workflow now appears only once at the customer-level VPN guide area instead of being duplicated inside every server that references it.
 
 ## [2.5.9] - 2026-05-04
 

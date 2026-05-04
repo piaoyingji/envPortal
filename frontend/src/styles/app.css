@@ -1365,15 +1365,15 @@ select {
   box-shadow: 0 6px 14px rgba(215, 154, 43, 0.18);
 }
 
-.env-vpn-detail {
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(215, 154, 43, 0.24);
-  background: linear-gradient(180deg, rgba(255, 252, 244, 0.9), rgba(255, 255, 255, 0.68));
+.env-vpn-reference {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  border: 1px solid rgba(215, 154, 43, 0.22);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.82), rgba(255, 255, 255, 0.55));
 }
 
-.env-vpn-detail.enabled {
+.env-vpn-reference.enabled {
   border-color: rgba(33, 167, 106, 0.24);
 }
 
@@ -1389,16 +1389,14 @@ select {
   font-size: 15px;
 }
 
-.env-vpn-step-flow {
-  padding: 2px 0 4px;
-}
-
-.env-vpn-step-flow .vpn-step {
-  min-height: 150px;
-}
-
-.vpn-original.compact {
-  margin-top: 8px;
+.env-vpn-reference-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #76644f;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .info-block {

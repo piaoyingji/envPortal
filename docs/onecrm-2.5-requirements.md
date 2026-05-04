@@ -25,6 +25,7 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - Each server card has a three-dot action menu. Editing and deletion are launched from that menu.
 - Empty server cards must stay compact. No large blank body should be reserved for missing app/database/service data.
 - VPN workflow cards render structured steps. Email steps render as email UI with recipients, CC/BCC, subject, formatted body, copy buttons, and mailto/default mail action when recipients exist.
+- A server referencing a VPN guide must not duplicate the full workflow inside the server card. Server cards show only a compact guide reference; the complete workflow appears once in the customer-level VPN guide area.
 
 ## Backend and Platform Requirements
 
@@ -72,6 +73,7 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - The backend combines `sourceRawText` and `manualRawText`, cleans irrelevant context, and stores `analysisRawText` for AI workflow analysis.
 - AI must use source precedence, file/folder date semantics, content date hints, and source role to decide current effective procedure.
 - Jump hosts, bastion hosts, gateways, proxies, relay servers, `踏み台`, `経由`, and `中継` must be split into ordered connection steps, with credentials attached to the matching host/hop.
+- VPN guide references and source references are traceability metadata. They must not cause repeated workflow rendering or encourage read-only users to download raw source files when structured AI output is available.
 
 ## i18n Requirements
 

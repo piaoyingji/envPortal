@@ -29,6 +29,8 @@ AI workflow steps may include `credentialGroups`, an array of server/hop credent
 
 Raw VPN source files remain archived in MinIO for traceability, but the connection/VPN overview does not expose per-file download buttons. It presents parsed source counts/status instead.
 
+The customer-level VPN guide panel is the only place that renders the full workflow card sequence. Server cards that select a VPN guide render a compact reference with the guide name, tags, AI status, step count, and source count. This avoids repeating the same procedure for every server that merely references the guide.
+
 ## VPN File Ingestion
 
 The VPN guide editor supports multi-file ingestion. Users can attach several files while creating or updating a VPN guide. The backend stores source files in MinIO, rebuilds source-derived text, then triggers the VPN workflow analysis pipeline.
