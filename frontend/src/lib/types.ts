@@ -32,6 +32,17 @@ export type VpnWorkflowStep = {
   description: string;
   action: 'mail' | 'request' | 'contact' | 'connect' | 'note' | string;
   details?: Array<{ label: string; value: string }>;
+  credentialGroups?: Array<{
+    title?: string;
+    host?: string;
+    address?: string;
+    username?: string;
+    password?: string;
+    port?: string;
+    protocol?: string;
+    note?: string;
+    details?: Array<{ label: string; value: string }>;
+  }>;
   mailTemplate?: {
     to?: string;
     cc?: string;

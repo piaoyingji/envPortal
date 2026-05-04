@@ -60,6 +60,11 @@ def summarize_vpn_workflow_with_ai(raw_text: str) -> list[dict[str, Any]]:
                 "Return only valid JSON. The JSON must be an array. Each item must have "
                 "order:number, title:string, description:string, action:string. "
                 "Each item may also have details, an array of {label:string,value:string}. "
+                "When a step contains one or more servers, hosts, jump hosts, remote desktops, database consoles, VPN portals, or any credentials bound to a host, add credentialGroups. "
+                "credentialGroups must be an array of {title,host,address,port,protocol,username,password,note,details:[{label,value}]}. "
+                "Every username, password, shared secret, server address, host name, port, and protocol must be placed in the credentialGroups object for the exact server/hop it belongs to. "
+                "If the source lists several servers in a table or adjacent rows, create one credentialGroups item per server row and keep the row's username/password paired with that server. "
+                "Do not put a list of hosts followed by a separate list of usernames/passwords in generic details; that loses association and is invalid. "
                 "For any step that involves sending an email and includes recipients, CC, or BCC, set action to mail and include "
                 "mailTemplate:{to:string,cc:string,bcc:string,subject:string,body:string}. "
                 "The mailTemplate body must be copy-ready and preserve formal line breaks, blank lines, indentation, greetings, request details, and signature placeholders. "
@@ -117,6 +122,7 @@ def normalize_ai_steps(value: Any) -> list[dict[str, Any]]:
             "description": description or title,
             "action": normalize_action(str(item.get("action") or "note")),
             "details": normalize_details(item.get("details")),
+            "credentialGroups": normalize_credential_groups(item.get("credentialGroups") or item.get("credentials") or item.get("servers")),
             "mailTemplate": normalize_mail_template(item),
             "source": "ai",
         })
@@ -144,6 +150,30 @@ def normalize_details(value: Any) -> list[dict[str, str]]:
         if label or detail_value:
             details.append({"label": label or "Info", "value": detail_value})
     return details
+
+
+def normalize_credential_groups(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    groups: list[dict[str, Any]] = []
+    for item in value[:20]:
+        if not isinstance(item, dict):
+            continue
+        details = normalize_details(item.get("details"))
+        group = {
+            "title": str(item.get("title") or item.get("name") or item.get("server") or item.get("host") or "").strip(),
+            "host": str(item.get("host") or item.get("hostname") or "").strip(),
+            "address": str(item.get("address") or item.get("ip") or item.get("url") or "").strip(),
+            "port": str(item.get("port") or "").strip(),
+            "protocol": str(item.get("protocol") or item.get("type") or "").strip(),
+            "username": str(item.get("username") or item.get("user") or item.get("loginId") or item.get("account") or "").strip(),
+            "password": str(item.get("password") or item.get("pwd") or item.get("pass") or "").strip(),
+            "note": str(item.get("note") or item.get("memo") or item.get("remark") or "").strip(),
+            "details": details,
+        }
+        if any(group.get(key) for key in ["title", "host", "address", "port", "protocol", "username", "password", "note"]) or details:
+            groups.append(group)
+    return groups
 
 
 def normalize_mail_template(item: dict[str, Any]) -> dict[str, str] | None:

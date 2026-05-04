@@ -961,6 +961,58 @@ select {
   overflow-wrap: anywhere;
 }
 
+.vpn-credential-groups {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.vpn-credential-card {
+  border: 1px solid rgba(197, 138, 35, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(250, 243, 232, 0.86));
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(62, 48, 28, 0.07);
+}
+
+.vpn-credential-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vpn-credential-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.vpn-credential-value {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.vpn-credential-value span {
+  color: #8a7660;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vpn-credential-value b {
+  min-width: 0;
+  color: #16233b;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  overflow-wrap: anywhere;
+}
+
 .vpn-copy-value {
   min-width: 0;
   display: grid;

@@ -1,4 +1,4 @@
-import { ArrowDownOutlined, ArrowRightOutlined, CloudDownloadOutlined, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, FileTextOutlined, FolderOpenOutlined, GlobalOutlined, MailOutlined, MoreOutlined, PlusOutlined, SafetyCertificateOutlined, SaveOutlined, UpOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowRightOutlined, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, FileTextOutlined, FolderOpenOutlined, GlobalOutlined, MailOutlined, MoreOutlined, PlusOutlined, SafetyCertificateOutlined, SaveOutlined, UpOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Input, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Upload, message } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -464,8 +464,10 @@ function VpnStep({ lang, step, index, showArrow }: { lang: Lang; step: VpnWorkfl
   const color = step.action === 'mail' ? 'purple' : step.action === 'request' ? 'orange' : step.action === 'contact' ? 'blue' : step.action === 'connect' ? 'green' : step.action === 'verify' ? 'gold' : 'default';
   const derivedMailTemplate = deriveMailTemplate(step);
   const mailTemplate = hasMailAddress(derivedMailTemplate) ? derivedMailTemplate : null;
-  const details = (step.details || []).filter((detail) => !(mailTemplate && mailFieldType(detail.label)));
-  const childCount = details.length + (mailTemplate ? 1 : 0);
+  const credentialGroups = normalizeCredentialGroups(step);
+  const groupedDetailKeys = new Set(credentialGroups.flatMap((group) => (group.details || []).map((detail) => `${detail.label}\u0000${detail.value}`)));
+  const details = (step.details || []).filter((detail) => !(mailTemplate && mailFieldType(detail.label)) && !groupedDetailKeys.has(`${detail.label}\u0000${detail.value}`));
+  const childCount = details.length + credentialGroups.length + (mailTemplate ? 1 : 0);
   const hasMore = childCount > 0;
   const copyMail = async () => {
     const text = formatMailTemplate(lang, mailTemplate);
@@ -501,6 +503,29 @@ function VpnStep({ lang, step, index, showArrow }: { lang: Lang; step: VpnWorkfl
                   <Tooltip title={t(lang, 'copy')}>
                     <Button size="small" icon={<CopyOutlined />} onClick={() => copyValue(detail.value)} />
                   </Tooltip>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {expanded && credentialGroups.length > 0 && (
+          <div className="vpn-credential-groups">
+            {credentialGroups.map((group, index) => (
+              <div className="vpn-credential-card" key={`${group.title || group.host || group.address || index}-${index}`}>
+                <div className="vpn-credential-head">
+                  <strong>{group.title || group.host || group.address || (lang === 'zh' ? '服务器凭证' : 'サーバー認証情報')}</strong>
+                  {group.protocol && <Tag>{group.protocol}</Tag>}
+                </div>
+                <div className="vpn-credential-grid">
+                  {group.host && <CredentialValue lang={lang} label={lang === 'zh' ? '主机' : 'ホスト'} value={group.host} onCopy={copyValue} />}
+                  {group.address && <CredentialValue lang={lang} label={lang === 'zh' ? '地址' : 'アドレス'} value={group.address} onCopy={copyValue} />}
+                  {group.port && <CredentialValue lang={lang} label={lang === 'zh' ? '端口' : 'ポート'} value={group.port} onCopy={copyValue} />}
+                  {group.username && <CredentialValue lang={lang} label={lang === 'zh' ? '用户' : 'ユーザー'} value={group.username} onCopy={copyValue} />}
+                  {group.password && <CredentialValue lang={lang} label={lang === 'zh' ? '密码' : 'パスワード'} value={group.password} onCopy={copyValue} secret />}
+                  {group.note && <CredentialValue lang={lang} label={lang === 'zh' ? '备注' : 'メモ'} value={group.note} onCopy={copyValue} />}
+                  {(group.details || []).map((detail, detailIndex) => (
+                    <CredentialValue key={`${detail.label}-${detailIndex}`} lang={lang} label={detail.label} value={detail.value} onCopy={copyValue} />
+                  ))}
                 </div>
               </div>
             ))}
@@ -560,6 +585,67 @@ function MailValueRow({ lang, label, value, onCopy }: { lang: Lang; label: strin
       </div>
     </div>
   );
+}
+
+function CredentialValue({ label, value, secret, onCopy }: { lang: Lang; label: string; value: string; secret?: boolean; onCopy: (value: string) => void }) {
+  const [shown, setShown] = useState(!secret);
+  return (
+    <div className="vpn-credential-value">
+      <span>{label}</span>
+      <b>{shown ? value : '••••••••'}</b>
+      <Space size={4}>
+        {secret && <Button size="small" icon={shown ? <EyeInvisibleOutlined /> : <EyeOutlined />} onClick={() => setShown((value) => !value)} />}
+        <Button size="small" icon={<CopyOutlined />} onClick={() => onCopy(value)} />
+      </Space>
+    </div>
+  );
+}
+
+function normalizeCredentialGroups(step: VpnWorkflowStep): NonNullable<VpnWorkflowStep['credentialGroups']> {
+  const groups = Array.isArray(step.credentialGroups) ? step.credentialGroups.filter(Boolean) : [];
+  if (groups.length > 0) {
+    return groups.map((group) => ({
+      ...group,
+      details: Array.isArray(group.details) ? group.details.filter((detail) => detail.label || detail.value) : []
+    }));
+  }
+  const details = step.details || [];
+  const hostDetails = details.filter((detail) => credentialField(detail.label) === 'host');
+  return hostDetails.map((hostDetail) => {
+    const title = hostDetail.value || hostDetail.label;
+    const related = details.filter((detail) => detail !== hostDetail && isLikelyRelatedCredential(hostDetail, detail, details));
+    return {
+      title,
+      host: hostDetail.value,
+      username: related.find((detail) => credentialField(detail.label) === 'username')?.value || '',
+      password: related.find((detail) => credentialField(detail.label) === 'password')?.value || '',
+      port: related.find((detail) => credentialField(detail.label) === 'port')?.value || '',
+      protocol: related.find((detail) => credentialField(detail.label) === 'protocol')?.value || '',
+      note: related.find((detail) => credentialField(detail.label) === 'note')?.value || '',
+      details: related.filter((detail) => !['username', 'password', 'port', 'protocol', 'note'].includes(credentialField(detail.label) || ''))
+    };
+  }).filter((group) => group.username || group.password || group.port || group.protocol || group.details.length > 0);
+}
+
+function credentialField(label: string): 'host' | 'username' | 'password' | 'port' | 'protocol' | 'note' | null {
+  const normalized = label.toLowerCase();
+  if (/(host|server|サーバ|ホスト|主机|地址|アドレス)/.test(normalized)) return 'host';
+  if (/(user|username|ユーザ|ユーザー|ログイン|账号|帳號|账户)/.test(normalized)) return 'username';
+  if (/(password|pass|pwd|pw|パスワード|密码|密碼)/.test(normalized)) return 'password';
+  if (/(port|ポート|端口)/.test(normalized)) return 'port';
+  if (/(protocol|type|方式|種別|类型)/.test(normalized)) return 'protocol';
+  if (/(note|memo|備考|备注|メモ)/.test(normalized)) return 'note';
+  return null;
+}
+
+function isLikelyRelatedCredential(hostDetail: { label: string; value: string }, detail: { label: string; value: string }, allDetails: Array<{ label: string; value: string }>): boolean {
+  const field = credentialField(detail.label);
+  if (!field || field === 'host') return false;
+  const hostIndex = allDetails.indexOf(hostDetail);
+  const detailIndex = allDetails.indexOf(detail);
+  if (hostIndex < 0 || detailIndex < 0 || detailIndex < hostIndex) return false;
+  const nextHostIndex = allDetails.findIndex((item, index) => index > hostIndex && credentialField(item.label) === 'host');
+  return nextHostIndex < 0 || detailIndex < nextHostIndex;
 }
 
 function vpnActionLabel(lang: Lang, action: string): string {
@@ -1397,7 +1483,7 @@ function ConnectionSection({ lang, organizations }: { lang: Lang; organizations:
   const dedicatedLabel = lang === 'zh' ? '专线访问' : '専用線訪問';
   const unit = lang === 'zh' ? '个环境' : '件の環境';
   const noGuides = lang === 'zh' ? '当前范围内没有登记 VPN 流程' : '現在の範囲に VPN 流程はありません';
-  const noFiles = lang === 'zh' ? '当前范围内没有 VPN 来源文件' : '現在の範囲に VPN 原資料ファイルはありません';
+  const noFiles = lang === 'zh' ? '当前范围内没有 AI 来源资料' : '現在の範囲に AI 原資料はありません';
 
   return (
     <Card className="connection-section">
@@ -1423,11 +1509,7 @@ function ConnectionSection({ lang, organizations }: { lang: Lang; organizations:
                   <small>{item.organizationCode} - {item.organizationName} / {item.usedBy} {unit}</small>
                 </span>
                 <Tag color={item.requestRequired ? 'orange' : 'gold'}>{item.requestRequired ? (lang === 'zh' ? '申请必要' : '申請必要') : t(lang, 'vpn')}</Tag>
-                <Button
-                  disabled={(item.guide.sourceFiles || []).length === 0}
-                  icon={<CloudDownloadOutlined />}
-                  href={(item.guide.sourceFiles || [])[0]?.id ? `/api/files/${(item.guide.sourceFiles || [])[0].id}/download` : undefined}
-                />
+                <Tag icon={<FileTextOutlined />}>{(item.guide.sourceFiles || []).length}</Tag>
               </div>
             ))}
           </div>
@@ -1439,9 +1521,9 @@ function ConnectionSection({ lang, organizations }: { lang: Lang; organizations:
               <div key={item.key}>
                 <span>
                   <strong>{item.file.filename}</strong>
-                  <small>{item.organizationCode} - {item.guideName}</small>
+                  <small>{item.organizationCode} - {item.guideName} / {item.file.sourceRole || 'source'}</small>
                 </span>
-                <Button disabled={!item.file.id} icon={<CloudDownloadOutlined />} href={item.file.id ? `/api/files/${item.file.id}/download` : undefined} />
+                <Tag>{lang === 'zh' ? '已解析' : '解析済み'}</Tag>
               </div>
             ))}
           </div>

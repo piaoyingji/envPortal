@@ -95,6 +95,12 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - System functions are exposed from the top-bar gear menu, not the CRM business navigation.
 - Password reset mail is sent by SMTP configured through `ONECRM_SMTP_*`; the virtual mail viewer at `http://192.168.20.38:5000/` is used for testing.
 
+## VPN AI Source and Credential Presentation
+
+- AI source files are operator inputs and audit references, not normal end-user downloads. The connection/VPN overview should show source counts and parsed status, not raw-file download actions.
+- VPN workflow analysis must preserve credential association. When source material lists multiple servers, hosts, jump hosts, usernames, passwords, ports, or protocols, the result must group them by exact server/hop instead of rendering detached lists of usernames and passwords.
+- The UI should render grouped credentials as compact server credential cards with copy buttons for each value.
+
 - Finish UI/UX design-language consolidation: token system, navigation cleanup, compact header, consistent tags, responsive breakpoints.
 - Split the large environment page into smaller feature components without changing behavior.
 - Keep README focused on deployment/usage and move deeper product/technical rationale into docs.

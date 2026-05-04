@@ -23,6 +23,12 @@ OneCRM 2.5 replaces the static EnvPortal UI with a React/Ant Design enterprise i
 - Avatars are stored in MinIO and referenced by object key in PostgreSQL.
 - Forgot-password sends an SMTP reset link built from `ONECRM_PUBLIC_URL`; `http://192.168.20.38:5000/` can be used to inspect test mails.
 
+## VPN Credential Groups
+
+AI workflow steps may include `credentialGroups`, an array of server/hop credential objects. Each group binds host/address, port, protocol, username, password, note, and auxiliary details to one exact connection target. This prevents the UI from showing unrelated lists of servers and passwords that operators cannot safely associate.
+
+Raw VPN source files remain archived in MinIO for traceability, but the connection/VPN overview does not expose per-file download buttons. It presents parsed source counts/status instead.
+
 ## VPN File Ingestion
 
 The VPN guide editor supports multi-file ingestion. Users can attach several files while creating or updating a VPN guide. The backend stores source files in MinIO, rebuilds source-derived text, then triggers the VPN workflow analysis pipeline.
