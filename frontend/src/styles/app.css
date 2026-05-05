@@ -1053,6 +1053,11 @@ select {
   margin: 10px 0 12px;
 }
 
+.vpn-rule-warning {
+  margin: 10px 0 12px;
+  border-radius: 12px;
+}
+
 .vpn-import-status {
   margin: 10px 0 12px;
   border-color: rgba(215, 154, 43, 0.24);

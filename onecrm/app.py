@@ -434,17 +434,20 @@ def analyze_vpn_guide_task(guide_id: str, organization_id: str, raw_text: str) -
         update_vpn_guide_workflow(guide_id, [], "none", status="ready")
         return
     workflow_source = "ai"
+    workflow_error = ""
     try:
         workflow = summarize_vpn_workflow_with_ai(raw_text)
     except Exception as exc:
         workflow_source = "rule"
+        workflow_error = str(exc)
+        LOGGER.exception("AI VPN workflow generation failed guide=%s org=%s", guide_id, organization_id)
         workflow = summarize_vpn_workflow(raw_text)
-        print(f"AI VPN workflow generation failed, using local fallback: {exc}")
     guide = update_vpn_guide_workflow(
         guide_id,
         workflow=workflow,
         source=workflow_source,
         status="ready",
+        error=workflow_error,
     )
     audit(
         "analyze_vpn_guide",
@@ -471,91 +474,226 @@ def merge_vpn_raw_text(manual_text: str, generated_text: str) -> str:
 
 
 def clean_vpn_raw_text(raw_text: str, organization: dict[str, Any] | None) -> str:
-    if not organization:
-        return raw_text
-    code = str(organization.get("code") or "").strip()
-    name = str(organization.get("name") or "").strip()
-    if not code and not name:
-        return raw_text
+    code = str((organization or {}).get("code") or "").strip()
+    name = str((organization or {}).get("name") or "").strip()
     redundant_values = {value for value in [code, name] if value}
     redundant_labels = {
         "機関コード", "機関名", "顧客コード", "顧客名", "客户编码", "客户名称",
         "客户代码", "客户名", "組織コード", "組織名", "组织编码", "组织名称",
     }
-    low_value_labels = {
-        "更新情報", "顧客別情報参照", "関係者外秘", "【関係者外秘】", "備考（リモート接続以外の情報）",
-        "サーバ更改時期", "pcAnywhere暗号化設定変更（2012/2）", "pcAnywhereパッチ適用（2012/2）",
+    sections: dict[str, list[str]] = {
+        "事前準備/申請": [],
+        "接続方式": [],
+        "対象サーバ": [],
+        "作業後対応": [],
     }
-    relevant_tokens = [
-        "vpn", "リモート", "遠隔", "remote", "接続", "laplink", "pcanywhere", "rdp", "ssh",
-        "サーバ", "server", "db", "ap", "ip", "アドレス", "電話", "連絡", "依頼", "申請", "許可",
-        "ユーザ", "ユーザー", "user", "administrator", "id", "pw", "password", "pass", "パスワード",
-        "事前共有鍵", "認証", "保守", "メンテ", "oracle", "windows", "アナログ",
-        "以降", "以前", "以後", "から", "まで", "新", "旧", "追加", "補足", "差分", "変更",
-        "経由", "踏み台", "中継", "ジャンプ", "jump", "bastion", "gateway", "proxy",
+    seen: set[tuple[str, str]] = set()
+    carry_section = ""
+    carry_budget = 0
+
+    for original_line in raw_text.splitlines():
+        line = normalize_vpn_analysis_line(original_line, redundant_values, redundant_labels)
+        if not line:
+            carry_budget = 0
+            continue
+        if is_vpn_parser_metadata(line) or is_vpn_low_value_line(line):
+            carry_budget = 0
+            continue
+        if is_file_transfer_only_line(line) and not is_remote_file_transfer_auxiliary(line):
+            carry_budget = 0
+            continue
+        section = classify_vpn_analysis_line(line)
+        if not section and carry_section and carry_budget > 0 and is_vpn_value_continuation(line):
+            section = carry_section
+        if not section:
+            carry_budget = 0
+            continue
+        key = (section, compact_vpn_line(line))
+        if key in seen:
+            continue
+        seen.add(key)
+        sections[section].append(line)
+        carry_section = section
+        carry_budget = 3 if is_connection_context_line(line) else (1 if has_vpn_field_label(line) else 0)
+
+    output: list[str] = []
+    for section, lines in sections.items():
+        lines = prioritize_vpn_section_lines(section, lines)
+        if not lines:
+            continue
+        output.append(f"## {section}")
+        output.extend(lines)
+        output.append("")
+    return "\n".join(output).strip()
+
+
+def prioritize_vpn_section_lines(section: str, lines: list[str]) -> list[str]:
+    limits = {
+        "事前準備/申請": 10,
+        "接続方式": 18,
+        "対象サーバ": 64,
+        "作業後対応": 10,
+    }
+    limit = limits.get(section, 24)
+    scored: list[tuple[int, int, str]] = []
+    for index, line in enumerate(lines):
+        score = vpn_line_priority(section, line)
+        if score <= 0:
+            continue
+        scored.append((score, index, line))
+    selected = sorted(scored, key=lambda item: (-item[0], item[1]))[:limit]
+    return [line for _, _, line in sorted(selected, key=lambda item: item[1])]
+
+
+def vpn_line_priority(section: str, line: str) -> int:
+    low = line.lower()
+    score = 1
+    high_value = [
+        "url", "https://", "portal.azure.com", "azureportal", "vpn", "bastion", "laplink",
+        "サーバ", "server", "ip アドレス", "ipアドレス", "アドレス", "administrator",
+        "mpc-", "upds", "shugyo", "踏み台", "経由", "中継", "申請", "承認", "連絡", "終了後", "利用終了後",
     ]
+    for token in high_value:
+        if token.lower() in low:
+            score += 3
+    if re.search(r"(?:\d{1,3}\.){3}\d{1,3}", line):
+        score += 4
+    if "\\" in line or "@" in line:
+        score += 2
+    if any(token in low for token in ["id:", "id：", "ログインid", "認証id", "ユーザー名", "ユーザ名", "password", "パスワード"]):
+        score += 12
+    if section == "事前準備/申請" and any(token in low for token in ["手順", "確認手順", "インストール", "表示言語", "ime", "ディスク", "enter"]):
+        score -= 5
+    if section == "接続方式" and any(token in low for token in ["手順書", "ページ", "構築時", "パスワード変更", "検索欄", "u:\\"]):
+        score -= 3
+    if section == "作業後対応" and is_file_transfer_only_line(line) and "利用終了後" not in line and "作業" not in line and "連絡" not in line:
+        score -= 4
+    return score
 
-    def relevant(text: str) -> bool:
-        lowered = text.lower()
-        return any(token.lower() in lowered for token in relevant_tokens)
 
-    def credentialish(text: str) -> bool:
-        lowered = text.lower()
-        return any(token in lowered for token in ["administrator", "ユーザ", "user", "id", "pw", "password", "pass", "パスワード"])
-
-    cleaned_lines: list[str] = []
-    carry_value_lines = 0
-    for line in raw_text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            cleaned_lines.append(line)
-            continue
-        if (
-            stripped.startswith("===== Source:")
-            or re.match(r"^\d+\.\s+role=", stripped)
-            or stripped.startswith("Source role:")
-            or stripped.startswith("Client modified:")
-            or stripped.startswith("Date hints:")
-            or stripped.startswith("Type:")
-            or stripped.startswith("[Sheet:")
-        ):
-            continue
-        if stripped.startswith("Path context:"):
-            carry_value_lines = 0
-            continue
-        if "|" in line:
-            cells = [cell.strip() for cell in line.split("|")]
-            kept = [
-                cell
-                for cell in cells
-                if cell and cell not in redundant_values and cell not in redundant_labels and cell not in low_value_labels
-            ]
-            compact = " | ".join(kept)
-            if kept and relevant(compact):
-                cleaned_lines.append(compact)
-                carry_value_lines = 1
-            continue
-        if stripped in redundant_values or stripped in redundant_labels or stripped in low_value_labels:
-            continue
-        line = re.sub(
-            r"^(?:機関コード|顧客コード|客户编码|客户代码|組織コード|组织编码)\s*[:：]\s*" + re.escape(code) + r"\s*$",
+def normalize_vpn_analysis_line(line: str, redundant_values: set[str], redundant_labels: set[str]) -> str:
+    text = line.replace("\u3000", " ").strip()
+    if not text:
+        return ""
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"^[-・*]+", "", text).strip()
+    if "|" in text:
+        cells = [
+            cell.strip()
+            for cell in text.split("|")
+            if cell.strip() and cell.strip() not in redundant_values and cell.strip() not in redundant_labels
+        ]
+        text = " | ".join(cells)
+    for value in redundant_values:
+        text = re.sub(
+            r"^(?:機関コード|顧客コード|客户编码|客户代码|組織コード|组织编码|機関名|顧客名|客户名称|客户名|組織名|组织名称)\s*[:：]\s*"
+            + re.escape(value)
+            + r"\s*$",
             "",
-            line,
-        ) if code else line
-        line = re.sub(
-            r"^(?:機関名|顧客名|客户名称|客户名|組織名|组织名称)\s*[:：]\s*" + re.escape(name) + r"\s*$",
-            "",
-            line,
-        ) if name else line
-        stripped = line.strip()
-        if stripped and (relevant(stripped) or carry_value_lines > 0):
-            cleaned_lines.append(line)
-            carry_value_lines = 1 if relevant(stripped) else max(0, carry_value_lines - 1)
-        else:
-            carry_value_lines = 0
-    cleaned = "\n".join(cleaned_lines)
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
-    return cleaned
+            text,
+        )
+    return text.strip()
+
+
+def is_vpn_parser_metadata(line: str) -> bool:
+    return bool(
+        line.startswith("===== Source:")
+        or line.startswith("Path context:")
+        or line.startswith("Source precedence")
+        or line.startswith("Source role:")
+        or line.startswith("Client modified:")
+        or line.startswith("Date hints:")
+        or line.startswith("Type:")
+        or line.startswith("[Sheet:")
+        or re.match(r"^\d+\.\s+role=", line)
+    )
+
+
+def is_vpn_low_value_line(line: str) -> bool:
+    low = line.lower()
+    low_value_tokens = [
+        "記入要領", "様式", "表紙", "修正履歴", "起票日", "版", "申請課", "室長 殿",
+        "利用者情報", "管理担当者", "所属：", "職名：", "氏名：", "内線：",
+        "利用期間を入力", "利用希望日の", "最大で連続", "原則10時", "初期構築資材",
+        "大臣官房政策課", "今回申請いただく情報システム名", "列をコピー",
+        "備考 有 無", "関係者外秘", "source:", "path context:",
+        "確認手順", "設定手順", "表示言語", "microsoft ime", "ディスク領域", "handwriting",
+        "インストール", "キャンセルをクリック", "enterキー", "最新の状態です",
+        "申請書", "利用申請書", "ヒアリングシート", "チェック |", "参考情報",
+    ]
+    if any(token.lower() in low for token in low_value_tokens):
+        return not has_credential_or_connection_value(line)
+    if line in {"Azure Files利用申請書", "AzureFiles利用申請書", "AzureFilesアカウント", "仮想マシン"}:
+        return True
+    return False
+
+
+def is_file_transfer_only_line(line: str) -> bool:
+    low = line.lower()
+    tokens = ["azurefiles", "azure files", "box", "ファイル持ち込み", "ファイル受渡し", "クラウドストレージ", "共有ファイルサーバ"]
+    return any(token in low for token in tokens)
+
+
+def is_remote_file_transfer_auxiliary(line: str) -> bool:
+    low = line.lower()
+    auxiliary_tokens = ["利用終了後", "作業後", "完了後", "連絡", "コピペ", "接続情報", "仮想マシン用", "ユーザ端末用", "認証id", "パスワード"]
+    return any(token.lower() in low for token in auxiliary_tokens)
+
+
+def classify_vpn_analysis_line(line: str) -> str:
+    low = line.lower()
+    pre_tokens = ["申請", "依頼", "許可", "承認", "確認", "連絡", "電話", "切替", "切り替", "2段階", "二段階", "スマホ", "スマフォ", "qrコード", "サインイン方法"]
+    connect_tokens = ["vpn", "azureportal", "portal.azure.com", "virtual machines", "bastion", "laplink", "アナログ", "接続", "リモート", "remote", "rdp", "ssh", "事前共有鍵", "共有鍵"]
+    server_tokens = ["サーバ", "server", "db", "ap", "web", "ipアドレス", "ip アドレス", "アドレス", "host", "hostname", "oracle", "windows", "administrator"]
+    post_tokens = ["終了後", "完了後", "報告", "作業終了", "利用終了後", "必ずmpc担当", "メール送信"]
+    credential_tokens = ["id:", "id：", "ログインid", "ユーザー名", "ユーザ名", "username", "password", "pass", "パスワード", "認証id"]
+    if is_file_transfer_only_line(line) and is_remote_file_transfer_auxiliary(line):
+        return "作業後対応"
+    if any(token.lower() in low for token in post_tokens):
+        return "作業後対応"
+    if any(token.lower() in low for token in server_tokens) or re.search(r"(?:\d{1,3}\.){3}\d{1,3}", line):
+        return "対象サーバ"
+    if any(token.lower() in low for token in credential_tokens):
+        if any(token.lower() in low for token in ["portal", "vpn", "azure"]):
+            return "接続方式"
+        return "対象サーバ"
+    if any(token.lower() in low for token in connect_tokens):
+        return "接続方式"
+    if any(token.lower() in low for token in pre_tokens):
+        return "事前準備/申請"
+    return ""
+
+
+def is_vpn_value_continuation(line: str) -> bool:
+    if len(line) > 180:
+        return False
+    return bool(
+        re.match(r"^(?:url|id|password|pass|pw|認証ID|ログインID|ユーザー名|ユーザ名|パスワード)\s*[:：]", line, flags=re.IGNORECASE)
+        or re.search(r"(?:\d{1,3}\.){3}\d{1,3}", line)
+        or "\\" in line
+        or "@" in line
+    )
+
+
+def is_connection_context_line(line: str) -> bool:
+    low = line.lower()
+    return any(token in low for token in ["azureportal", "portal.azure.com", "vpn", "bastion", "laplink", "事前共有鍵", "共有鍵"])
+
+
+def has_vpn_field_label(line: str) -> bool:
+    return bool(re.search(r"(?:url|id|password|pass|pw|認証ID|ログインID|ユーザー名|ユーザ名|パスワード)\s*[:：]?$", line, flags=re.IGNORECASE))
+
+
+def has_credential_or_connection_value(line: str) -> bool:
+    low = line.lower()
+    return bool(
+        any(token in low for token in ["password", "パスワード", "ログインid", "認証id", "ユーザー名", "vpn", "bastion", "laplink"])
+        or re.search(r"(?:\d{1,3}\.){3}\d{1,3}", line)
+    )
+
+
+def compact_vpn_line(line: str) -> str:
+    return re.sub(r"\s+", " ", line).strip().lower()
 
 
 def parse_file_meta(file_meta: str) -> list[dict[str, Any]]:

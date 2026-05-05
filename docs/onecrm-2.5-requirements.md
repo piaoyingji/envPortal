@@ -92,6 +92,8 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - VPN workflow AI output must default to Japanese for all operator-facing text. English output is not acceptable unless the value is a literal technical token from the source.
 - VPN workflow AI must keep the main procedure coarse-grained. Server lists and credentials belong in details or credential groups, not as one top-level step per server row.
 - If AI returns over-fragmented output, the backend must merge it back into major operator phases before storing workflow cards.
+- VPN/remote workflow analysis must answer only four operator questions: what must happen before remote work, how the remote connection is made, which servers are reached, and what must happen after work. AzureFiles, Box, and file import/export documents are auxiliary and must not become main workflow steps unless they directly affect pre/post remote work.
+- If AI generation fails, the local rule fallback must be conservative and clearly marked as low confidence. It must not create a false detailed procedure by pasting large matched line sets into workflow cards.
 
 ## i18n Requirements
 
@@ -120,6 +122,7 @@ The product name is `OneCRM`. The legacy `EnvPortal` name is kept only in migrat
 - AI source files are operator inputs and audit references, not normal end-user downloads. The connection/VPN overview should show source counts and parsed status, not raw-file download actions.
 - VPN workflow analysis must preserve credential association. When source material lists multiple servers, hosts, jump hosts, usernames, passwords, ports, or protocols, the result must group them by exact server/hop instead of rendering detached lists of usernames and passwords.
 - The UI should render grouped credentials as compact server credential cards with copy buttons for each value.
+- Rule fallback workflows must show a visible warning and keep the reanalysis path available so operators do not mistake a low-confidence result for a verified AI workflow.
 
 - Finish UI/UX design-language consolidation: token system, navigation cleanup, compact header, consistent tags, responsive breakpoints.
 - Split the large environment page into smaller feature components without changing behavior.

@@ -8,6 +8,18 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.21] - 2026-05-05
+
+### Changed
+
+- Raised the current application version to `2.5.21`.
+- Tightened VPN/remote-connection AI input cleaning into four focused sections: preparation/application, connection method, target servers, and post-work handling.
+- Treated AzureFiles, Box, and file transfer material as auxiliary remote-work context instead of main VPN workflow steps unless it directly affects pre/post remote work.
+- Strengthened the VPN workflow AI schema so usernames, passwords, hosts, and ports must stay attached to the exact VPN entry, jump host, or target server they belong to.
+- Replaced the loose rule fallback with a conservative `AI分析要確認` result when AI generation fails, and now logs the underlying failure in `workflow_error` and `logs/onecrm.log`.
+- Added a frontend warning when a VPN workflow is based on low-confidence rule fallback, with a visible reanalysis path.
+- Raised the default AI request timeout to 120 seconds so large multi-file VPN analyses do not fail at the previous 60-second boundary.
+
 ## [2.5.20] - 2026-05-05
 
 ### Added

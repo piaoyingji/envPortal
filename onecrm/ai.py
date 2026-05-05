@@ -52,44 +52,28 @@ def summarize_vpn_workflow_with_ai(raw_text: str) -> list[dict[str, Any]]:
     text = (raw_text or "").strip()
     if not text:
         return []
+    system_prompt = (
+        "You convert cleaned VPN/remote-operation notes into a concise workflow for Japanese operators. "
+        "Return only valid JSON array. All operator-facing strings must be Japanese. Keep literal URLs, hosts, usernames, passwords, keys, ports, commands, and proper nouns exactly as written. "
+        "The workflow must answer only four questions: 1) what to do before remote work, 2) how to connect, 3) which servers are reached, 4) what to do after work. "
+        "Create only 3-6 major steps. Do not create top-level steps for individual credentials, server rows, filenames, headings, parser metadata, or isolated tokens. "
+        "Use Japanese titles such as 事前確認, 承認・申請, Azure Portal接続, VPN接続, Bastion接続, 対象サーバ接続, 作業終了連絡. Never output English titles. "
+        "Each step object must include order, title, description, action. action is one of request, mail, contact, connect, verify, remote, note. "
+        "Optional fields: purpose, operatorAction, requiredInfo:[{label,value}], details:[{label,value}], sourceRefs:[{file,note}], mailTemplate:{to,cc,bcc,subject,body}, credentialGroups:[...]. "
+        "Put URLs, account IDs, contacts, notes, and source references into requiredInfo/details only when directly useful. Do not paste full templates or source text. "
+        "For every VPN entry, jump host, Bastion, RDP/SSH hop, target server, DB/AP/WEB server, or storage endpoint with credentials, create one credentialGroups item: "
+        "{title,host,address,port,protocol,username,password,note,details:[{label,value}]}. "
+        "Attach each username, password, shared secret, host, port, and protocol to the exact server/hop it belongs to. Detached username/password lists are invalid. "
+        "If one server must be reached through another host, gateway, Bastion, proxy, relay, 踏み台, 経由, or 中継, keep the sequence as ordered major steps and attach credentials to the matching hop. "
+        "AzureFiles, Box, and file import/export notes are auxiliary only. Include them only as pre/post-work details when they directly affect file transfer, copy/paste, or completion notice; never make them a main connection step. "
+        "If email recipients/CC/BCC and body are present, use action mail and mailTemplate with preserved line breaks. If only a body exists, keep it as normal text. "
+        "Ignore customer code/name, parser metadata, form filling instructions, revision history, cover sheets, and general policy text unless they contain a required contact, approval, endpoint, credential, or post-work notice. "
+        "Do not invent facts."
+    )
     content = ai_chat([
         {
             "role": "system",
-            "content": (
-                "You convert messy VPN operation notes into a concise operator workflow for Japanese operators. "
-                "Return only valid JSON. The JSON must be an array. Each item must have "
-                "order:number, title:string, description:string, action:string. "
-                "All operator-facing JSON strings must be written in Japanese. Keep literal URLs, hosts, usernames, passwords, account IDs, commands, paths, and original proper nouns exactly as written. "
-                "The top-level workflow must be a small number of major phases, usually 3 to 6 steps: preparation/request, preliminary connection or line switch, VPN connection, target server connection, and finish/contact if present. "
-                "Do not create top-level steps for individual credentials, individual server rows, source file names, parser metadata, table headings, or isolated tokens. Those belong in details or credentialGroups inside the relevant major phase. "
-                "Never output English workflow titles such as Request, Connect to, Reference, or Set up. Use natural Japanese titles such as 事前確認, 保守端末切替依頼, LAPLINK接続, VPN接続, 対象サーバ接続, 作業終了連絡. "
-                "Each item may also have details, an array of {label:string,value:string}. "
-                "When a step contains one or more servers, hosts, jump hosts, remote desktops, database consoles, VPN portals, or any credentials bound to a host, add credentialGroups. "
-                "credentialGroups must be an array of {title,host,address,port,protocol,username,password,note,details:[{label,value}]}. "
-                "Every username, password, shared secret, server address, host name, port, and protocol must be placed in the credentialGroups object for the exact server/hop it belongs to. "
-                "If the source lists several servers in a table or adjacent rows, keep them under one target-server connection step by creating one credentialGroups item per server row and keeping the row's username/password paired with that server. "
-                "Do not put a list of hosts followed by a separate list of usernames/passwords in generic details; that loses association and is invalid. "
-                "For any step that involves sending an email and includes recipients, CC, or BCC, set action to mail and include "
-                "mailTemplate:{to:string,cc:string,bcc:string,subject:string,body:string}. "
-                "The mailTemplate body must be copy-ready and preserve formal line breaks, blank lines, indentation, greetings, request details, and signature placeholders. "
-                "Do not flatten email content into description or details when it should be sent as a message. "
-                "If there is only mail body text without to/cc/bcc, do not create mailTemplate; keep it as a normal detail or description. "
-                "Use action values from: request, mail, contact, connect, verify, remote, note. "
-                "If a step requires applying for VPN/remote permission by email, phone, contact, approval, request, or any similar application process, make that step action request or contact. "
-                "Group related credentials into the same major step instead of splitting every line. "
-                "Credentials are critical operation data. Put URLs, hosts, ports, account IDs, usernames, passwords, shared secrets, OTP notes, contacts, and remarks in details when possible. "
-                "Keep passwords, shared secrets, account names, URLs, customer contacts, and mail instructions exactly when present; never mask, omit, summarize, or replace them. "
-                "For credentials, use standalone detail objects such as {label:'VPN username',value:'...'} and {label:'VPN password',value:'...'} instead of mixing labels and values into long sentences. "
-                "Ignore parser metadata lines such as '===== Source:', 'Source precedence:', 'Path context:', 'Source role:', 'Client modified:', 'Date hints:', 'Type:', and '[Sheet:]' as workflow steps. Use filenames only as source references when they help resolve precedence. "
-                "Japanese file or folder names may express scope or precedence, such as '20260501以降', '新サーバ', '補足', '追加', or '旧'; use that meaning when deciding which instructions apply. "
-                "When the input contains a Source precedence section, use it to decide the current effective procedure. Prefer current/override/supplement sources over historical sources, and use client modified dates, path dates, and content date hints to resolve conflicts. "
-                "If sources conflict, output the final adopted instruction in the step and keep the source filename/path in details when useful. Historical sources may be referenced only as old information and must not override newer effective instructions. "
-                "If connection notes say one server must be reached through another host, jump server, bastion, gateway, proxy, relay, '踏み台', '経由', '中継', or similar, split those different hops into ordered major steps only when the operator must perform them sequentially. "
-                "Keep credentials attached to the exact host or hop they belong to, and do not flatten all servers into one generic remote connection detail list. "
-                "Do not create steps or details for customer/organization code or customer/organization name by themselves; those are page context, not operating procedure. "
-                "Ignore content unrelated to VPN, remote access, connection approval, servers used for remote operation, credentials, contacts, or mail templates. "
-                "Do not invent facts."
-            ),
+            "content": system_prompt,
         },
         {
             "role": "user",
@@ -117,16 +101,26 @@ def normalize_ai_steps(value: Any) -> list[dict[str, Any]]:
     for item in value[:12]:
         if not isinstance(item, dict):
             continue
-        description = str(item.get("description") or item.get("value") or "").strip()
+        purpose = str(item.get("purpose") or "").strip()
+        operator_action = str(item.get("operatorAction") or item.get("operator_action") or "").strip()
+        description = str(item.get("description") or item.get("value") or operator_action or purpose or "").strip()
         title = str(item.get("title") or item.get("step") or "手順").strip()
         if not description and not title:
             continue
+        detail_values = []
+        detail_values.extend(normalize_details(item.get("requiredInfo") or item.get("required_info")))
+        detail_values.extend(normalize_details(item.get("details")))
+        detail_values.extend(normalize_source_refs(item.get("sourceRefs") or item.get("source_refs")))
+        if purpose:
+            detail_values.insert(0, {"label": "目的", "value": purpose})
+        if operator_action and operator_action != description:
+            detail_values.insert(1 if purpose else 0, {"label": "作業", "value": operator_action})
         steps.append({
             "order": len(steps) + 1,
             "title": title or "手順",
             "description": description or title,
             "action": normalize_action(str(item.get("action") or "note")),
-            "details": normalize_details(item.get("details")),
+            "details": dedupe_details(detail_values),
             "credentialGroups": normalize_credential_groups(item.get("credentialGroups") or item.get("credentials") or item.get("servers")),
             "mailTemplate": normalize_mail_template(item),
             "source": "ai",
@@ -240,8 +234,40 @@ def normalize_details(value: Any) -> list[dict[str, str]]:
         label = str(item.get("label") or item.get("key") or "").strip()
         detail_value = str(item.get("value") or "").strip()
         if label or detail_value:
-            details.append({"label": label or "Info", "value": detail_value})
+            details.append({"label": label or "情報", "value": detail_value})
     return details
+
+
+def normalize_source_refs(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    refs: list[dict[str, str]] = []
+    for item in value[:12]:
+        if isinstance(item, str) and item.strip():
+            refs.append({"label": "引用", "value": item.strip()})
+        elif isinstance(item, dict):
+            file_name = str(item.get("file") or item.get("filename") or item.get("source") or "").strip()
+            note = str(item.get("note") or item.get("text") or item.get("reason") or "").strip()
+            value = " / ".join(part for part in [file_name, note] if part)
+            if value:
+                refs.append({"label": "引用", "value": value})
+    return refs
+
+
+def dedupe_details(details: list[dict[str, str]]) -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for detail in details:
+        label = str(detail.get("label") or "情報").strip()
+        value = str(detail.get("value") or "").strip()
+        if not value:
+            continue
+        key = (label, value)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append({"label": label, "value": value})
+    return result[:30]
 
 
 def normalize_credential_groups(value: Any) -> list[dict[str, Any]]:

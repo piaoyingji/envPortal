@@ -480,6 +480,15 @@ function OrgVpnGuide({ lang, org, canWrite, onSaved }: { lang: Lang; org: Organi
                   ))}
                 </div>
               )}
+              {guide.workflowSource === 'rule' && (
+                <Alert
+                  className="vpn-rule-warning"
+                  type="warning"
+                  showIcon
+                  message={lang === 'zh' ? '规则兜底结果，需要人工确认' : 'ルール補完結果です。内容確認が必要です'}
+                  description={guide.workflowError || (lang === 'zh' ? 'AI 分析失败后仅保守显示清洗后的连接相关信息，请重新 AI 分析。' : 'AI分析に失敗したため、清掃済みの接続関連情報だけを保守的に表示しています。再分析してください。')}
+                />
+              )}
               {guide.workflowStatus === 'analyzing' && (guide.workflow || []).length === 0 ? (
                 <div className="vpn-analysis-note">{t(lang, 'aiAnalyzing')}</div>
               ) : (

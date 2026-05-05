@@ -857,44 +857,57 @@ def summarize_vpn_workflow(raw_text: str) -> list[dict[str, Any]]:
     text = (raw_text or "").strip()
     if not text:
         return []
-    lines = [
-        item.strip(" \t\r\n-・*")
-        for item in text.splitlines()
-        if item.strip()
+    sections = split_analysis_sections(text)
+    details = [
+        {"label": title, "value": "\n".join(lines[:12])}
+        for title, lines in sections.items()
+        if lines
+    ]
+    credential_groups = extract_fallback_credential_groups(sections.get("対象サーバ", []))
+    return [
+        {
+            "order": 1,
+            "title": "AI分析要確認",
+            "description": "AI分析に失敗したため、清掃済み原文から接続関連情報だけを保守的に表示しています。再分析してください。",
+            "action": "note",
+            "details": details[:4],
+            "credentialGroups": credential_groups,
+        }
     ]
 
-    def relevant_lines(*tokens: str) -> list[str]:
-        lowered_tokens = [token.lower() for token in tokens]
-        result = []
-        for line in lines:
-            lowered = line.lower()
-            if any(token in lowered for token in lowered_tokens):
-                result.append(line)
-        return unique_keep_order(result)
 
-    request_lines = relevant_lines("申請", "依頼", "許可", "承認", "電話", "連絡", "切替", "切り替")
-    laplink_lines = relevant_lines("laplink", "アナログ", "電話番号")
-    vpn_lines = relevant_lines("vpn", "yms", "yamaha", "forticlient", "事前共有鍵", "共有鍵")
-    server_lines = relevant_lines("サーバ", "server", "db", "ap", "ip", "アドレス", "windows", "oracle", "administrator", "id/pw", "password", "パスワード")
-    finish_lines = relevant_lines("終了", "完了", "報告", "メール")
-
-    steps: list[dict[str, Any]] = []
-    if request_lines:
-        steps.append(vpn_fallback_step("保守作業の事前確認・依頼", "作業前に必要な依頼、連絡、保守端末の切替条件を確認します。", "request", request_lines))
-    if laplink_lines:
-        steps.append(vpn_fallback_step("LAPLINK接続", "LAPLINKまたはアナログ回線を使用して保守端末へ接続します。", "connect", laplink_lines))
-    if vpn_lines:
-        steps.append(vpn_fallback_step("VPN接続", "指定されたVPN接続情報を使用してVPNへ接続します。", "connect", vpn_lines))
-    if server_lines:
-        steps.append(vpn_fallback_step("対象サーバ接続", "VPNまたは保守端末経由で対象サーバへ接続します。", "remote", server_lines, credential_groups=extract_fallback_credential_groups(server_lines)))
-    if finish_lines and not any(line in request_lines for line in finish_lines):
-        steps.append(vpn_fallback_step("作業終了連絡", "作業完了後、必要に応じて終了連絡または報告を行います。", "contact", finish_lines))
-
-    if not steps:
-        steps.append(vpn_fallback_step("接続手順確認", text[:300], "note", lines[:20]))
-    for index, step in enumerate(steps, start=1):
-        step["order"] = index
-    return steps[:6]
+def split_analysis_sections(text: str) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {
+        "事前準備/申請": [],
+        "接続方式": [],
+        "対象サーバ": [],
+        "作業後対応": [],
+    }
+    current = ""
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        header = re.match(r"^##\s*(.+)$", line)
+        if header:
+            name = header.group(1).strip()
+            current = name if name in sections else ""
+            continue
+        if current:
+            sections[current].append(line)
+    if any(sections.values()):
+        return {key: unique_keep_order(value) for key, value in sections.items()}
+    for line in [item.strip(" \t\r\n-・*") for item in text.splitlines() if item.strip()]:
+        lowered = line.lower()
+        if any(token in lowered for token in ["申請", "依頼", "許可", "承認", "電話", "連絡", "切替", "スマホ", "スマフォ"]):
+            sections["事前準備/申請"].append(line)
+        elif any(token in lowered for token in ["vpn", "azureportal", "bastion", "laplink", "リモート", "接続"]):
+            sections["接続方式"].append(line)
+        elif any(token in lowered for token in ["サーバ", "server", "db", "ap", "ip", "administrator", "password", "パスワード"]):
+            sections["対象サーバ"].append(line)
+        elif any(token in lowered for token in ["終了", "完了", "報告", "利用終了後"]):
+            sections["作業後対応"].append(line)
+    return {key: unique_keep_order(value) for key, value in sections.items()}
 
 
 def unique_keep_order(values: list[str]) -> list[str]:
@@ -925,30 +938,39 @@ def vpn_fallback_step(title: str, description: str, action: str, lines: list[str
 
 def extract_fallback_credential_groups(lines: list[str]) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
     for line in lines:
-        if not any(token in line.lower() for token in ["サーバ", "server", "db", "ap", "ip", "アドレス", "administrator", "windows", "oracle"]):
-            continue
         parts = [part.strip() for part in re.split(r"\s*\|\s*", line) if part.strip()]
         text = " / ".join(parts) if parts else line
-        group = {
-            "title": parts[0] if parts else "",
-            "host": "",
-            "address": "",
-            "port": "",
-            "protocol": "",
-            "username": "",
-            "password": "",
-            "note": text,
-            "details": [{"label": "原文", "value": text}],
-        }
+        lowered = text.lower()
+        is_server_line = any(token in lowered for token in ["サーバ", "server", "db", "ap", "web", "ip", "アドレス", "windows", "oracle", "bastion"])
+        if is_server_line:
+            current = {
+                "title": parts[0] if parts else text,
+                "host": "",
+                "address": "",
+                "port": "",
+                "protocol": "",
+                "username": "",
+                "password": "",
+                "note": text,
+                "details": [{"label": "原文", "value": text}],
+            }
+            groups.append(current)
+        elif current is None:
+            continue
+        else:
+            current.setdefault("details", []).append({"label": "原文", "value": text})
+        target = current if current is not None else groups[-1]
         address_match = re.search(r"(?:(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?", text)
         if address_match:
-            group["address"] = address_match.group(0)
-        user_match = re.search(r"(administrator|[A-Za-z0-9_.-]+\\[A-Za-z0-9_.-]+)", text, flags=re.IGNORECASE)
+            target["address"] = address_match.group(0)
+        user_match = re.search(r"(?:id|user|username|ユーザー名|ユーザ名|認証ID)\s*[:：]\s*([^|\s]+)|\b(administrator|[A-Za-z0-9_.-]+\\[A-Za-z0-9_.-]+)\b", text, flags=re.IGNORECASE)
         if user_match:
-            group["username"] = user_match.group(1)
-        if any(group.get(key) for key in ["title", "address", "username", "note"]):
-            groups.append(group)
+            target["username"] = next(group for group in user_match.groups() if group)
+        password_match = re.search(r"(?:password|pass|pw|パスワード)\s*[:：]\s*(.+)$", text, flags=re.IGNORECASE)
+        if password_match:
+            target["password"] = password_match.group(1).strip()
     return groups[:20]
 
 

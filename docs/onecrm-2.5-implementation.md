@@ -67,7 +67,11 @@ The customer-level VPN guide panel is the only place that renders the full workf
 
 VPN workflow analysis prompts require Japanese operator-facing output by default. The prompt keeps main steps coarse-grained and stores server rows, credentials, URLs, ports, and remarks in `credentialGroups` or step details. Parser metadata is source context only and must not become workflow cards.
 
-The backend also guards against over-fragmentation after AI returns. If the model still emits too many top-level steps, post-processing groups them into major phases such as preparation/request, LAPLINK, VPN connection, target server connection, and completion contact. The local fallback follows the same phase-based structure instead of splitting every source line.
+The backend cleans `analysisRawText` into four VPN/remote-operation sections before AI analysis: `事前準備/申請`, `接続方式`, `対象サーバ`, and `作業後対応`. Customer code/name, parser metadata, form instructions, repeated application templates, and unrelated file-sharing material are removed from the derived analysis text. Source files and `sourceRawText` remain read-only archive data.
+
+AzureFiles, Box, and file import/export materials are treated as remote-work auxiliary context. They are retained only when they directly describe required file transfer, copy/paste restrictions, post-work communication, or credentials used around the remote operation; they are not allowed to become main VPN/remote connection steps.
+
+The backend also guards against over-fragmentation after AI returns. If the model still emits too many top-level steps, post-processing groups them into major phases such as preparation/request, LAPLINK, VPN connection, target server connection, and completion contact. If AI generation fails, the local fallback now stores one conservative `AI分析要確認` workflow with section summaries and any safely associated server credentials. It records the exact AI exception in `workflow_error` and `logs/onecrm.log`, and the frontend marks the result as low confidence instead of presenting it as a complete procedure.
 
 ## VPN File Ingestion
 
