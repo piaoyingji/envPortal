@@ -8,6 +8,13 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.22] - 2026-05-05
+
+### Changed
+
+- Raised the current application version to `2.5.22`.
+- Collapsed VPN source-file displays to a representative file plus total count in both the customer VPN guide panel and the connection/VPN summary. This keeps audit context visible without flooding the UI with files that may not affect the final AI workflow.
+
 ## [2.5.21] - 2026-05-05
 
 ### Changed

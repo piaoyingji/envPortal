@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { createEnvironment, deleteEnvironment, fetchHealth, fetchPortalConfig, fetchRemoteCheck, fetchVpnImportJob, importOrganizationVpnGuide, postForm, reanalyzeOrganizationVpnGuide, saveEnvironmentAppServers, saveEnvironmentDetails, saveEnvironmentRemoteConnections, saveEnvironmentVpnSetting, saveOrganizationVpnGuide } from '../lib/api';
 import { buildConnectionSummary } from '../lib/connectionSummary';
 import { t } from '../lib/i18n';
-import type { AppServer, Environment, Lang, Organization, PortalData, RemoteConnection, TagItem, VpnGuide, VpnImportJob, VpnWorkflowStep } from '../lib/types';
+import type { AppServer, Environment, Lang, Organization, PortalData, RemoteConnection, SourceFile, TagItem, VpnGuide, VpnImportJob, VpnWorkflowStep } from '../lib/types';
 import DashboardStats from '../components/DashboardStats';
 import OneTag, { oneTagColor, serviceTagColor } from '../components/OneTag';
 import { RemoteActions } from '../components/RemoteActions';
@@ -462,24 +462,7 @@ function OrgVpnGuide({ lang, org, canWrite, onSaved }: { lang: Lang; org: Organi
                   </Space>
                 )}
               </div>
-              {(guide.sourceFiles || []).length > 0 && (
-                <div className="vpn-source-files">
-                  {(guide.sourceFiles || []).map((file) => (
-                    <Tooltip
-                      key={file.id || file.sha256}
-                      title={[
-                        file.relativePath || file.filename,
-                        file.clientModifiedAt ? `${lang === 'zh' ? '修改时间' : '更新日時'}: ${file.clientModifiedAt}` : '',
-                        file.dateHints?.length ? `${lang === 'zh' ? '时间提示' : '日付ヒント'}: ${file.dateHints.join(', ')}` : ''
-                      ].filter(Boolean).join('\n')}
-                    >
-                      <Tag color={sourceRoleColor(file.sourceRole)} icon={<FileTextOutlined />}>
-                        {file.sourceRole && file.sourceRole !== 'unknown' ? `${file.sourceRole}: ` : ''}{file.relativePath || file.filename}
-                      </Tag>
-                    </Tooltip>
-                  ))}
-                </div>
-              )}
+              {(guide.sourceFiles || []).length > 0 && <SourceFileSummary lang={lang} files={guide.sourceFiles || []} />}
               {guide.workflowSource === 'rule' && (
                 <Alert
                   className="vpn-rule-warning"
@@ -532,6 +515,39 @@ function sourceRoleColor(role?: string) {
   if (role === 'supplement') return 'blue';
   if (role === 'historical') return 'default';
   return 'gold';
+}
+
+function sourceFileName(file?: SourceFile) {
+  return file?.relativePath || file?.filename || '';
+}
+
+function sourceFileSummaryText(lang: Lang, files: SourceFile[]) {
+  const firstName = sourceFileName(files[0]);
+  const count = files.length;
+  if (!firstName) return lang === 'zh' ? `${count} 个来源文件` : `${count} 件の原資料`;
+  if (count <= 1) return firstName;
+  return lang === 'zh' ? `${firstName} 等 ${count} 个文件` : `${firstName} ほか ${count} 件`;
+}
+
+function SourceFileSummary({ lang, files, compact = false }: { lang: Lang; files: SourceFile[]; compact?: boolean }) {
+  if (files.length === 0) return null;
+  const first = files[0];
+  const title = [
+    sourceFileName(first),
+    first?.sourceRole && first.sourceRole !== 'unknown' ? `${lang === 'zh' ? '角色' : '役割'}: ${first.sourceRole}` : '',
+    first?.clientModifiedAt ? `${lang === 'zh' ? '修改时间' : '更新日時'}: ${first.clientModifiedAt}` : '',
+    lang === 'zh' ? `来源文件总数: ${files.length}` : `原資料合計: ${files.length}`,
+  ].filter(Boolean).join('\n');
+  return (
+    <div className={compact ? 'vpn-source-summary compact' : 'vpn-source-summary'}>
+      <Tooltip title={title}>
+        <Tag color={sourceRoleColor(first?.sourceRole)} icon={<FileTextOutlined />}>
+          <span className="source-summary-name">{sourceFileSummaryText(lang, files)}</span>
+        </Tag>
+      </Tooltip>
+      {files.length > 1 && <Tag>{lang === 'zh' ? `共 ${files.length}` : `全 ${files.length}`}</Tag>}
+    </div>
+  );
 }
 
 function formatBytes(bytes: number) {
@@ -1699,6 +1715,7 @@ function InfoRow({ label, value, link, secret, disabled, onCopy, extra }: { labe
 
 function ConnectionSection({ lang, organizations }: { lang: Lang; organizations: Organization[] }) {
   const summary = useMemo(() => buildConnectionSummary(organizations), [organizations]);
+  const guideFileRows = summary.guides.filter((item) => (item.guide.sourceFiles || []).length > 0);
   const vpnPercent = summary.total > 0 ? Math.round((summary.vpn / summary.total) * 100) : 0;
   const directLabel = lang === 'zh' ? '直接访问' : '直接訪問';
   const vpnLabel = lang === 'zh' ? '需 VPN 访问' : 'VPN 訪問が必要';
@@ -1738,14 +1755,14 @@ function ConnectionSection({ lang, organizations }: { lang: Lang; organizations:
         </Col>
         <Col xs={24} lg={6}>
           <div className="file-box">
-            {summary.files.length === 0 && <div className="empty-row">{noFiles}</div>}
-            {summary.files.slice(0, 8).map((item) => (
+            {guideFileRows.length === 0 && <div className="empty-row">{noFiles}</div>}
+            {guideFileRows.slice(0, 6).map((item) => (
               <div key={item.key}>
                 <span>
-                  <strong>{item.file.filename}</strong>
-                  <small>{item.organizationCode} - {item.guideName} / {item.file.sourceRole || 'source'}</small>
+                  <strong>{sourceFileName(item.guide.sourceFiles?.[0])}</strong>
+                  <small>{item.organizationCode} - {item.guide.name}</small>
                 </span>
-                <Tag>{lang === 'zh' ? '已解析' : '解析済み'}</Tag>
+                <Tag icon={<FileTextOutlined />}>{item.guide.sourceFiles?.length || 0}</Tag>
               </div>
             ))}
           </div>

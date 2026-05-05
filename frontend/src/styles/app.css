@@ -1046,11 +1046,24 @@ select {
   font-size: 18px;
 }
 
-.vpn-source-files {
+.vpn-source-summary {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin: 10px 0 12px;
+}
+
+.vpn-source-summary.compact {
+  margin: 0;
+}
+
+.source-summary-name {
+  display: inline-block;
+  max-width: min(720px, 70vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .vpn-rule-warning {
