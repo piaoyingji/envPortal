@@ -4,6 +4,7 @@
 .secrets/
 __pycache__/
 .tmp/
+logs/
 certs/
 guacamole-drive/
 *.pyc

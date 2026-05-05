@@ -8,6 +8,19 @@ All notable changes to OneCRM are documented here.
 
 - NewUI branch development is versioned continuously. Every stable feature or behavior batch should receive a 2.5.x patch version before commit instead of accumulating indefinitely under 2.5.0.
 
+## [2.5.20] - 2026-05-05
+
+### Added
+
+- Added persistent backend logging for VPN source-file imports under `logs/onecrm.log`, including request start, stored-file phase, accepted job ID, and failure details.
+- Added audit records for VPN source-file import failures so failed uploads are visible from PostgreSQL even when Hermes never starts.
+- Added visible frontend VPN import status showing job ID, progress, source-file count, and errors after a multi-file/folder upload is accepted.
+
+### Changed
+
+- Raised the current application version to `2.5.20`.
+- VPN source-file uploads now show a persistent upload/accepted message and use a modal error with the backend detail when import fails, instead of silently returning to the normal view.
+
 ## [2.5.19] - 2026-05-05
 
 ### Changed

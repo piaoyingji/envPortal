@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import mimetypes
 import re
 import socket
@@ -29,6 +30,19 @@ from .storage import ensure_bucket, get_object_bytes, put_bytes_if_missing
 
 
 app = FastAPI(title=APP_NAME, version=VERSION)
+
+
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOGGER = logging.getLogger("onecrm")
+if not LOGGER.handlers:
+    LOGGER.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(LOG_DIR / "onecrm.log", encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    LOGGER.addHandler(file_handler)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+    LOGGER.addHandler(stream_handler)
 
 
 PUBLIC_API_PATHS = {
@@ -744,6 +758,7 @@ async def api_save_vpn_guide(organization_id: str, request: Request) -> dict[str
 
 @app.post("/api/organizations/{organization_id}/vpn-guide/import")
 async def api_import_vpn_guide(
+    request: Request,
     organization_id: str,
     name: str = Form("VPN"),
     rawText: str = Form(""),
@@ -751,35 +766,86 @@ async def api_import_vpn_guide(
     fileMeta: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ) -> dict[str, Any]:
+    user = current_user(request) or {}
+    file_names = [upload.filename for upload in files]
+    LOGGER.info(
+        "vpn import requested org=%s guide=%s name=%s files=%s raw_chars=%s user=%s",
+        organization_id,
+        guideId or "(new)",
+        name,
+        len(files),
+        len(rawText or ""),
+        user.get("username") or "unknown",
+    )
     if not files:
+        LOGGER.warning("vpn import rejected org=%s name=%s reason=no_files", organization_id, name)
         raise HTTPException(status_code=400, detail="At least one source file is required.")
-    guide = save_vpn_guide_raw(
-        organization_id,
-        rawText,
-        name=name,
-        guide_id=guideId or None,
-        status="analyzing",
-        source="hermes",
-        manual_raw_text=rawText,
-        analysis_raw_text=rawText,
-    )
-    await store_uploaded_vpn_files(str(guide["id"]), files, parse_file_meta(fileMeta))
-    all_source_files = vpn_guide_source_files(str(guide["id"]))
-    job = create_vpn_import_job(organization_id, str(guide["id"]), all_source_files, mode="rebuild")
-    guide["sourceFiles"] = all_source_files
-    threading.Thread(
-        target=run_vpn_import_job,
-        args=(str(job["id"]), str(guide["id"]), organization_id, rawText),
-        daemon=True,
-        name=f"vpn-import-{job['id']}",
-    ).start()
-    audit(
-        "import_vpn_guide_files",
-        "organization",
-        organization_id,
-        payload={"guideId": guide.get("id"), "jobId": job.get("id"), "files": len(all_source_files), "mode": "rebuild"},
-    )
-    return {"guide": guide, "job": job}
+    guide: dict[str, Any] | None = None
+    try:
+        guide = save_vpn_guide_raw(
+            organization_id,
+            rawText,
+            name=name,
+            guide_id=guideId or None,
+            status="analyzing",
+            source="hermes",
+            manual_raw_text=rawText,
+            analysis_raw_text=rawText,
+        )
+        parsed_meta = parse_file_meta(fileMeta)
+        LOGGER.info(
+            "vpn import storing files org=%s guide=%s files=%s meta=%s names=%s",
+            organization_id,
+            guide.get("id"),
+            len(files),
+            len(parsed_meta),
+            file_names[:20],
+        )
+        await store_uploaded_vpn_files(str(guide["id"]), files, parsed_meta)
+        all_source_files = vpn_guide_source_files(str(guide["id"]))
+        job = create_vpn_import_job(organization_id, str(guide["id"]), all_source_files, mode="rebuild")
+        guide["sourceFiles"] = all_source_files
+        threading.Thread(
+            target=run_vpn_import_job,
+            args=(str(job["id"]), str(guide["id"]), organization_id, rawText),
+            daemon=True,
+            name=f"vpn-import-{job['id']}",
+        ).start()
+        audit_as(
+            request,
+            "import_vpn_guide_files",
+            "organization",
+            organization_id,
+            payload={"guideId": guide.get("id"), "jobId": job.get("id"), "files": len(all_source_files), "mode": "rebuild"},
+        )
+        LOGGER.info("vpn import accepted org=%s guide=%s job=%s sources=%s", organization_id, guide.get("id"), job.get("id"), len(all_source_files))
+        return {"guide": guide, "job": job}
+    except HTTPException as exc:
+        LOGGER.warning(
+            "vpn import failed org=%s guide=%s status=%s detail=%s",
+            organization_id,
+            (guide or {}).get("id") or guideId or "(new)",
+            exc.status_code,
+            exc.detail,
+        )
+        audit_as(
+            request,
+            "import_vpn_guide_failed",
+            "organization",
+            organization_id,
+            payload={"guideId": (guide or {}).get("id") or guideId or None, "files": len(files), "error": str(exc.detail)},
+        )
+        raise
+    except Exception as exc:
+        LOGGER.exception("vpn import crashed org=%s guide=%s", organization_id, (guide or {}).get("id") or guideId or "(new)")
+        audit_as(
+            request,
+            "import_vpn_guide_failed",
+            "organization",
+            organization_id,
+            payload={"guideId": (guide or {}).get("id") or guideId or None, "files": len(files), "error": str(exc)[:1000]},
+        )
+        raise HTTPException(status_code=500, detail=f"VPN source file import failed: {exc}") from exc
 
 
 @app.post("/api/organizations/{organization_id}/vpn-guide/{guide_id}/reanalyze")

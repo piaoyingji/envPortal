@@ -1,5 +1,5 @@
 import { ArrowDownOutlined, ArrowRightOutlined, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, FileTextOutlined, FolderOpenOutlined, GlobalOutlined, MailOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, SaveOutlined, UpOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Upload, message } from 'antd';
+import { Alert, Button, Card, Col, Dropdown, Input, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Upload, message } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -280,29 +280,55 @@ function OrgVpnGuide({ lang, org, canWrite, onSaved }: { lang: Lang; org: Organi
 
   const save = async () => {
     setSaving(true);
+    const importingFiles = sourceFiles.length > 0;
+    const importMessageKey = `vpn-import-${org.id}`;
     try {
       const cleanName = guideName || t(lang, 'vpnGuide');
-      const saved = sourceFiles.length > 0
+      if (importingFiles) {
+        const totalBytes = sourceFiles.reduce((sum, file) => sum + file.size, 0);
+        message.loading({
+          key: importMessageKey,
+          content: lang === 'zh'
+            ? `正在上传 ${sourceFiles.length} 个文件（${formatBytes(totalBytes)}）...`
+            : `${sourceFiles.length} 件のファイル（${formatBytes(totalBytes)}）をアップロードしています...`,
+          duration: 0
+        });
+      }
+      const saved = importingFiles
         ? await importOrganizationVpnGuide(org.id, {
-          id: editingGuide?.id,
-          name: cleanName,
-          rawText,
-          files: sourceFiles
-        }).then((result) => {
-          setImportJob(result.job);
-          return result.guide;
-        })
+            id: editingGuide?.id,
+            name: cleanName,
+            rawText,
+            files: sourceFiles
+          }).then((result) => {
+            setImportJob(result.job);
+            message.success({
+              key: importMessageKey,
+              content: lang === 'zh'
+                ? `已受理 ${sourceFiles.length} 个文件，解析任务已开始。任务ID: ${shortId(result.job.id)}`
+                : `${sourceFiles.length} 件のファイルを受け付け、解析ジョブを開始しました。ジョブID: ${shortId(result.job.id)}`,
+              duration: 8
+            });
+            return result.guide;
+          })
         : await saveOrganizationVpnGuide(org.id, {
           id: editingGuide?.id,
           name: cleanName,
           rawText
         });
       setPendingGuide(saved);
-      message.success(t(lang, 'save'));
+      if (!importingFiles) message.success(t(lang, 'save'));
       setEditing(false);
       onSaved();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to save VPN guide');
+      if (importingFiles) message.destroy(importMessageKey);
+      const detail = error instanceof Error ? error.message : 'Failed to save VPN guide';
+      Modal.error({
+        title: importingFiles
+          ? (lang === 'zh' ? 'VPN 原始资料导入失败' : 'VPN 原資料の取り込みに失敗しました')
+          : (lang === 'zh' ? '保存失败' : '保存に失敗しました'),
+        content: detail
+      });
     } finally {
       setSaving(false);
     }
@@ -352,6 +378,15 @@ function OrgVpnGuide({ lang, org, canWrite, onSaved }: { lang: Lang; org: Organi
           ) : null}
         </Space>
       </div>
+      {importJob && (
+        <Alert
+          className="vpn-import-status"
+          showIcon
+          type={importJob.status === 'failed' ? 'error' : importJob.status === 'analyzed' ? 'success' : 'info'}
+          message={lang === 'zh' ? 'VPN 原始资料导入状态' : 'VPN 原資料取り込み状態'}
+          description={formatImportJobStatus(lang, importJob)}
+        />
+      )}
       {editing ? (
         <Space direction="vertical" size={12} className="vpn-guide-editor">
           <Input
@@ -488,6 +523,33 @@ function sourceRoleColor(role?: string) {
   if (role === 'supplement') return 'blue';
   if (role === 'historical') return 'default';
   return 'gold';
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function shortId(id?: string) {
+  return id ? id.slice(0, 8) : '-';
+}
+
+function formatImportJobStatus(lang: Lang, job: VpnImportJob) {
+  const count = job.sourceFileCount ?? job.sourceFileIds?.length ?? job.fileIds?.length ?? 0;
+  const statusText = lang === 'zh'
+    ? { queued: '排队中', parsing: '解析文件中', rebuilding: '重建原文中', analyzing: 'AI分析中', summarizing: '汇总中', analyzed: '完成', failed: '失败' }[job.status] || job.status
+    : { queued: '待機中', parsing: 'ファイル解析中', rebuilding: '原文再構築中', analyzing: 'AI分析中', summarizing: '要約中', analyzed: '完了', failed: '失敗' }[job.status] || job.status;
+  const base = lang === 'zh'
+    ? `任务 ${shortId(job.id)} / 状态: ${statusText} / 进度: ${job.progress ?? 0}% / 来源文件: ${count}`
+    : `ジョブ ${shortId(job.id)} / 状態: ${statusText} / 進捗: ${job.progress ?? 0}% / ソースファイル: ${count}`;
+  return job.error ? `${base}\n${job.error}` : base;
 }
 
 function VpnStep({ lang, step, index, showArrow }: { lang: Lang; step: VpnWorkflowStep; index: number; showArrow: boolean }) {

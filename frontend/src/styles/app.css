@@ -1053,6 +1053,13 @@ select {
   margin: 10px 0 12px;
 }
 
+.vpn-import-status {
+  margin: 10px 0 12px;
+  border-color: rgba(215, 154, 43, 0.24);
+  background: rgba(255, 250, 240, 0.8);
+  white-space: pre-line;
+}
+
 .vpn-analysis-note {
   min-height: 74px;
   display: grid;
