@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="vendor/papaparse.min.js"></script>
     <script src="i18n.js"></script>
     <style>
         .org-summary-card {
@@ -587,14 +587,10 @@
             const p3 = fetch('tags.json?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : {})
                 .catch(() => ({}));
-            const p4 = fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(res => res.ok ? res.json() : {})
-                .catch(() => ({}));
 
-            Promise.all([p1, p2, p3, p4])
-                .then(([dataCsv, rdpCsv, tagsJson, configJson]) => {
+            Promise.all([p1, p2, p3])
+                .then(([dataCsv, rdpCsv, tagsJson]) => {
                     tagStore = normalizeTagStore(tagsJson);
-                    portalConfig = configJson || {};
                     const parsedData = Papa.parse(dataCsv, {
                         header: true, skipEmptyLines: true,
                     });
@@ -607,6 +603,7 @@
                     initDropdown();
                     renderTagFilters();
                     renderInitialSummary();
+                    loadPortalConfig();
                 })
                 .catch(error => {
                     console.error('データの取得に失敗しました:', error);
@@ -614,6 +611,19 @@
                     orgSelect.disabled = true;
                 });
         });
+
+        function loadPortalConfig() {
+            fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : {})
+                .then(configJson => {
+                    portalConfig = configJson || {};
+                    const currentOrg = document.getElementById('orgSelect').value;
+                    if (currentOrg) renderEnvironments(currentOrg);
+                })
+                .catch(() => {
+                    portalConfig = {};
+                });
+        }
 
         window.addEventListener('i18n:changed', () => {
             const currentOrg = document.getElementById('orgSelect').value;
