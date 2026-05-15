@@ -54,6 +54,31 @@ GUACAMOLE_PASSWORD=
 http://localhost:8999
 ```
 
+## Windows 远端部署 / 自启动
+
+推荐远端服务器直接从 Git 更新代码，并注册开机自启动：
+
+```powershell
+.\scripts\deploy-remote.ps1 -ComputerName 192.168.20.38 -UserName Administrator -Branch main -InstallDir C:\EnvPortal
+```
+
+该脚本会通过 PowerShell Remoting 登录远端，执行：
+
+- clone / pull `https://github.com/piaoyingji/envPortal.git`
+- 安装 `requirements.txt`
+- 优先使用 `nssm.exe` 注册 `EnvPortal` Windows Service
+- 如果远端没有 nssm，则注册 `EnvPortal Startup` 计划任务作为开机自启动兜底
+
+如果要注册真正的 Windows Service，请把 `nssm.exe` 放在远端以下任一位置后重跑脚本：
+
+```text
+C:\EnvPortal\tools\nssm.exe
+C:\Tools\nssm\nssm.exe
+C:\nssm\nssm.exe
+```
+
+不要把服务器密码或可解密凭据提交到 Git。远程部署脚本会在执行时通过 `Get-Credential` 输入凭据。
+
 `BIND_ADDRESS=0.0.0.0` 时会监听所有网卡，局域网内可使用本机 IP 访问。
 
 Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防火墙规则。默认端口为 `8999` 和 `8088`，规则会开放所有本地地址和远程地址。由于默认 `BIND_ADDRESS=0.0.0.0`，换服务器时通常不需要修改 `.env`。如果当前终端不是管理员权限，启动不会失败，但会打印需要在管理员 PowerShell 中执行的 `New-NetFirewallRule` 命令。

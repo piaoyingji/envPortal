@@ -218,7 +218,7 @@
             border-radius: 10px;
         }
         .home-container {
-            width: min(100% - 2rem, 1440px);
+            width: calc(100% - 2rem);
             margin: 0 auto;
             padding: 0 0 2rem;
         }
@@ -377,7 +377,7 @@
         .tag-org-section {
             grid-column: 1 / -1;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
             gap: 1.5rem;
             margin-bottom: 1.5rem;
         }
@@ -555,8 +555,14 @@
         let isAuthenticated = false; // RDP表示の認証状態
         let currentOrgPage = 1;
         let statusRefreshTimer = null;
+        let statusQueue = [];
+        let registeredStatusCards = [];
+        let activeStatusChecks = 0;
+        let renderToken = 0;
         const ORGS_PER_PAGE = 6;
         const STATUS_REFRESH_MS = 60000;
+        const STATUS_CHECK_CONCURRENCY = 1;
+        const RENDER_BATCH_SIZE = 12;
         const AUTO_TAG_PROVIDERS = [
             autoDbTagsForRow,
             autoRemoteTagsForRow
@@ -589,23 +595,18 @@
                 .then(([dataCsv, rdpCsv, tagsJson, configJson]) => {
                     tagStore = normalizeTagStore(tagsJson);
                     portalConfig = configJson || {};
-                    // data.csv 解析
-                    Papa.parse(dataCsv, {
+                    const parsedData = Papa.parse(dataCsv, {
                         header: true, skipEmptyLines: true,
-                        complete: function(results) { fullData = results.data; }
                     });
-                    // rdp.csv 解析
-                    Papa.parse(rdpCsv, {
+                    const parsedRdp = Papa.parse(rdpCsv, {
                         header: true, skipEmptyLines: true,
-                        complete: function(results) { rdpData = results.data; }
                     });
+                    fullData = parsedData.data || [];
+                    rdpData = parsedRdp.data || [];
                     
-                    // 少し待ってから初期化（PapaParseが非同期のためPromise.all内でも少しラグがある場合がある）
-                    setTimeout(() => {
-                        initDropdown();
-                        renderTagFilters();
-                        renderInitialSummary();
-                    }, 100);
+                    initDropdown();
+                    renderTagFilters();
+                    renderInitialSummary();
                 })
                 .catch(error => {
                     console.error('データの取得に失敗しました:', error);
@@ -718,6 +719,7 @@
         }
 
         function renderInitialSummary() {
+            resetStatusWork();
             const resultsArea = document.getElementById('resultsArea');
             resultsArea.innerHTML = ''; 
             
@@ -848,6 +850,7 @@
         }
 
         function renderEnvironments(selectedOrgKey) {
+            resetStatusWork();
             const resultsArea = document.getElementById('resultsArea');
             resultsArea.innerHTML = ''; 
 
@@ -869,8 +872,6 @@
             `;
             resultsArea.appendChild(banner);
 
-            matchedEnvs.forEach(env => renderEnvironmentCard(env, selectedTags.length > 0));
-
             const backBtnWrapper = document.createElement('div');
             backBtnWrapper.style.gridColumn = '1 / -1';
             backBtnWrapper.style.textAlign = 'center';
@@ -881,10 +882,14 @@
                     ${t('button.backList')}
                 </button>
             `;
-            resultsArea.appendChild(backBtnWrapper);
+            renderEnvironmentCardsBatched(matchedEnvs, selectedTags.length > 0, resultsArea, () => {
+                resultsArea.appendChild(backBtnWrapper);
+                startRegisteredStatusChecks();
+            });
         }
 
         function renderTagEnvironments() {
+            resetStatusWork();
             const resultsArea = document.getElementById('resultsArea');
             resultsArea.innerHTML = '';
 
@@ -901,7 +906,16 @@
                 orgMap.get(org.key).envs.push(env);
             });
 
-            Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label)).forEach(org => {
+            const orgs = Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+            const token = ++renderToken;
+            let orgIndex = 0;
+            const renderNextOrg = () => {
+                if (token !== renderToken) return;
+                if (orgIndex >= orgs.length) {
+                    startRegisteredStatusChecks();
+                    return;
+                }
+                const org = orgs[orgIndex++];
                 const section = document.createElement('div');
                 section.className = 'tag-org-section';
                 section.innerHTML = `
@@ -911,12 +925,37 @@
                     </div>
                 `;
                 resultsArea.appendChild(section);
-                org.envs.forEach(env => renderEnvironmentCard(env, false, section));
-            });
+                renderEnvironmentCardsBatched(org.envs, false, section, renderNextOrg, token);
+            };
+            renderNextOrg();
+        }
+
+        function renderEnvironmentCardsBatched(envs, showOrgTitle, targetArea, onDone, existingToken) {
+            const token = existingToken || ++renderToken;
+            let index = 0;
+            const renderBatch = () => {
+                if (token !== renderToken) return;
+                const fragment = document.createDocumentFragment();
+                const end = Math.min(index + RENDER_BATCH_SIZE, envs.length);
+                for (; index < end; index++) {
+                    fragment.appendChild(createEnvironmentCard(envs[index], showOrgTitle));
+                }
+                targetArea.appendChild(fragment);
+                if (index < envs.length) {
+                    requestAnimationFrame(renderBatch);
+                } else if (onDone) {
+                    onDone();
+                }
+            };
+            renderBatch();
         }
 
         function renderEnvironmentCard(env, showOrgTitle, targetArea) {
             const resultsArea = targetArea || document.getElementById('resultsArea');
+            resultsArea.appendChild(createEnvironmentCard(env, showOrgTitle));
+        }
+
+        function createEnvironmentCard(env, showOrgTitle) {
             const card = document.createElement('div');
             card.className = 'env-card';
 
@@ -1051,8 +1090,6 @@
                     ${rdpInfoHtml}
                 </div>
             `;
-            resultsArea.appendChild(card);
-
             if (safeUrl) {
                 card.dataset.statusUrl = safeUrl;
                 card.dataset.statusBadgeId = statusBadgeId;
@@ -1062,9 +1099,9 @@
                 card.dataset.rdpDownloadBtnId = rdpDownloadBtn ? rdpDownloadBtnId : '';
                 card.dataset.rdpCertBtnId = rdpCertBtn ? rdpCertBtnId : '';
                 card.dataset.guacamoleBtnId = guacamoleBtn ? `${rdpDownloadBtnId}_guac` : '';
-                updateStatusBadge(statusBadgeId, statusMetaId, safeUrl, urlLinkId, browseBtnId, card.dataset.rdpDownloadBtnId, card.dataset.rdpCertBtnId, card.dataset.guacamoleBtnId);
-                scheduleStatusRefresh();
+                registerStatusCard(card);
             }
+            return card;
         }
 
         function expandInlineEnv(orgKey, envIndex) {
@@ -1076,6 +1113,7 @@
             item.innerHTML = '';
             item.classList.add('expanded');
             renderEnvironmentCard(env, false, item);
+            startRegisteredStatusChecks();
             const card = item.querySelector('.env-card');
             if (card) {
                 const closeBtn = document.createElement('button');
@@ -1116,8 +1154,65 @@
 
         function refreshVisibleStatuses() {
             document.querySelectorAll('[data-status-url]').forEach(el => {
-                updateStatusBadge(el.dataset.statusBadgeId, el.dataset.statusMetaId, el.dataset.statusUrl, el.dataset.urlLinkId, el.dataset.browseBtnId, el.dataset.rdpDownloadBtnId, el.dataset.rdpCertBtnId, el.dataset.guacamoleBtnId);
+                if (el.dataset.statusObserved === '1') queueStatusCheck(el, true);
             });
+        }
+
+        function resetStatusWork() {
+            renderToken++;
+            statusQueue = [];
+            registeredStatusCards = [];
+            activeStatusChecks = 0;
+            if (statusRefreshTimer) {
+                clearTimeout(statusRefreshTimer);
+                statusRefreshTimer = null;
+            }
+        }
+
+        function registerStatusCard(card) {
+            if (!card || !card.dataset.statusUrl) return;
+            registeredStatusCards.push(card);
+        }
+
+        function startRegisteredStatusChecks() {
+            registeredStatusCards.forEach(card => {
+                if (card && card.isConnected) {
+                    card.dataset.statusObserved = '1';
+                    queueStatusCheck(card);
+                }
+            });
+            registeredStatusCards = [];
+            scheduleStatusRefresh();
+        }
+
+        function queueStatusCheck(card, force = false) {
+            if (!card || !card.dataset.statusUrl) return;
+            if (!force && card.dataset.statusQueued === '1') return;
+            card.dataset.statusQueued = '1';
+            statusQueue.push(card);
+            runStatusQueue();
+        }
+
+        function runStatusQueue() {
+            while (activeStatusChecks < STATUS_CHECK_CONCURRENCY && statusQueue.length > 0) {
+                const card = statusQueue.shift();
+                if (!card || !card.isConnected) continue;
+                activeStatusChecks++;
+                updateStatusBadge(
+                    card.dataset.statusBadgeId,
+                    card.dataset.statusMetaId,
+                    card.dataset.statusUrl,
+                    card.dataset.urlLinkId,
+                    card.dataset.browseBtnId,
+                    card.dataset.rdpDownloadBtnId,
+                    card.dataset.rdpCertBtnId,
+                    card.dataset.guacamoleBtnId
+                ).finally(() => {
+                    activeStatusChecks = Math.max(0, activeStatusChecks - 1);
+                    if (card && card.isConnected) card.dataset.statusQueued = '0';
+                    runStatusQueue();
+                });
+            }
         }
 
         function updateStatusBadge(statusBadgeId, statusMetaId, safeUrl, urlLinkId, browseBtnId, rdpDownloadBtnId, rdpCertBtnId, guacamoleBtnId) {
@@ -1126,7 +1221,7 @@
             const startedAt = performance.now();
             const signal = AbortSignal.timeout ? AbortSignal.timeout(1800) : undefined;
             if (badge) badge.style.display = 'flex';
-            fetch('env_check.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
+            return fetch('env_check.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
                 .then(res => res.text())
                 .then(text => {
                     try {
@@ -1160,11 +1255,11 @@
                     }
                 })
                 .catch(() => {
-                    fetch('ping.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
+                    return fetch('ping.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
                         .then(res => res.text())
                         .then(txt => {
                             if (!badge) return;
-                            const status = txt.trim();
+                            const status = normalizeHttpStatus(txt);
                             renderStatusBadge(badge, status);
                             updateUrlAccess(status, urlLinkId, browseBtnId, rdpDownloadBtnId, rdpCertBtnId, guacamoleBtnId);
                             if (meta) {
@@ -1212,6 +1307,11 @@
             if (rdpDownloadBtn) rdpDownloadBtn.disabled = !isAvailable;
             if (rdpCertBtn) rdpCertBtn.disabled = !isAvailable;
             if (guacamoleBtn) guacamoleBtn.disabled = !isAvailable;
+        }
+
+        function normalizeHttpStatus(value) {
+            const status = String(value || '').trim();
+            return /^\d{3}$/.test(status) ? status : 'ERROR';
         }
 
         function openBrowse(button) {
@@ -1446,7 +1546,7 @@
                 badge.style.backgroundColor = '#ffebee';
                 badge.style.color = '#c62828';
                 badge.style.border = '1px solid #ef9a9a';
-                badge.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#f44336;"></span>${t('status.down')} (HTTP ${status})`;
+                badge.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#f44336;"></span>${t('status.down')} (HTTP ${sanitizeHTML(status)})`;
             } else {
                 badge.style.backgroundColor = '#ffebee';
                 badge.style.color = '#c62828';
