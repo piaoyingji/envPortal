@@ -11,9 +11,16 @@ if (-not (Test-Path (Join-Path $InstallDir "run.py"))) {
     throw "run.py was not found under InstallDir: $InstallDir"
 }
 
-$pythonCommand = Get-Command py -ErrorAction SilentlyContinue
-$pythonExe = if ($pythonCommand) { $pythonCommand.Source } else { (Get-Command python -ErrorAction Stop).Source }
-$pythonArgs = if ($pythonCommand) { "-3 `"$InstallDir\run.py`"" } else { "`"$InstallDir\run.py`"" }
+$pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+if (-not $pythonCommand) {
+    $pythonCommand = Get-Command py -ErrorAction Stop
+}
+$pythonExe = $pythonCommand.Source
+$pythonArgs = if ((Split-Path -Leaf $pythonExe).ToLowerInvariant() -eq "py.exe") {
+    "-3 `"$InstallDir\run.py`""
+} else {
+    "`"$InstallDir\run.py`""
+}
 
 if (-not $NssmPath) {
     $candidatePaths = @(
