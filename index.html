@@ -298,6 +298,29 @@
             gap: 0.5rem;
             min-height: 38px;
         }
+        .tag-filter-group {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 5.5rem 1fr;
+            gap: 0.75rem;
+            align-items: start;
+        }
+        .tag-filter-group + .tag-filter-group {
+            margin-top: 0.35rem;
+        }
+        .tag-filter-group-label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            line-height: 30px;
+            white-space: nowrap;
+        }
+        .tag-filter-group-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            min-width: 0;
+        }
         .tag-filter-btn {
             border: 1px solid;
             border-radius: 4px;
@@ -323,6 +346,15 @@
             border-radius: 4px;
             padding: 0.25rem 0.7rem;
             cursor: pointer;
+        }
+        @media (max-width: 640px) {
+            .tag-filter-group {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+            }
+            .tag-filter-group-label {
+                line-height: 1.4;
+            }
         }
         .tag-empty {
             color: var(--text-muted);
@@ -563,6 +595,13 @@
         const STATUS_REFRESH_MS = 60000;
         const STATUS_CHECK_CONCURRENCY = 1;
         const RENDER_BATCH_SIZE = 12;
+        const TAG_FILTER_GROUPS = [
+            { key: 'product', label: '製品' },
+            { key: 'system', label: '環境' },
+            { key: 'software', label: 'ソフト' },
+            { key: 'version', label: '版数' },
+            { key: 'other', label: 'その他' }
+        ];
         const AUTO_TAG_PROVIDERS = [
             autoDbTagsForRow,
             autoRemoteTagsForRow
@@ -678,17 +717,32 @@
                 tagPanel.innerHTML = `<span class="tag-empty">${t('filter.noTags')}</span>`;
                 return;
             }
-            Array.from(tagSet).sort().forEach(tag => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'tag-filter-btn' + (selectedTags.includes(tag) ? ' active' : '');
-                btn.textContent = tag;
-                const color = tagColor(tag);
-                btn.style.borderColor = color.border;
-                btn.style.color = color.text;
-                btn.style.backgroundColor = selectedTags.includes(tag) ? color.text : color.bg;
-                btn.onclick = () => toggleTag(tag);
-                tagPanel.appendChild(btn);
+            const groups = groupTags(Array.from(tagSet).sort());
+            TAG_FILTER_GROUPS.forEach(group => {
+                const tags = groups[group.key] || [];
+                if (tags.length === 0) return;
+                const row = document.createElement('div');
+                row.className = 'tag-filter-group';
+                const label = document.createElement('div');
+                label.className = 'tag-filter-group-label';
+                label.textContent = group.label;
+                const items = document.createElement('div');
+                items.className = 'tag-filter-group-items';
+                tags.forEach(tag => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'tag-filter-btn' + (selectedTags.includes(tag) ? ' active' : '');
+                    btn.textContent = tag;
+                    const color = tagColor(tag);
+                    btn.style.borderColor = color.border;
+                    btn.style.color = color.text;
+                    btn.style.backgroundColor = selectedTags.includes(tag) ? color.text : color.bg;
+                    btn.onclick = () => toggleTag(tag);
+                    items.appendChild(btn);
+                });
+                row.appendChild(label);
+                row.appendChild(items);
+                tagPanel.appendChild(row);
             });
 
             if (selectedTags.length > 0) {
@@ -702,7 +756,14 @@
                     renderTagFilters();
                     renderActiveView();
                 };
-                tagPanel.appendChild(clearBtn);
+                const row = document.createElement('div');
+                row.className = 'tag-filter-group';
+                row.innerHTML = '<div class="tag-filter-group-label"></div>';
+                const items = document.createElement('div');
+                items.className = 'tag-filter-group-items';
+                items.appendChild(clearBtn);
+                row.appendChild(items);
+                tagPanel.appendChild(row);
             }
         }
 
@@ -1650,6 +1711,26 @@
                 const rowTags = allTagsForRow(row);
                 return selectedTags.every(tag => rowTags.includes(tag));
             });
+        }
+
+        function groupTags(tags) {
+            return tags.reduce((groups, tag) => {
+                const group = tagFilterGroupKey(tag);
+                if (!groups[group]) groups[group] = [];
+                groups[group].push(tag);
+                return groups;
+            }, {});
+        }
+
+        function tagFilterGroupKey(tag) {
+            const text = String(tag || '').trim();
+            const upper = text.toUpperCase();
+            if (/^(PHR|UHR|UPDS|DEMO)$/.test(upper)) return 'product';
+            if (/^(社内|受入|庶務事務|教育|検証|開発|テスト|デモ|カスタマイズ)$/.test(text)) return 'system';
+            if (/^(ORACLE|POSTGRESQL|RDP|SSH)$/.test(upper)) return 'software';
+            if (/^V\d+(?:\.\d+)*$/i.test(text)) return 'version';
+            if (/^(ORACLE|POSTGRESQL)\s+\d+/i.test(text)) return 'version';
+            return 'other';
         }
 
         function tagColor(tag) {
