@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.28] - 2026-05-19
+
+### Changed
+
+- Restyled the legacy `index.html`, `admin.html`, and `rdp.html` pages with a restrained Base UI inspired visual language.
+- Changed tag chips and tag filters to use soft translucent category colors instead of monochrome chips or dark selected states.
+- Added the application version display to the header.
+
 ## [2.1.27] - 2026-05-01
 
 ### Changed
