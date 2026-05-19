@@ -126,10 +126,17 @@ h1, h2, h3 {
     right: 1rem;
     top: 1.5rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.5rem;
     color: var(--text-muted);
     font-size: 0.85rem;
+}
+
+.language-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .language-switch select {
@@ -144,6 +151,15 @@ h1, h2, h3 {
 .language-switch select option {
     color: var(--text-main);
     background: #fff;
+}
+
+.app-version {
+    align-self: flex-end;
+    color: #6b7f8f;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    padding-right: 0.1rem;
 }
 
 .container {

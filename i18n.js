@@ -1,11 +1,13 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
+const APP_VERSION_FALLBACK = '2.5.23';
 
 const I18N_MESSAGES = {
     ja: {
         'app.searchTitle': '環境検索',
         'app.adminTitle': 'データ管理',
         'app.rdpTitle': 'サーバ接続情報管理',
+        'app.version': 'Version {version}',
         'header.searchDesc': '特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索',
         'header.adminDesc': '既存の環境情報を修正、または新しい組織の情報を追加します',
         'header.rdpDesc': 'Windows / Linux などのサーバ遠隔接続情報を管理します',
@@ -122,6 +124,7 @@ const I18N_MESSAGES = {
         'app.searchTitle': '环境检索',
         'app.adminTitle': '数据管理',
         'app.rdpTitle': '远程连接信息管理',
+        'app.version': 'Version {version}',
         'header.searchDesc': '快速检索指定机构的测试环境和生产环境登录信息',
         'header.adminDesc': '维护既有环境信息，或为机构追加新的环境档案',
         'header.rdpDesc': '维护 Windows / Linux 等服务器远程连接信息',
@@ -272,6 +275,24 @@ function applyI18n(root = document) {
     if (titleKey) document.title = `EnvPortal - ${t(titleKey)}`;
     const switcher = document.getElementById('langSelect');
     if (switcher) switcher.value = lang;
+    const versionLabel = document.getElementById('appVersionLabel');
+    if (versionLabel) versionLabel.textContent = t('app.version', { version: versionLabel.dataset.version || APP_VERSION_FALLBACK });
+}
+
+function loadAppVersion() {
+    const versionLabel = document.getElementById('appVersionLabel');
+    if (!versionLabel) return;
+    fetch('VERSION?t=' + new Date().getTime(), { cache: 'no-store' })
+        .then(res => res.ok ? res.text() : APP_VERSION_FALLBACK)
+        .then(text => {
+            const version = String(text || APP_VERSION_FALLBACK).trim() || APP_VERSION_FALLBACK;
+            versionLabel.dataset.version = version;
+            versionLabel.textContent = t('app.version', { version });
+        })
+        .catch(() => {
+            versionLabel.dataset.version = APP_VERSION_FALLBACK;
+            versionLabel.textContent = t('app.version', { version: APP_VERSION_FALLBACK });
+        });
 }
 
 function initI18n() {
@@ -280,14 +301,18 @@ function initI18n() {
         const wrap = document.createElement('div');
         wrap.className = 'language-switch';
         wrap.innerHTML = `
-            <label for="langSelect">${t('lang.label')}</label>
-            <select id="langSelect">
-                <option value="ja">日本語</option>
-                <option value="zh">中文</option>
-            </select>
+            <div class="language-control">
+                <label for="langSelect">${t('lang.label')}</label>
+                <select id="langSelect">
+                    <option value="ja">日本語</option>
+                    <option value="zh">中文</option>
+                </select>
+            </div>
+            <div id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</div>
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
+        loadAppVersion();
     }
     applyI18n();
 }
