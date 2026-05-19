@@ -1050,58 +1050,83 @@
             const browseBtnId = 'browse_' + Math.random().toString(36).substr(2, 9);
             const rdpDownloadBtnId = 'rdpdl_' + Math.random().toString(36).substr(2, 9);
             const rdpCertBtnId = 'rdpcert_' + Math.random().toString(36).substr(2, 9);
+            const dbRdpDownloadBtnId = 'dbrdpdl_' + Math.random().toString(36).substr(2, 9);
+            const dbRdpCertBtnId = 'dbrdpcert_' + Math.random().toString(36).substr(2, 9);
 
-            const envHost = getHost(safeUrl);
-            const matchedRdp = rdpData.find(rdp => getHost(rdp['接続先(IP:Port)']) === envHost && envHost !== '');
-            const remoteType = matchedRdp ? detectRemoteType(matchedRdp) : '';
-            const remoteTagHtml = remoteType ? renderTagChip(remoteType, false) : '';
-            const remoteTarget = matchedRdp ? sanitizeHTML(matchedRdp['接続先(IP:Port)']) : '';
-            const remoteUser = matchedRdp ? sanitizeHTML(matchedRdp['RDPユーザー名']) : '';
-            const rdpDownloadBtn = matchedRdp && remoteType === 'RDP' && remoteTarget
-                ? `<button id="${rdpDownloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
-                : '';
             const guacamoleAvailable = portalConfig.guacamoleEnabled && portalConfig.guacamoleAvailable !== false;
-            const guacamoleBtn = matchedRdp && remoteType === 'RDP' && remoteTarget && guacamoleAvailable
-                ? `<button id="${rdpDownloadBtnId}_guac" class="icon-btn" disabled onclick="openGuacamoleConnection('${escapeJs(matchedRdp['接続先(IP:Port)'])}', '${escapeJs(matchedRdp['RDPユーザー名'])}', '${escapeJs(matchedRdp['RDPパスワード'])}')" title="${t('button.openGuacamole')}" aria-label="${t('button.openGuacamole')}">${remoteConnectIcon()}</button>`
-                : '';
-            const rdpCertBtn = matchedRdp && remoteType === 'RDP'
-                ? `<button id="${rdpCertBtnId}" class="icon-btn" disabled onclick="downloadRdpSigningCert()" title="${t('button.downloadRdpCert')}" aria-label="${t('button.downloadRdpCert')}">${certificateIcon()}</button>`
-                : '';
+            const envHost = getHost(safeUrl);
+            const dbHost = getHost(env['DB名']);
+            const matchedRdp = findRemoteByHost(envHost);
+            const matchedDbRdp = dbHost && dbHost !== envHost ? findRemoteByHost(dbHost) : null;
+            const remoteType = matchedRdp ? detectRemoteType(matchedRdp) : '';
+            const dbRemoteType = matchedDbRdp ? detectRemoteType(matchedDbRdp) : '';
+            const rdpDownloadBtnIds = [];
+            const rdpCertBtnIds = [];
+            const guacamoleBtnIds = [];
 
             let rdpTagHtml = '';
             let rdpInfoHtml = '';
 
-            if (matchedRdp) {
+            function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix) {
+                if (!remote) return '';
+                const currentRemoteType = detectRemoteType(remote);
+                const remoteTagHtml = currentRemoteType ? renderTagChip(currentRemoteType, false) : '';
+                const remoteTarget = sanitizeHTML(remote['接続先(IP:Port)']);
+                const remoteUser = sanitizeHTML(remote['RDPユーザー名']);
+                const downloadBtn = currentRemoteType === 'RDP' && remoteTarget
+                    ? `<button id="${downloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(remote['接続先(IP:Port)'])}', '${escapeJs(remote['RDPユーザー名'])}', '${escapeJs(remote['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}${fileSuffix}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
+                    : '';
+                const guacamoleBtnId = `${downloadBtnId}_guac`;
+                const guacamoleBtn = currentRemoteType === 'RDP' && remoteTarget && guacamoleAvailable
+                    ? `<button id="${guacamoleBtnId}" class="icon-btn" disabled onclick="openGuacamoleConnection('${escapeJs(remote['接続先(IP:Port)'])}', '${escapeJs(remote['RDPユーザー名'])}', '${escapeJs(remote['RDPパスワード'])}')" title="${t('button.openGuacamole')}" aria-label="${t('button.openGuacamole')}">${remoteConnectIcon()}</button>`
+                    : '';
+                const certBtn = currentRemoteType === 'RDP'
+                    ? `<button id="${certBtnId}" class="icon-btn" disabled onclick="downloadRdpSigningCert()" title="${t('button.downloadRdpCert')}" aria-label="${t('button.downloadRdpCert')}">${certificateIcon()}</button>`
+                    : '';
+
+                if (downloadBtn) rdpDownloadBtnIds.push(downloadBtnId);
+                if (certBtn) rdpCertBtnIds.push(certBtnId);
+                if (guacamoleBtn) guacamoleBtnIds.push(guacamoleBtnId);
+
                 if (isAuthenticated) {
-                    rdpInfoHtml = `
+                    return `
                         <div class="info-subcard">
                             <div class="db-section-title">
-                                <span>${t('section.rdp')}</span>
+                                <span>${sectionLabel}</span>
                                 ${remoteTagHtml ? `<span class="db-title-tags">${remoteTagHtml}</span>` : ''}
                             </div>
                             <div class="env-detail">
                                 <div class="env-detail-label" style="color:var(--text-main);">${t('label.remoteUser')}</div>
                                 <div class="env-detail-value">${remoteUser || `<span style="color:#aaa;">${t('unset.value')}</span>`}</div>
-                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(matchedRdp['RDPユーザー名'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
+                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(remote['RDPユーザー名'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
                             </div>
                             <div class="env-detail">
                                 <div class="env-detail-label" style="color:var(--text-main);">${t('label.remotePassword')}</div>
-                                <div class="env-detail-value">${sanitizeHTML(matchedRdp['RDPパスワード']) || `<span style="color:#aaa;">${t('unset.value')}</span>`}</div>
-                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(matchedRdp['RDPパスワード'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
+                                <div class="env-detail-value">${sanitizeHTML(remote['RDPパスワード']) || `<span style="color:#aaa;">${t('unset.value')}</span>`}</div>
+                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(remote['RDPパスワード'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
                             </div>
                             <div class="env-detail" style="border: none;">
                                 <div class="env-detail-label" style="color:var(--text-main);">${t('label.connection')}</div>
                                 <div class="env-detail-value">${remoteTarget || `<span style="color:#aaa;">${t('unset.value')}</span>`}</div>
-                                ${rdpDownloadBtn}
+                                ${downloadBtn}
                                 ${guacamoleBtn}
-                                ${rdpCertBtn}
-                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(matchedRdp['接続先(IP:Port)'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
+                                ${certBtn}
+                                <button class="icon-btn" onclick="copyText('${sanitizeHTML(remote['接続先(IP:Port)'])}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
                             </div>
                         </div>
                     `;
-                } else {
-                    rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteType || t('label.remoteAccess')}</span>`;
                 }
+                return '';
+            }
+
+            rdpInfoHtml = [
+                renderRemoteInfo(matchedRdp, t('section.rdp'), rdpDownloadBtnId, rdpCertBtnId, ''),
+                renderRemoteInfo(matchedDbRdp, t('section.dbRdp'), dbRdpDownloadBtnId, dbRdpCertBtnId, '_DB')
+            ].join('');
+
+            if ((matchedRdp || matchedDbRdp) && !isAuthenticated) {
+                const remoteLabels = uniqueTags([remoteType, dbRemoteType]).join(' / ') || t('label.remoteAccess');
+                rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }
 
             card.innerHTML = `
@@ -1167,9 +1192,9 @@
                 card.dataset.statusMetaId = statusMetaId;
                 card.dataset.urlLinkId = urlLinkId;
                 card.dataset.browseBtnId = browseBtnId;
-                card.dataset.rdpDownloadBtnId = rdpDownloadBtn ? rdpDownloadBtnId : '';
-                card.dataset.rdpCertBtnId = rdpCertBtn ? rdpCertBtnId : '';
-                card.dataset.guacamoleBtnId = guacamoleBtn ? `${rdpDownloadBtnId}_guac` : '';
+                card.dataset.rdpDownloadBtnId = rdpDownloadBtnIds.join(',');
+                card.dataset.rdpCertBtnId = rdpCertBtnIds.join(',');
+                card.dataset.guacamoleBtnId = guacamoleBtnIds.join(',');
                 registerStatusCard(card);
             }
             return card;
@@ -1362,9 +1387,9 @@
             const isAvailable = String(status).trim() === '200';
             const link = document.getElementById(urlLinkId);
             const browseBtn = document.getElementById(browseBtnId);
-            const rdpDownloadBtn = document.getElementById(rdpDownloadBtnId);
-            const rdpCertBtn = document.getElementById(rdpCertBtnId);
-            const guacamoleBtn = document.getElementById(guacamoleBtnId);
+            const rdpDownloadBtns = getElementsByCsvIds(rdpDownloadBtnId);
+            const rdpCertBtns = getElementsByCsvIds(rdpCertBtnId);
+            const guacamoleBtns = getElementsByCsvIds(guacamoleBtnId);
             if (link) {
                 if (isAvailable) {
                     link.href = link.dataset.href || link.textContent;
@@ -1375,9 +1400,16 @@
                 }
             }
             if (browseBtn) browseBtn.disabled = !isAvailable;
-            if (rdpDownloadBtn) rdpDownloadBtn.disabled = !isAvailable;
-            if (rdpCertBtn) rdpCertBtn.disabled = !isAvailable;
-            if (guacamoleBtn) guacamoleBtn.disabled = !isAvailable;
+            rdpDownloadBtns.forEach(btn => { btn.disabled = !isAvailable; });
+            rdpCertBtns.forEach(btn => { btn.disabled = !isAvailable; });
+            guacamoleBtns.forEach(btn => { btn.disabled = !isAvailable; });
+        }
+
+        function getElementsByCsvIds(ids) {
+            return String(ids || '')
+                .split(',')
+                .map(id => document.getElementById(id.trim()))
+                .filter(Boolean);
         }
 
         function normalizeHttpStatus(value) {
@@ -1668,10 +1700,13 @@
 
         function autoRemoteTagsForRow(row) {
             const envHost = getHost(row['URL']);
-            if (!envHost) return [];
-            const matched = rdpData.find(remote => getHost(remote['接続先(IP:Port)']) === envHost);
-            const type = matched ? detectRemoteType(matched) : '';
-            return type ? [type] : [];
+            const dbHost = getHost(row['DB名']);
+            return uniqueTags([envHost, dbHost]
+                .filter(Boolean)
+                .map(host => findRemoteByHost(host))
+                .filter(Boolean)
+                .map(remote => detectRemoteType(remote))
+                .filter(Boolean));
         }
 
         function detectRemoteType(remote) {
@@ -1793,6 +1828,12 @@
             } catch (e) {
                 return str.split('/')[0].split(':')[0].trim();
             }
+        }
+
+        function findRemoteByHost(host) {
+            const normalizedHost = String(host || '').trim();
+            if (!normalizedHost) return null;
+            return rdpData.find(rdp => getHost(rdp['接続先(IP:Port)']) === normalizedHost) || null;
         }
 
         function openPwdModal() {
