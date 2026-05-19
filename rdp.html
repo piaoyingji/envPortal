@@ -215,6 +215,72 @@
                 grid-column: span 12;
             }
         }
+        /* Base UI inspired redesign overrides */
+        .actions-bar,
+        .org-card,
+        .rdp-editor-card,
+        .rdp-editor-card-header,
+        .rdp-editor-card-footer {
+            background: #ffffff !important;
+            border-color: var(--border) !important;
+            box-shadow: var(--shadow-card) !important;
+        }
+        .actions-bar {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .org-card,
+        .rdp-editor-card {
+            border-radius: 8px !important;
+        }
+        .org-code-header {
+            color: var(--text-main) !important;
+            border-left: 0 !important;
+        }
+        .org-block-header {
+            background: #ffffff !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .org-header-title {
+            color: var(--text-main) !important;
+            border-left: 0 !important;
+            padding-left: 0 !important;
+        }
+        .rdp-editor-card-header {
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .edit-field label,
+        .admin-stat {
+            color: var(--text-muted) !important;
+        }
+        .rdp-editor-card input,
+        .rdp-editor-card select {
+            background: #ffffff !important;
+            border-color: var(--border) !important;
+            box-shadow: none !important;
+        }
+        .pagination button {
+            background: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-main) !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            font-weight: 560 !important;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: var(--surface-hover) !important;
+            border-color: #b8b8be !important;
+            color: var(--text-main) !important;
+        }
+        .del-btn {
+            background: #ffffff !important;
+            color: var(--danger) !important;
+            border-color: #f1b8b3 !important;
+        }
+        .del-btn:hover {
+            background: #fff5f4 !important;
+            color: var(--danger) !important;
+        }
     </style>
 </head>
 <body data-title-key="app.rdpTitle">

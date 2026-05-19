@@ -342,6 +342,82 @@
                 grid-template-columns: 1fr;
             }
         }
+        /* Base UI inspired redesign overrides */
+        .actions-bar,
+        .org-card,
+        .env-editor-card,
+        .env-editor-card-header,
+        .editor-section,
+        .editor-section-head,
+        .org-title-editor,
+        .installed-product-editor {
+            background: #ffffff !important;
+            border-color: var(--border) !important;
+            box-shadow: var(--shadow-card) !important;
+        }
+        .actions-bar {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .org-card,
+        .env-editor-card {
+            border-radius: 8px !important;
+        }
+        .org-code-header,
+        .org-title-editor {
+            color: var(--text-main) !important;
+            border-left: 0 !important;
+        }
+        .env-editor-card-header {
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .editor-section {
+            border-radius: 8px !important;
+        }
+        .editor-section-head {
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .editor-section-title {
+            color: var(--text-main) !important;
+        }
+        .edit-field label,
+        .section-label,
+        .admin-stat {
+            color: var(--text-muted) !important;
+        }
+        .env-editor-card input,
+        .env-editor-card select,
+        .org-title-editor input,
+        .installed-product-editor select {
+            background: #ffffff !important;
+            border-color: var(--border) !important;
+            box-shadow: none !important;
+        }
+        .db-probe-btn,
+        .add-env-btn,
+        .pagination button {
+            background: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-main) !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+        }
+        .db-probe-btn:hover,
+        .add-env-btn:hover,
+        .pagination button:hover:not(:disabled) {
+            background: var(--surface-hover) !important;
+            border-color: #b8b8be !important;
+            color: var(--text-main) !important;
+        }
+        .del-btn {
+            background: #ffffff !important;
+            color: var(--danger) !important;
+            border-color: #f1b8b3 !important;
+        }
+        .del-btn:hover {
+            background: #fff5f4 !important;
+            color: var(--danger) !important;
+        }
     </style>
 </head>
 <body data-title-key="app.adminTitle">
