@@ -439,6 +439,12 @@
             margin-top: 1rem;
             min-width: 0;
         }
+        .db-remote-section {
+            border-top: 1px solid #b8e2ea;
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            min-width: 0;
+        }
         .db-section-title {
             color: var(--primary);
             font-weight: bold;
@@ -1056,25 +1062,30 @@
             const guacamoleAvailable = portalConfig.guacamoleEnabled && portalConfig.guacamoleAvailable !== false;
             const envHost = getHost(safeUrl);
             const dbHost = getHost(env['DB名']);
-            const matchedRdp = findRemoteByHost(envHost);
-            const matchedDbRdp = dbHost && dbHost !== envHost ? findRemoteByHost(dbHost) : null;
-            const remoteType = matchedRdp ? detectRemoteType(matchedRdp) : '';
-            const dbRemoteType = matchedDbRdp ? detectRemoteType(matchedDbRdp) : '';
+            const dbEndpoint = getEndpoint(env['DB名']);
+            const matchedDbRdps = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
+            const matchedRdps = findRemotesByHost(envHost)
+                .filter(remote => !matchedDbRdps.includes(remote));
+            const remoteTypes = uniqueTags(matchedRdps.map(remote => detectRemoteType(remote)).filter(Boolean));
+            const dbRemoteTypes = uniqueTags(matchedDbRdps.map(remote => detectRemoteType(remote)).filter(Boolean));
             const rdpDownloadBtnIds = [];
             const rdpCertBtnIds = [];
             const guacamoleBtnIds = [];
 
             let rdpTagHtml = '';
-            let rdpInfoHtml = '';
+            let apRdpInfoHtml = '';
+            let dbRdpInfoHtml = '';
 
-            function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix) {
+            function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix, itemIndex, totalItems, embedded = false) {
                 if (!remote) return '';
                 const currentRemoteType = detectRemoteType(remote);
                 const remoteTagHtml = currentRemoteType ? renderTagChip(currentRemoteType, false) : '';
                 const remoteTarget = sanitizeHTML(remote['接続先(IP:Port)']);
                 const remoteUser = sanitizeHTML(remote['RDPユーザー名']);
+                const sectionTitle = totalItems > 1 ? `${sectionLabel} ${itemIndex + 1}` : sectionLabel;
+                const wrapperClass = embedded ? 'db-remote-section' : 'info-subcard';
                 const downloadBtn = currentRemoteType === 'RDP' && remoteTarget
-                    ? `<button id="${downloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(remote['接続先(IP:Port)'])}', '${escapeJs(remote['RDPユーザー名'])}', '${escapeJs(remote['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}${fileSuffix}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
+                    ? `<button id="${downloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(remote['接続先(IP:Port)'])}', '${escapeJs(remote['RDPユーザー名'])}', '${escapeJs(remote['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}${fileSuffix}${totalItems > 1 ? '_' + (itemIndex + 1) : ''}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
                     : '';
                 const guacamoleBtnId = `${downloadBtnId}_guac`;
                 const guacamoleBtn = currentRemoteType === 'RDP' && remoteTarget && guacamoleAvailable
@@ -1090,9 +1101,9 @@
 
                 if (isAuthenticated) {
                     return `
-                        <div class="info-subcard">
+                        <div class="${wrapperClass}">
                             <div class="db-section-title">
-                                <span>${sectionLabel}</span>
+                                <span>${sectionTitle}</span>
                                 ${remoteTagHtml ? `<span class="db-title-tags">${remoteTagHtml}</span>` : ''}
                             </div>
                             <div class="env-detail">
@@ -1119,13 +1130,24 @@
                 return '';
             }
 
-            rdpInfoHtml = [
-                renderRemoteInfo(matchedRdp, t('section.rdp'), rdpDownloadBtnId, rdpCertBtnId, ''),
-                renderRemoteInfo(matchedDbRdp, t('section.dbRdp'), dbRdpDownloadBtnId, dbRdpCertBtnId, '_DB')
-            ].join('');
+            function renderRemoteGroup(remotes, sectionLabel, idPrefix, certIdPrefix, fileSuffix, embedded = false) {
+                return remotes.map((remote, index) => renderRemoteInfo(
+                    remote,
+                    sectionLabel,
+                    `${idPrefix}_${index}`,
+                    `${certIdPrefix}_${index}`,
+                    fileSuffix,
+                    index,
+                    remotes.length,
+                    embedded
+                )).join('');
+            }
 
-            if ((matchedRdp || matchedDbRdp) && !isAuthenticated) {
-                const remoteLabels = uniqueTags([remoteType, dbRemoteType]).join(' / ') || t('label.remoteAccess');
+            apRdpInfoHtml = renderRemoteGroup(matchedRdps, t('section.rdp'), rdpDownloadBtnId, rdpCertBtnId, '');
+            dbRdpInfoHtml = renderRemoteGroup(matchedDbRdps, t('section.dbRdp'), dbRdpDownloadBtnId, dbRdpCertBtnId, '_DB', true);
+
+            if ((matchedRdps.length || matchedDbRdps.length) && !isAuthenticated) {
+                const remoteLabels = uniqueTags(remoteTypes.concat(dbRemoteTypes)).join(' / ') || t('label.remoteAccess');
                 rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }
 
@@ -1182,8 +1204,9 @@
                             <div class="env-detail-value"><span>${dbPwd || `<span style="color:#aaa;">${t('unset.value')}</span>`}</span></div>
                             <button class="icon-btn" onclick="copyText('${dbPwd}')" title="${t('button.copy')}" aria-label="${t('button.copy')}" ${!dbPwd ? 'disabled' : ''}>${copyIcon()}</button>
                         </div>
+                        ${dbRdpInfoHtml}
                     </div>
-                    ${rdpInfoHtml}
+                    ${apRdpInfoHtml}
                 </div>
             `;
             if (safeUrl) {
@@ -1703,7 +1726,7 @@
             const dbHost = getHost(row['DB名']);
             return uniqueTags([envHost, dbHost]
                 .filter(Boolean)
-                .map(host => findRemoteByHost(host))
+                .flatMap(host => findRemotesByHost(host))
                 .filter(Boolean)
                 .map(remote => detectRemoteType(remote))
                 .filter(Boolean));
@@ -1817,23 +1840,43 @@
         }
 
         // --- RDP追加機能用関数 ---
-        function getHost(str) {
-            if (!str) return '';
-            // URLからホスト名抽出、または IP:Port から IP抽出
+        function getEndpoint(str) {
+            if (!str) return { host: '', port: '' };
+            const value = String(str).trim();
             try {
-                if (str.includes('://')) {
-                    return new URL(str).hostname;
+                if (value.includes('://')) {
+                    const url = new URL(value);
+                    return { host: url.hostname, port: url.port };
                 }
-                return str.split(':')[0].trim();
+                const firstPart = value.split('/')[0];
+                const portMatch = firstPart.match(/^(.+):(\d+)$/);
+                if (portMatch) return { host: portMatch[1].trim(), port: portMatch[2] };
+                return { host: firstPart.trim(), port: '' };
             } catch (e) {
-                return str.split('/')[0].split(':')[0].trim();
+                const firstPart = value.split('/')[0];
+                const portMatch = firstPart.match(/^(.+):(\d+)$/);
+                if (portMatch) return { host: portMatch[1].trim(), port: portMatch[2] };
+                return { host: firstPart.split(':')[0].trim(), port: '' };
             }
         }
 
-        function findRemoteByHost(host) {
+        function getHost(str) {
+            return getEndpoint(str).host;
+        }
+
+        function sameEndpoint(left, right) {
+            return left.host && right.host && left.host === right.host && left.port === right.port;
+        }
+
+        function findRemotesByHost(host) {
             const normalizedHost = String(host || '').trim();
-            if (!normalizedHost) return null;
-            return rdpData.find(rdp => getHost(rdp['接続先(IP:Port)']) === normalizedHost) || null;
+            if (!normalizedHost) return [];
+            return rdpData.filter(rdp => getHost(rdp['接続先(IP:Port)']) === normalizedHost);
+        }
+
+        function findRemotesByEndpoint(endpoint) {
+            if (!endpoint || !endpoint.host || !endpoint.port) return [];
+            return rdpData.filter(rdp => sameEndpoint(getEndpoint(rdp['接続先(IP:Port)']), endpoint));
         }
 
         function openPwdModal() {
