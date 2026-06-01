@@ -1015,6 +1015,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_csv.jsp": "data.csv",
             "/update_rdp.jsp": "rdp.csv",
             "/update_tags.jsp": "tags.json",
+            "/update_production.jsp": "production.csv",
         }
         if path in update_map:
             (BASE_DIR / update_map[path]).write_text(body, encoding="utf-8-sig", newline="")

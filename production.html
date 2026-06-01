@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnvPortal - 本番环境</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="i18n.js"></script>
+    <style>
+        .production-toolbar {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-card);
+        }
+        .production-toolbar select,
+        .production-toolbar input {
+            min-height: 38px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.45rem 0.65rem;
+            background: #fff;
+        }
+        .production-stat {
+            color: var(--text-muted);
+            font-size: 0.86rem;
+            margin-left: auto;
+        }
+        .production-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+        .production-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+            min-height: 132px;
+        }
+        .production-card-head {
+            padding: 1rem;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: flex-start;
+            background: #fbfdff;
+        }
+        .production-title {
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+        .production-subtitle {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-top: 0.2rem;
+            overflow-wrap: anywhere;
+        }
+        .production-tag {
+            border: 1px solid #c8e5ec;
+            background: #eef9fb;
+            color: #087ea4;
+            border-radius: 999px;
+            padding: 0.2rem 0.55rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .production-blocks {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            align-items: stretch;
+        }
+        .production-section {
+            padding: 0.85rem 0.9rem;
+            border-right: 1px solid var(--border);
+            min-width: 0;
+        }
+        .production-section:last-child {
+            border-right: 0;
+        }
+        .production-section-title {
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            font-size: 0.86rem;
+        }
+        .production-detail {
+            display: grid;
+            grid-template-columns: minmax(72px, 0.72fr) minmax(0, 1fr) 30px;
+            gap: 0.4rem;
+            align-items: center;
+            padding: 0.22rem 0;
+        }
+        .production-detail-label {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+        .production-detail-value {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            color: var(--text-main);
+            font-size: 0.84rem;
+            line-height: 1.35;
+        }
+        .production-placeholder {
+            color: #a0aeb8;
+            font-size: 0.82rem;
+            padding-top: 0.2rem;
+        }
+        .production-detail .icon-btn {
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+        }
+        @media (max-width: 1180px) {
+            .production-card {
+                grid-template-columns: 1fr;
+            }
+            .production-card-head {
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .production-blocks {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .production-section:nth-child(2n) {
+                border-right: 0;
+            }
+            .production-section:nth-child(n + 3) {
+                border-top: 1px solid var(--border);
+            }
+        }
+        @media (max-width: 640px) {
+            .production-blocks {
+                grid-template-columns: 1fr;
+            }
+            .production-section {
+                border-right: 0;
+                border-top: 1px solid var(--border);
+            }
+            .production-section:first-child {
+                border-top: 0;
+            }
+            .production-detail {
+                grid-template-columns: minmax(90px, 0.7fr) minmax(0, 1fr) 30px;
+            }
+            .production-stat {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body data-title-key="app.productionTitle">
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>Env<span>Portal</span></h1>
+            <p data-i18n="header.productionDesc">本番環境の接続情報を検索・表示します</p>
+        </div>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html" data-i18n="nav.search">環境検索</a>
+                <a href="admin.html" data-i18n="nav.admin">データ管理</a>
+                <a href="rdp.html" data-i18n="nav.rdp">サーバ接続情報管理</a>
+                <a href="production.html" class="active" data-i18n="nav.production">本番环境</a>
+                <a href="production-admin.html" data-i18n="nav.productionAdmin">本番環境データ</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container" style="max-width: 1400px; width: 95%; margin: 0 auto;">
+        <div class="production-toolbar">
+            <select id="orgFilter" onchange="renderProduction()">
+                <option value="" data-i18n="select.allOrgs">▼ 全ての組織を表示</option>
+            </select>
+            <input id="keywordFilter" type="search" data-i18n-placeholder="label.keyword" placeholder="キーワード" oninput="renderProduction()">
+            <span id="productionStat" class="production-stat" data-i18n="state.loading">読み込み中...</span>
+        </div>
+        <div id="productionArea" class="production-grid">
+            <div class="empty-state" style="grid-column:1 / -1;" data-i18n="state.loading">データ読み込み中...</div>
+        </div>
+    </div>
+
+    <div id="toast" data-i18n="toast.copied">コピーしました</div>
+
+    <script>
+        let productionData = [];
+
+        const FIELD_GROUPS = [
+            { title: 'section.productionVpn', fields: [
+                ['label.prodVpn', '使用VPN'],
+                ['label.prodVpnIp', 'VPN IP'],
+                ['label.prodVpnUser', 'VPNユーザー名'],
+                ['label.prodVpnPassword', 'VPNパスワード']
+            ]},
+            { title: 'section.productionBastion', fields: [
+                ['label.prodBastionIp', '踏み台IP'],
+                ['label.prodBastionUser', '踏み台ユーザー名'],
+                ['label.prodBastionPassword', '踏み台パスワード']
+            ]},
+            { title: 'section.productionAp', fields: [
+                ['label.prodApIp', 'AP IP'],
+                ['label.prodApUser', 'APユーザー名'],
+                ['label.prodApPassword', 'APパスワード']
+            ]},
+            { title: 'section.productionDb', fields: [
+                ['label.prodDbIp', 'DB IP'],
+                ['label.prodDbUser', 'DBユーザー名'],
+                ['label.prodDbPassword', 'DBパスワード']
+            ]}
+        ];
+
+        window.addEventListener('DOMContentLoaded', loadProductionData);
+        window.addEventListener('i18n:changed', () => {
+            initFilter();
+            renderProduction();
+        });
+
+        function loadProductionData() {
+            fetch('production.csv?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(response => response.ok ? response.text() : '')
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            productionData = results.data.filter(hasProductionInfo);
+                            initFilter();
+                            renderProduction();
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('production.csv load failed:', error);
+                    productionData = [];
+                    initFilter();
+                    renderProduction();
+                });
+        }
+
+        function initFilter() {
+            const select = document.getElementById('orgFilter');
+            const current = select.value;
+            const orgs = Array.from(new Set(productionData.map(row => (row['組織名'] || '').trim()).filter(Boolean))).sort();
+            select.innerHTML = `<option value="">${t('select.allOrgs')}</option>`;
+            orgs.forEach(org => {
+                const opt = document.createElement('option');
+                opt.value = org;
+                opt.textContent = org;
+                select.appendChild(opt);
+            });
+            if (orgs.includes(current)) select.value = current;
+        }
+
+        function renderProduction() {
+            const area = document.getElementById('productionArea');
+            const org = document.getElementById('orgFilter').value;
+            const keyword = document.getElementById('keywordFilter').value.trim().toLowerCase();
+            const rows = productionData.filter(row => {
+                if (org && row['組織名'] !== org) return false;
+                if (!keyword) return true;
+                return Object.values(row).some(value => String(value || '').toLowerCase().includes(keyword));
+            });
+
+            document.getElementById('productionStat').innerHTML = t('production.stat', {
+                org: new Set(rows.map(row => row['組織名']).filter(Boolean)).size,
+                production: rows.length
+            });
+
+            if (rows.length === 0) {
+                area.innerHTML = `<div class="empty-state" style="grid-column:1 / -1;">${t('state.noData')}</div>`;
+                return;
+            }
+
+            area.innerHTML = rows.map(renderProductionCard).join('');
+        }
+
+        function renderProductionCard(row) {
+            const sections = FIELD_GROUPS.map(group => renderSection(row, group)).join('');
+            return `
+                <div class="production-card">
+                    <div class="production-card-head">
+                        <div>
+                            <div class="production-title">${escapeHtml(row['構築環境名'] || t('unset.name'))}</div>
+                            <div class="production-subtitle">${escapeHtml(row['組織名'] || t('unset.org'))}</div>
+                        </div>
+                        <span class="production-tag">${t('nav.production')}</span>
+                    </div>
+                    <div class="production-blocks">${sections}</div>
+                </div>
+            `;
+        }
+
+        function renderSection(row, group) {
+            const details = group.fields.map(([labelKey, field]) => {
+                const value = (row[field] || '').trim();
+                if (!value) return '';
+                return `
+                    <div class="production-detail">
+                        <div class="production-detail-label">${t(labelKey)}</div>
+                        <div class="production-detail-value">${escapeHtml(value)}</div>
+                        <button class="icon-btn" onclick="copyText('${escapeJs(value)}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>
+                    </div>
+                `;
+            }).filter(Boolean).join('');
+            return `
+                <div class="production-section">
+                    <div class="production-section-title">${t(group.title)}</div>
+                    ${details || `<div class="production-placeholder">${t('unset.value')}</div>`}
+                </div>
+            `;
+        }
+
+        function hasProductionInfo(row) {
+            return FIELD_GROUPS.some(group => group.fields.some(([, field]) => (row[field] || '').trim() !== ''));
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => showToast(t('toast.copied')));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeJs(str) {
+            return escapeHtml(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        function copyIcon() {
+            return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+        }
+    </script>
+</body>
+</html>
