@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.32] - 2026-06-02
+
+### Added
+
+- Added client IP display before the application version in the shared header.
+- Added `client_info.jsp` as a lightweight endpoint for current request client metadata.
+
 ## [2.1.28] - 2026-05-19
 
 ### Changed

@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.1.31';
+const APP_VERSION_FALLBACK = '2.1.32';
 
 const I18N_MESSAGES = {
     ja: {
@@ -10,6 +10,7 @@ const I18N_MESSAGES = {
         'app.productionTitle': '本番環境',
         'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
+        'app.clientIp': 'Client IP {ip}',
         'header.searchDesc': '特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索',
         'header.adminDesc': '既存の環境情報を修正、または新しい組織の情報を追加します',
         'header.rdpDesc': 'Windows / Linux などのサーバ遠隔接続情報を管理します',
@@ -153,6 +154,7 @@ const I18N_MESSAGES = {
         'app.productionTitle': '本番環境',
         'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
+        'app.clientIp': '客户端IP {ip}',
         'header.searchDesc': '快速检索指定机构的测试环境和生产环境登录信息',
         'header.adminDesc': '维护既有环境信息，或为机构追加新的环境档案',
         'header.rdpDesc': '维护 Windows / Linux 等服务器远程连接信息',
@@ -329,6 +331,8 @@ function applyI18n(root = document) {
     if (switcher) switcher.value = lang;
     const versionLabel = document.getElementById('appVersionLabel');
     if (versionLabel) versionLabel.textContent = t('app.version', { version: versionLabel.dataset.version || APP_VERSION_FALLBACK });
+    const clientIpLabel = document.getElementById('clientIpLabel');
+    if (clientIpLabel && clientIpLabel.dataset.ip) clientIpLabel.textContent = t('app.clientIp', { ip: clientIpLabel.dataset.ip });
 }
 
 function loadAppVersion() {
@@ -347,6 +351,23 @@ function loadAppVersion() {
         });
 }
 
+function loadClientIp() {
+    const clientIpLabel = document.getElementById('clientIpLabel');
+    if (!clientIpLabel) return;
+    fetch('client_info.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(config => {
+            const ip = String((config && config.clientIp) || '').trim();
+            if (!ip) return;
+            clientIpLabel.dataset.ip = ip;
+            clientIpLabel.textContent = t('app.clientIp', { ip });
+            clientIpLabel.hidden = false;
+        })
+        .catch(() => {
+            clientIpLabel.hidden = true;
+        });
+}
+
 function initI18n() {
     const logoArea = document.querySelector('.logo-area');
     if (logoArea && !document.getElementById('langSelect')) {
@@ -360,10 +381,14 @@ function initI18n() {
                     <option value="zh">中文</option>
                 </select>
             </div>
-            <div id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</div>
+            <div class="client-meta">
+                <span id="clientIpLabel" class="client-ip" hidden></span>
+                <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
+            </div>
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
+        loadClientIp();
         loadAppVersion();
     }
     applyI18n();

@@ -1315,6 +1315,12 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({"ok": trusted, "user": user, "ip": client_ip}), "application/json; charset=utf-8")
             return
 
+        if path == "/client_info.jsp":
+            self.send_bytes(json_bytes({
+                "clientIp": client_ip_from_request(self.headers, self.client_address),
+            }), "application/json; charset=utf-8")
+            return
+
         if path == "/org_readings_status.jsp":
             self.send_bytes(json_bytes(org_reading_status()), "application/json; charset=utf-8")
             return
@@ -1333,6 +1339,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         if path == "/portal_config.jsp":
             guac_status = guacamole_status()
             self.send_bytes(json_bytes({
+                "clientIp": client_ip_from_request(self.headers, self.client_address),
                 "guacamoleEnabled": bool(GUACAMOLE_URL),
                 "guacamoleAvailable": guac_status["available"],
                 "guacamoleStatus": guac_status["message"],

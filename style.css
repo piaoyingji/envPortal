@@ -148,12 +148,34 @@ h1, h2, h3 {
     background: #fff;
 }
 
-.app-version {
+.client-meta {
     align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.client-ip,
+.app-version {
     color: #6b7f8f;
     font-size: 0.72rem;
     font-weight: 600;
     line-height: 1;
+}
+
+.client-ip {
+    color: var(--text-muted);
+    padding-right: 0.55rem;
+    border-right: 1px solid var(--border);
+}
+
+.client-ip[hidden] {
+    display: none;
+}
+
+.app-version {
     padding-right: 0.1rem;
 }
 
