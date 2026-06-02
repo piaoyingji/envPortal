@@ -1,0 +1,4 @@
+# Windows users allowed to view protected connection info without a password.
+# One user per line. Domain is optional.
+X03025
+TOKYO\X03025

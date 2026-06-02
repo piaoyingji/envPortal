@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
     <script src="i18n.js"></script>
+    <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
             background: linear-gradient(180deg, #ffffff 0%, #f7fcfd 100%);
@@ -191,57 +192,227 @@
                 transform: translateY(0);
             }
         }
-        .nav-org-filter {
-            margin-left: auto;
-            min-width: 320px;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .nav-org-filter label {
-            color: rgba(255,255,255,0.72);
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-        .nav-org-filter select {
-            min-height: 34px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-        }
-        .nav-org-filter select option {
-            color: var(--text-main);
-            background: #fff;
-        }
-        .tag-filter-card {
-            padding: 1rem 1.25rem;
-            border-radius: 10px;
-        }
         .home-container {
             width: calc(100% - 2rem);
             margin: 0 auto;
             padding: 0 0 2rem;
         }
+        .home-layout {
+            display: grid;
+            grid-template-columns: 300px minmax(0, 1fr);
+            gap: 1rem;
+            align-items: start;
+        }
+        .side-filter-stack {
+            position: sticky;
+            top: 0.75rem;
+            max-height: calc(100vh - 1.5rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            overflow: hidden;
+        }
+        .org-filter-card,
+        .tag-filter-card {
+            padding: 0.95rem 0.65rem 0.65rem;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .org-filter-card {
+            flex: 0 0 auto;
+            max-height: 44vh;
+        }
+        .tag-filter-card {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .org-filter-menu {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .org-filter-menu summary {
+            list-style: none;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.98rem;
+            font-weight: 700;
+            padding: 0 0.35rem 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .org-filter-menu summary::-webkit-details-marker {
+            display: none;
+        }
+        .org-filter-menu summary::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 7px solid #94a3b8;
+        }
+        .org-filter-menu:not([open]) summary::after {
+            transform: rotate(180deg);
+        }
+        .org-filter-body {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+        .org-filter-search {
+            margin: 0 0.35rem;
+            width: calc(100% - 0.7rem);
+            min-height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 0.42rem 0.55rem;
+            background: #fff;
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+        .org-filter-list {
+            overflow-y: auto;
+            padding: 0 0.2rem 0 0.35rem;
+            scrollbar-width: thin;
+        }
+        .org-filter-group-label {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin: 0.65rem 0 0.25rem;
+        }
+        .org-filter-group {
+            margin: 0.1rem 0;
+        }
+        .org-filter-group summary {
+            list-style: none;
+            cursor: pointer;
+            color: #1f3b57;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.35rem 0.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .org-filter-group summary::-webkit-details-marker {
+            display: none;
+        }
+        .org-filter-group summary::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #94a3b8;
+        }
+        .org-filter-group:not([open]) summary::after {
+            transform: rotate(180deg);
+        }
+        .org-filter-group-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            padding-left: 0.1rem;
+        }
+        .org-filter-btn {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            border-radius: 3px;
+            padding: 0.34rem 0.2rem;
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr) auto;
+            gap: 0.45rem;
+            align-items: center;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.85rem;
+        }
+        .org-filter-btn:hover,
+        .org-filter-btn.active {
+            background: #f8fafc;
+        }
+        .org-filter-btn.active {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .org-filter-check {
+            width: 19px;
+            height: 19px;
+            border: 2px solid #cbd5df;
+            border-radius: 3px;
+            background: #f8fbfc;
+            display: inline-block;
+            position: relative;
+        }
+        .org-filter-btn.active .org-filter-check {
+            border-color: var(--primary);
+            background: #fff;
+        }
+        .org-filter-btn.active .org-filter-check::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 1px;
+            background: var(--primary);
+        }
+        .org-filter-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .org-filter-code {
+            color: #8aa6bf;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
         @media (max-width: 1100px) {
             .home-container {
                 width: calc(100% - 1rem);
+            }
+            .home-layout {
+                grid-template-columns: 1fr;
+            }
+            .side-filter-stack {
+                position: static;
+                max-height: none;
+            }
+            .org-filter-card,
+            .tag-filter-card {
+                position: static;
+                max-height: none;
             }
         }
         .tag-filter-title {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 0.8rem;
+            gap: 0.5rem;
+            margin-bottom: 0.65rem;
+            padding: 0 0.35rem;
         }
         .tag-filter-title label {
             color: var(--text-main);
             font-size: 0.98rem;
-            font-weight: 600;
+            font-weight: 700;
         }
         .tag-filter-hint {
-            color: var(--text-muted);
-            font-size: 0.78rem;
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 7px solid #94a3b8;
+            overflow: hidden;
+            color: transparent;
+            flex: 0 0 auto;
         }
         .tag-chip {
             display: inline-block;
@@ -294,57 +465,102 @@
         }
         .tag-filter-panel {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            flex-direction: column;
+            gap: 0.1rem;
             min-height: 38px;
+            overflow-y: auto;
+            padding: 0 0.2rem 0 0.35rem;
+            scrollbar-width: thin;
         }
         .tag-filter-group {
             width: 100%;
-            display: grid;
-            grid-template-columns: 5.5rem 1fr;
-            gap: 0.75rem;
-            align-items: start;
+            display: block;
         }
         .tag-filter-group + .tag-filter-group {
-            margin-top: 0.35rem;
+            margin-top: 0;
         }
         .tag-filter-group-label {
-            color: var(--text-muted);
-            font-size: 0.78rem;
+            color: #64748b;
+            font-size: 0.72rem;
             font-weight: 700;
-            line-height: 30px;
+            line-height: 1.4;
             white-space: nowrap;
+            margin: 0.65rem 0 0.25rem;
         }
         .tag-filter-group-items {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            flex-direction: column;
+            gap: 0.1rem;
             min-width: 0;
         }
         .tag-filter-btn {
-            border: 1px solid;
-            border-radius: 4px;
-            padding: 0.22rem 0.68rem;
-            font-size: 0.85rem;
-            font-weight: 500;
+            width: 100%;
+            border: 0;
+            border-radius: 2px;
+            padding: 0.32rem 0.15rem;
+            font-size: 0.86rem;
+            font-weight: 400;
             cursor: pointer;
             transition: all 0.2s;
-            background: #fff;
+            background: transparent;
+            color: var(--text-main);
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.45rem;
+            text-align: left;
         }
         .tag-filter-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(15,23,42,0.08);
+            background: #f8fafc;
         }
         .tag-filter-btn.active {
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+            color: #00b050;
+            font-weight: 500;
+        }
+        .tag-filter-check {
+            width: 19px;
+            height: 19px;
+            border: 2px solid #cbd5df;
+            border-radius: 3px;
+            background: #f8fbfc;
+            display: inline-block;
+            position: relative;
+        }
+        .tag-filter-btn.active .tag-filter-check {
+            border-color: #00b050;
+            background: #fff;
+        }
+        .tag-filter-btn.active .tag-filter-check::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 1px;
+            background: #00b050;
+        }
+        .tag-filter-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tag-filter-count {
+            color: #8aa6bf;
+            font-size: 0.74rem;
+            white-space: nowrap;
+        }
+        .tag-filter-btn.active .tag-filter-count {
+            color: #6aa878;
         }
         .tag-clear-btn {
-            border: 1px dashed var(--border);
+            width: 100%;
+            border: 1px solid #1683ff;
             background: #fff;
-            color: var(--text-muted);
-            border-radius: 4px;
-            padding: 0.25rem 0.7rem;
+            color: #1683ff;
+            border-radius: 2px;
+            padding: 0.62rem 0.7rem;
             cursor: pointer;
+            margin-top: 0.6rem;
+            font-size: 0.9rem;
         }
         @media (max-width: 640px) {
             .tag-filter-group {
@@ -357,18 +573,14 @@
         }
         .tag-empty {
             color: var(--text-muted);
-            line-height: 38px;
+            line-height: 1.5;
+            padding: 0.5rem 0.35rem;
         }
         @media (max-width: 860px) {
             .main-nav-inner {
                 flex-wrap: wrap;
                 gap: 0.75rem;
                 padding-bottom: 0.75rem;
-            }
-            .nav-org-filter {
-                width: 100%;
-                margin-left: 0;
-                min-width: 0;
             }
         }
         .env-org-title {
@@ -548,26 +760,18 @@
         .active-org-code {
             color: #a1a1aa !important;
         }
-        .nav-org-filter label {
-            color: var(--text-muted) !important;
-        }
-        .nav-org-filter select {
-            background: #ffffff !important;
-            color: var(--text-main) !important;
-            border-color: var(--border) !important;
-        }
         .tag-filter-card {
-            padding: 1.15rem 1.25rem !important;
+            padding: 0.95rem 0.65rem 0.65rem !important;
         }
         .tag-filter-title {
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+            border-bottom: 0;
         }
         .tag-filter-btn,
         .tag-clear-btn,
         .tag-chip,
         .env-status-meta span {
-            border-radius: 6px !important;
+            border-radius: 3px !important;
             box-shadow: none !important;
         }
         .tag-filter-btn:hover {
@@ -610,32 +814,43 @@
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html" class="active" data-i18n="nav.search">環境検索</a>
-                <a href="admin.html" data-i18n="nav.admin">データ管理</a>
-                <a href="rdp.html" data-i18n="nav.rdp">サーバ接続情報管理</a>
-                <a href="production.html" data-i18n="nav.production">本番环境</a>
-                <a href="production-admin.html" data-i18n="nav.productionAdmin">本番環境データ</a>
-                <div class="nav-org-filter">
-                    <label for="orgSelect" data-i18n="nav.org">対象組織</label>
-                    <select id="orgSelect">
-                        <option value="">-- データ読み込み中... --</option>
-                    </select>
-                </div>
+                <a href="admin.html" data-protected-nav="true" data-i18n="nav.admin" hidden>データ管理</a>
+                <a href="rdp.html" data-protected-nav="true" data-i18n="nav.rdp" hidden>サーバ接続情報管理</a>
+                <a id="productionNavLink" href="production.html" data-protected-nav="true" data-i18n="nav.production" onclick="syncProductionNavLink()" hidden>本番環境</a>
+                <a href="production-admin.html" data-protected-nav="true" data-i18n="nav.productionAdmin" hidden>本番環境データ管理</a>
             </div>
         </nav>
     </header>
 
-    <div class="container home-container">
-        <div class="card tag-filter-card">
-            <div class="tag-filter-title">
-                <label data-i18n="filter.tags">タグで絞り込み</label>
-                <span class="tag-filter-hint" data-i18n="filter.tagsHint">複数選択で AND 条件</span>
-            </div>
-            <div id="tagFilterPanel" class="tag-filter-panel"></div>
-        </div>
+    <select id="orgSelect" hidden aria-hidden="true">
+        <option value="">-- データ読み込み中... --</option>
+    </select>
 
-        <div id="resultsArea" class="env-grid">
-            <div style="grid-column: 1 / -1;" class="empty-state">
-                <span data-i18n="state.loading">データ読み込み中...</span>
+    <div class="container home-container">
+        <div class="home-layout">
+            <div class="side-filter-stack">
+                <div class="card org-filter-card">
+                    <details class="org-filter-menu" open>
+                        <summary>組織選択</summary>
+                        <div class="org-filter-body">
+                            <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
+                            <div id="orgFilterList" class="org-filter-list"></div>
+                        </div>
+                    </details>
+                </div>
+                <div class="card tag-filter-card">
+                    <div class="tag-filter-title">
+                        <label>Tags</label>
+                        <span class="tag-filter-hint" data-i18n="filter.tagsHint">複数選択で AND 条件</span>
+                    </div>
+                    <div id="tagFilterPanel" class="tag-filter-panel"></div>
+                </div>
+            </div>
+
+            <div id="resultsArea" class="env-grid">
+                <div style="grid-column: 1 / -1;" class="empty-state">
+                    <span data-i18n="state.loading">データ読み込み中...</span>
+                </div>
             </div>
         </div>
     </div>
@@ -692,7 +907,6 @@
             autoDbTagsForRow,
             autoRemoteTagsForRow
         ];
-
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
             
@@ -701,6 +915,7 @@
             if (expiry && new Date().getTime() < parseInt(expiry)) {
                 isAuthenticated = true;
             }
+            checkWindowsAuth();
 
             // data.csv の読み込み
             const p1 = fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
@@ -726,6 +941,7 @@
                     rdpData = parsedRdp.data || [];
                     
                     initDropdown();
+                    renderOrgFilterMenu();
                     renderTagFilters();
                     renderInitialSummary();
                     loadPortalConfig();
@@ -750,12 +966,48 @@
                 });
         }
 
+        function checkWindowsAuth() {
+            fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : { ok: false })
+                .then(result => {
+                    setProtectedNavVisible(Boolean(result && result.ok));
+                    if (!result || !result.ok) return;
+                    isAuthenticated = true;
+                    localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
+                    closePwdModal();
+                    renderActiveView();
+                })
+                .catch(() => setProtectedNavVisible(false));
+        }
+
+        function setProtectedNavVisible(visible) {
+            document.querySelectorAll('[data-protected-nav="true"]').forEach(link => {
+                link.hidden = !visible;
+            });
+            syncProductionNavLink();
+        }
+
+        function syncProductionNavLink() {
+            const link = document.getElementById('productionNavLink');
+            if (!link) return;
+            const orgName = selectedOrgNameForProduction();
+            link.href = orgName ? `production.html?org=${encodeURIComponent(orgName)}` : 'production.html';
+        }
+
+        function selectedOrgNameForProduction() {
+            const orgKey = document.getElementById('orgSelect').value;
+            if (!orgKey) return '';
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            return org ? org.name : '';
+        }
+
         window.addEventListener('i18n:changed', () => {
             const currentOrg = document.getElementById('orgSelect').value;
             initDropdown();
             if (currentOrg && Array.from(document.getElementById('orgSelect').options).some(opt => opt.value === currentOrg)) {
                 document.getElementById('orgSelect').value = currentOrg;
             }
+            renderOrgFilterMenu();
             renderTagFilters();
             renderActiveView();
         });
@@ -782,6 +1034,7 @@
 
             orgSelect.addEventListener('change', (e) => {
                 currentOrgPage = 1;
+                renderOrgFilterMenu();
                 if (e.target.value === "") {
                     // プルダウンが空になったら初期画面に戻る
                     renderInitialSummary();
@@ -791,11 +1044,145 @@
             });
         }
 
+        function renderOrgFilterMenu() {
+            const list = document.getElementById('orgFilterList');
+            if (!list) return;
+            const searchInput = document.getElementById('orgFilterSearch');
+            const keyword = (searchInput ? searchInput.value : '').trim().toLowerCase();
+            const currentOrg = document.getElementById('orgSelect').value;
+            const orgs = getOrgOptions().filter(org => {
+                if (!keyword) return true;
+                return `${org.name} ${org.code} ${org.label}`.toLowerCase().includes(keyword);
+            });
+
+            list.innerHTML = '';
+            if (orgs.length === 0) {
+                list.innerHTML = `<div class="tag-empty">該当する組織がありません</div>`;
+                return;
+            }
+
+            const grouped = groupOrgsByKana(orgs);
+            grouped.forEach(group => {
+                const groupEl = document.createElement('details');
+                groupEl.className = 'org-filter-group';
+                groupEl.open = true;
+                const label = document.createElement('summary');
+                label.textContent = group.label;
+                groupEl.appendChild(label);
+
+                const items = document.createElement('div');
+                items.className = 'org-filter-group-items';
+
+                group.items.forEach(org => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'org-filter-btn' + (currentOrg === org.key ? ' active' : '');
+                    btn.title = org.label;
+                    btn.innerHTML = `
+                        <span class="org-filter-check" aria-hidden="true"></span>
+                        <span class="org-filter-name">${sanitizeHTML(org.name)}</span>
+                        ${org.code ? `<span class="org-filter-code">${sanitizeHTML(org.code)}</span>` : ''}
+                    `;
+                    btn.onclick = () => selectOrgFromMenu(org.key);
+                    items.appendChild(btn);
+                });
+                groupEl.appendChild(items);
+                list.appendChild(groupEl);
+            });
+        }
+
+        function getOrgOptions() {
+            const orgMap = new Map();
+            fullData.forEach(item => {
+                const group = getOrgGroup(item);
+                if (!group.isUnset && !orgMap.has(group.key)) orgMap.set(group.key, group);
+            });
+            return Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+        }
+
+        function groupOrgsByKana(orgs) {
+            const order = [
+                'あ', 'い', 'う', 'え', 'お',
+                'か', 'き', 'く', 'け', 'こ',
+                'さ', 'し', 'す', 'せ', 'そ',
+                'た', 'ち', 'つ', 'て', 'と',
+                'な', 'に', 'ぬ', 'ね', 'の',
+                'は', 'ひ', 'ふ', 'へ', 'ほ',
+                'ま', 'み', 'む', 'め', 'も',
+                'や', 'ゆ', 'よ',
+                'ら', 'り', 'る', 'れ', 'ろ',
+                'わ', 'を', 'ん',
+                'その他'
+            ];
+            const groups = new Map(order.map(label => [label, []]));
+            orgs.forEach(org => {
+                groups.get(kanaGroupForName(org.name)).push(org);
+            });
+            return order
+                .map(label => ({ label, items: groups.get(label) || [] }))
+                .filter(group => group.items.length > 0);
+        }
+
+        function kanaGroupForName(name) {
+            const text = String(name || '').trim().normalize('NFKC');
+            if (!text) return 'その他';
+            const reading = (window.ORG_READING_OVERRIDES && window.ORG_READING_OVERRIDES[text]) || text;
+            const first = toHiragana(String(reading).charAt(0));
+            const normalized = normalizeKanaInitial(first);
+            if (normalized) return normalized;
+            return 'その他';
+        }
+
+        function normalizeKanaInitial(char) {
+            const map = {
+                'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お',
+                'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
+                'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
+                'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
+                'っ': 'つ',
+                'ば': 'は', 'び': 'ひ', 'ぶ': 'ふ', 'べ': 'へ', 'ぼ': 'ほ',
+                'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ',
+                'ゃ': 'や', 'ゅ': 'ゆ', 'ょ': 'よ'
+            };
+            if (map[char]) return map[char];
+            if ('あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'.includes(char)) return char;
+            return '';
+        }
+
+        function toHiragana(char) {
+            const code = char.charCodeAt(0);
+            if (code >= 0x30A1 && code <= 0x30F6) {
+                return String.fromCharCode(code - 0x60);
+            }
+            return char;
+        }
+
+        function selectOrgFromMenu(orgKey) {
+            currentOrgPage = 1;
+            const orgSelect = document.getElementById('orgSelect');
+            if (orgSelect.value === orgKey) {
+                orgSelect.value = '';
+                renderOrgFilterMenu();
+                syncProductionNavLink();
+                renderInitialSummary();
+                return;
+            }
+            orgSelect.value = orgKey;
+            renderOrgFilterMenu();
+            syncProductionNavLink();
+            renderEnvironments(orgKey);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function renderTagFilters() {
             const tagPanel = document.getElementById('tagFilterPanel');
             const tagSet = new Set();
+            const tagCounts = {};
             fullData.forEach(row => {
-                allTagsForRow(row).forEach(tag => tagSet.add(tag));
+                allTagsForRow(row).forEach(tag => {
+                    tagSet.add(tag);
+                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                });
             });
 
             tagPanel.innerHTML = '';
@@ -818,11 +1205,12 @@
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'tag-filter-btn' + (selectedTags.includes(tag) ? ' active' : '');
-                    btn.textContent = tag;
-                    const color = tagColor(tag);
-                    btn.style.borderColor = color.border;
-                    btn.style.color = color.text;
-                    btn.style.backgroundColor = selectedTags.includes(tag) ? color.activeBg : color.bg;
+                    btn.title = tag;
+                    btn.innerHTML = `
+                        <span class="tag-filter-check" aria-hidden="true"></span>
+                        <span class="tag-filter-name">${sanitizeHTML(tag)}</span>
+                        <span class="tag-filter-count">(${tagCounts[tag] || 0})</span>
+                    `;
                     btn.onclick = () => toggleTag(tag);
                     items.appendChild(btn);
                 });
@@ -831,26 +1219,17 @@
                 tagPanel.appendChild(row);
             });
 
-            if (selectedTags.length > 0) {
-                const clearBtn = document.createElement('button');
-                clearBtn.type = 'button';
-                clearBtn.className = 'tag-clear-btn';
-                clearBtn.textContent = t('filter.clear');
-                clearBtn.onclick = () => {
-                    selectedTags = [];
-                    currentOrgPage = 1;
-                    renderTagFilters();
-                    renderActiveView();
-                };
-                const row = document.createElement('div');
-                row.className = 'tag-filter-group';
-                row.innerHTML = '<div class="tag-filter-group-label"></div>';
-                const items = document.createElement('div');
-                items.className = 'tag-filter-group-items';
-                items.appendChild(clearBtn);
-                row.appendChild(items);
-                tagPanel.appendChild(row);
-            }
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'tag-clear-btn';
+            clearBtn.textContent = 'All';
+            clearBtn.onclick = () => {
+                selectedTags = [];
+                currentOrgPage = 1;
+                renderTagFilters();
+                renderActiveView();
+            };
+            tagPanel.appendChild(clearBtn);
         }
 
         function toggleTag(tag) {
@@ -881,6 +1260,8 @@
             resultsArea.innerHTML = ''; 
             
             document.getElementById('orgSelect').value = '';
+            renderOrgFilterMenu();
+            syncProductionNavLink();
 
             if (selectedTags.length > 0) {
                 renderTagEnvironments();
@@ -966,6 +1347,8 @@
 
         function selectOrg(orgKey) {
             document.getElementById('orgSelect').value = orgKey;
+            renderOrgFilterMenu();
+            syncProductionNavLink();
             renderEnvironments(orgKey);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }

@@ -3,35 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EnvPortal - 本番环境</title>
+    <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="i18n.js"></script>
+    <script src="org_readings.js"></script>
     <style>
-        .production-toolbar {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            flex-wrap: wrap;
-            box-shadow: var(--shadow-card);
-        }
-        .production-toolbar select,
-        .production-toolbar input {
-            min-height: 38px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 0.45rem 0.65rem;
-            background: #fff;
-        }
         .production-stat {
             color: var(--text-muted);
             font-size: 0.86rem;
-            margin-left: auto;
+            margin-bottom: 0.85rem;
+            text-align: right;
+        }
+        .home-container {
+            width: calc(100% - 2rem);
+            margin: 0 auto;
+            padding: 0 0 2rem;
+        }
+        .home-layout {
+            display: grid;
+            grid-template-columns: 300px minmax(0, 1fr);
+            gap: 1rem;
+            align-items: start;
+        }
+        .side-filter-stack {
+            position: sticky;
+            top: 0.75rem;
+            max-height: calc(100vh - 1.5rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            overflow: hidden;
+        }
+        .org-filter-card {
+            padding: 0.95rem 0.65rem 0.65rem;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .org-filter-card {
+            flex: 0 0 auto;
+            max-height: 44vh;
+        }
+        .org-filter-menu {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .org-filter-menu summary {
+            list-style: none;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.98rem;
+            font-weight: 700;
+            padding: 0 0.35rem 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .org-filter-menu summary::-webkit-details-marker {
+            display: none;
+        }
+        .org-filter-menu summary::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 7px solid #94a3b8;
+        }
+        .org-filter-menu:not([open]) summary::after {
+            transform: rotate(180deg);
+        }
+        .org-filter-body {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+        .org-filter-search {
+            margin: 0 0.35rem;
+            min-height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 0.42rem 0.55rem;
+            background: #fff;
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+        .org-filter-search {
+            width: calc(100% - 0.7rem);
+        }
+        .org-filter-list {
+            overflow-y: auto;
+            padding: 0 0.2rem 0 0.35rem;
+            scrollbar-width: thin;
+        }
+        .org-filter-group-label {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin: 0.65rem 0 0.25rem;
+        }
+        .org-filter-group {
+            margin: 0.1rem 0;
+        }
+        .org-filter-group summary {
+            list-style: none;
+            cursor: pointer;
+            color: #1f3b57;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.35rem 0.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .org-filter-group summary::-webkit-details-marker {
+            display: none;
+        }
+        .org-filter-group summary::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #94a3b8;
+        }
+        .org-filter-group:not([open]) summary::after {
+            transform: rotate(180deg);
+        }
+        .org-filter-group-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            padding-left: 0.1rem;
+        }
+        .org-filter-btn {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            border-radius: 3px;
+            padding: 0.34rem 0.2rem;
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            gap: 0.45rem;
+            align-items: center;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 0.85rem;
+        }
+        .org-filter-btn:hover,
+        .org-filter-btn.active {
+            background: #f8fafc;
+        }
+        .org-filter-btn.active {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .org-filter-check {
+            width: 19px;
+            height: 19px;
+            border: 2px solid #cbd5df;
+            border-radius: 3px;
+            background: #f8fbfc;
+            display: inline-block;
+            position: relative;
+        }
+        .org-filter-btn.active .org-filter-check {
+            border-color: var(--primary);
+            background: #fff;
+        }
+        .org-filter-btn.active .org-filter-check::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 1px;
+            background: var(--primary);
+        }
+        .org-filter-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .production-grid {
             display: flex;
@@ -129,7 +285,20 @@
             height: 30px;
             min-width: 30px;
         }
-        @media (max-width: 1180px) {
+        @media (max-width: 1100px) {
+            .home-container {
+                width: calc(100% - 1rem);
+            }
+            .home-layout {
+                grid-template-columns: 1fr;
+            }
+            .side-filter-stack {
+                position: static;
+                max-height: none;
+            }
+            .org-filter-card {
+                max-height: none;
+            }
             .production-card {
                 grid-template-columns: 1fr;
             }
@@ -179,24 +348,34 @@
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html" data-i18n="nav.search">環境検索</a>
-                <a href="admin.html" data-i18n="nav.admin">データ管理</a>
-                <a href="rdp.html" data-i18n="nav.rdp">サーバ接続情報管理</a>
-                <a href="production.html" class="active" data-i18n="nav.production">本番环境</a>
-                <a href="production-admin.html" data-i18n="nav.productionAdmin">本番環境データ</a>
+                <a href="admin.html" data-protected-nav="true" data-i18n="nav.admin" hidden>データ管理</a>
+                <a href="rdp.html" data-protected-nav="true" data-i18n="nav.rdp" hidden>サーバ接続情報管理</a>
+                <a href="production.html" class="active" data-i18n="nav.production">本番環境</a>
+                <a href="production-admin.html" data-protected-nav="true" data-i18n="nav.productionAdmin" hidden>本番環境データ管理</a>
             </div>
         </nav>
     </header>
 
-    <div class="container" style="max-width: 1400px; width: 95%; margin: 0 auto;">
-        <div class="production-toolbar">
-            <select id="orgFilter" onchange="renderProduction()">
-                <option value="" data-i18n="select.allOrgs">▼ 全ての組織を表示</option>
-            </select>
-            <input id="keywordFilter" type="search" data-i18n-placeholder="label.keyword" placeholder="キーワード" oninput="renderProduction()">
-            <span id="productionStat" class="production-stat" data-i18n="state.loading">読み込み中...</span>
-        </div>
-        <div id="productionArea" class="production-grid">
-            <div class="empty-state" style="grid-column:1 / -1;" data-i18n="state.loading">データ読み込み中...</div>
+    <div class="container home-container">
+        <div class="home-layout">
+            <div class="side-filter-stack">
+                <div class="card org-filter-card">
+                    <details class="org-filter-menu" open>
+                        <summary>組織選択</summary>
+                        <div class="org-filter-body">
+                            <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
+                            <div id="orgFilterList" class="org-filter-list"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <div>
+                <div id="productionStat" class="production-stat" data-i18n="state.loading">読み込み中...</div>
+                <div id="productionArea" class="production-grid">
+                    <div class="empty-state" style="grid-column:1 / -1;" data-i18n="state.loading">データ読み込み中...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -204,6 +383,8 @@
 
     <script>
         let productionData = [];
+        let selectedOrg = '';
+        let initialOrgApplied = false;
 
         const FIELD_GROUPS = [
             { title: 'section.productionVpn', fields: [
@@ -228,10 +409,12 @@
                 ['label.prodDbPassword', 'DBパスワード']
             ]}
         ];
-
-        window.addEventListener('DOMContentLoaded', loadProductionData);
+        window.addEventListener('DOMContentLoaded', () => {
+            checkWindowsAuth();
+            loadProductionData();
+        });
         window.addEventListener('i18n:changed', () => {
-            initFilter();
+            renderOrgFilterMenu();
             renderProduction();
         });
 
@@ -244,7 +427,8 @@
                         skipEmptyLines: true,
                         complete: function(results) {
                             productionData = results.data.filter(hasProductionInfo);
-                            initFilter();
+                            applyInitialOrgFromQuery();
+                            renderOrgFilterMenu();
                             renderProduction();
                         }
                     });
@@ -252,33 +436,150 @@
                 .catch(error => {
                     console.error('production.csv load failed:', error);
                     productionData = [];
-                    initFilter();
+                    renderOrgFilterMenu();
                     renderProduction();
                 });
         }
 
-        function initFilter() {
-            const select = document.getElementById('orgFilter');
-            const current = select.value;
-            const orgs = Array.from(new Set(productionData.map(row => (row['組織名'] || '').trim()).filter(Boolean))).sort();
-            select.innerHTML = `<option value="">${t('select.allOrgs')}</option>`;
-            orgs.forEach(org => {
-                const opt = document.createElement('option');
-                opt.value = org;
-                opt.textContent = org;
-                select.appendChild(opt);
+        function applyInitialOrgFromQuery() {
+            if (initialOrgApplied) return;
+            initialOrgApplied = true;
+            const org = new URLSearchParams(window.location.search).get('org') || '';
+            if (!org) return;
+            if (getOrgOptions().includes(org)) {
+                selectedOrg = org;
+            }
+        }
+
+        function checkWindowsAuth() {
+            fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : { ok: false })
+                .then(result => setProtectedNavVisible(Boolean(result && result.ok)))
+                .catch(() => setProtectedNavVisible(false));
+        }
+
+        function setProtectedNavVisible(visible) {
+            document.querySelectorAll('[data-protected-nav="true"]').forEach(link => {
+                link.hidden = !visible;
             });
-            if (orgs.includes(current)) select.value = current;
+        }
+
+        function renderOrgFilterMenu() {
+            const list = document.getElementById('orgFilterList');
+            if (!list) return;
+            const searchInput = document.getElementById('orgFilterSearch');
+            const keyword = (searchInput ? searchInput.value : '').trim().toLowerCase();
+            const orgs = getOrgOptions().filter(org => {
+                if (!keyword) return true;
+                return org.toLowerCase().includes(keyword);
+            });
+
+            list.innerHTML = '';
+            if (orgs.length === 0) {
+                list.innerHTML = `<div class="production-placeholder">該当する組織がありません</div>`;
+                return;
+            }
+
+            groupOrgsByKana(orgs).forEach(group => {
+                const groupEl = document.createElement('details');
+                groupEl.className = 'org-filter-group';
+                groupEl.open = true;
+                const label = document.createElement('summary');
+                label.textContent = group.label;
+                groupEl.appendChild(label);
+
+                const items = document.createElement('div');
+                items.className = 'org-filter-group-items';
+
+                group.items.forEach(org => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'org-filter-btn' + (selectedOrg === org ? ' active' : '');
+                    btn.title = org;
+                    btn.innerHTML = `
+                        <span class="org-filter-check" aria-hidden="true"></span>
+                        <span class="org-filter-name">${escapeHtml(org)}</span>
+                    `;
+                    btn.onclick = () => selectOrgFromMenu(org);
+                    items.appendChild(btn);
+                });
+                groupEl.appendChild(items);
+                list.appendChild(groupEl);
+            });
+        }
+
+        function getOrgOptions() {
+            return Array.from(new Set(productionData.map(row => (row['組織名'] || '').trim()).filter(Boolean)))
+                .sort((a, b) => a.localeCompare(b, 'ja'));
+        }
+
+        function groupOrgsByKana(orgs) {
+            const order = [
+                'あ', 'い', 'う', 'え', 'お',
+                'か', 'き', 'く', 'け', 'こ',
+                'さ', 'し', 'す', 'せ', 'そ',
+                'た', 'ち', 'つ', 'て', 'と',
+                'な', 'に', 'ぬ', 'ね', 'の',
+                'は', 'ひ', 'ふ', 'へ', 'ほ',
+                'ま', 'み', 'む', 'め', 'も',
+                'や', 'ゆ', 'よ',
+                'ら', 'り', 'る', 'れ', 'ろ',
+                'わ', 'を', 'ん',
+                'その他'
+            ];
+            const groups = new Map(order.map(label => [label, []]));
+            orgs.forEach(org => {
+                groups.get(kanaGroupForName(org)).push(org);
+            });
+            return order
+                .map(label => ({ label, items: groups.get(label) || [] }))
+                .filter(group => group.items.length > 0);
+        }
+
+        function kanaGroupForName(name) {
+            const text = String(name || '').trim().normalize('NFKC');
+            if (!text) return 'その他';
+            const reading = (window.ORG_READING_OVERRIDES && window.ORG_READING_OVERRIDES[text]) || text;
+            const first = toHiragana(String(reading).charAt(0));
+            return normalizeKanaInitial(first) || 'その他';
+        }
+
+        function normalizeKanaInitial(char) {
+            const map = {
+                'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お',
+                'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
+                'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
+                'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
+                'っ': 'つ',
+                'ば': 'は', 'び': 'ひ', 'ぶ': 'ふ', 'べ': 'へ', 'ぼ': 'ほ',
+                'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ',
+                'ゃ': 'や', 'ゅ': 'ゆ', 'ょ': 'よ'
+            };
+            if (map[char]) return map[char];
+            if ('あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'.includes(char)) return char;
+            return '';
+        }
+
+        function toHiragana(char) {
+            const code = char.charCodeAt(0);
+            if (code >= 0x30A1 && code <= 0x30F6) {
+                return String.fromCharCode(code - 0x60);
+            }
+            return char;
+        }
+
+        function selectOrgFromMenu(org) {
+            selectedOrg = selectedOrg === org ? '' : org;
+            renderOrgFilterMenu();
+            renderProduction();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function renderProduction() {
             const area = document.getElementById('productionArea');
-            const org = document.getElementById('orgFilter').value;
-            const keyword = document.getElementById('keywordFilter').value.trim().toLowerCase();
             const rows = productionData.filter(row => {
-                if (org && row['組織名'] !== org) return false;
-                if (!keyword) return true;
-                return Object.values(row).some(value => String(value || '').toLowerCase().includes(keyword));
+                if (selectedOrg && row['組織名'] !== selectedOrg) return false;
+                return true;
             });
 
             document.getElementById('productionStat').innerHTML = t('production.stat', {

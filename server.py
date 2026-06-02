@@ -49,6 +49,8 @@ def env_float(name, default):
 PORT = int(CONFIG.get("PORT", "8080"))
 BIND_ADDRESS = CONFIG.get("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
+WINDOWS_AUTH_HEADER = CONFIG.get("WINDOWS_AUTH_HEADER", "X-Remote-User")
+WINDOWS_AUTH_WHITELIST = CONFIG.get("WINDOWS_AUTH_WHITELIST", "")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
 GUACAMOLE_URL = CONFIG.get("GUACAMOLE_URL", "").rstrip("/")
@@ -68,6 +70,66 @@ def json_bytes(payload):
 
 def parse_form(body):
     return {k: v[0] if v else "" for k, v in urllib.parse.parse_qs(body, keep_blank_values=True).items()}
+
+
+def normalize_windows_user(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if "\\" in text:
+        text = text.rsplit("\\", 1)[-1]
+    if "@" in text:
+        text = text.split("@", 1)[0]
+    return text.strip().lower()
+
+
+def load_windows_auth_whitelist():
+    users = set()
+    for value in WINDOWS_AUTH_WHITELIST.split(","):
+        normalized = normalize_windows_user(value)
+        if normalized:
+            users.add(normalized)
+    whitelist_path = BASE_DIR / "windows_auth_whitelist.txt"
+    if whitelist_path.exists():
+        for line in whitelist_path.read_text(encoding="utf-8").splitlines():
+            text = line.strip()
+            if not text or text.startswith("#"):
+                continue
+            normalized = normalize_windows_user(text)
+            if normalized:
+                users.add(normalized)
+    return users
+
+
+def windows_user_from_headers(headers):
+    header_names = [
+        WINDOWS_AUTH_HEADER,
+        "X-Remote-User",
+        "X-Forwarded-User",
+        "Remote-User",
+        "REMOTE_USER",
+    ]
+    for name in header_names:
+        if not name:
+            continue
+        value = headers.get(name)
+        if value:
+            return value.strip()
+    return ""
+
+
+def request_windows_auth(headers):
+    raw_user = windows_user_from_headers(headers)
+    user = normalize_windows_user(raw_user)
+    return user, bool(user and user in load_windows_auth_whitelist())
+
+
+def local_windows_user_fallback(client_address):
+    host = client_address[0] if client_address else ""
+    if host not in ("127.0.0.1", "::1", "localhost"):
+        return "", False
+    user = normalize_windows_user(os.environ.get("USERNAME", ""))
+    return user, bool(user and user in load_windows_auth_whitelist())
 
 
 def http_post_form(url, data, timeout=8):
@@ -954,15 +1016,44 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
             pass
 
+    def request_auth(self):
+        if windows_user_from_headers(self.headers):
+            return request_windows_auth(self.headers)
+        user, trusted = request_windows_auth(self.headers)
+        if trusted:
+            return user, True
+        return local_windows_user_fallback(self.client_address)
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length).decode("utf-8", errors="replace")
         path = urllib.parse.urlparse(self.path).path
 
         if path == "/auth.jsp":
-            form = parse_form(body)
-            self.send_bytes(b"OK" if form.get("pwd", "") == AUTH_PASSWORD else b"NG")
+            _, trusted = self.request_auth()
+            self.send_bytes(b"OK" if trusted else b"NG")
             return
+
+        if path == "/auth_windows.jsp":
+            user, trusted = self.request_auth()
+            self.send_bytes(json_bytes({"ok": trusted, "user": user}), "application/json; charset=utf-8")
+            return
+
+        protected_post_paths = {
+            "/db_probe.jsp",
+            "/rdp_file.jsp",
+            "/rdp_connect.jsp",
+            "/guacamole_connect.jsp",
+            "/update_csv.jsp",
+            "/update_rdp.jsp",
+            "/update_tags.jsp",
+            "/update_production.jsp",
+        }
+        if path in protected_post_paths:
+            _, trusted = self.request_auth()
+            if not trusted:
+                self.send_bytes(b"Forbidden", status=403)
+                return
 
         if path == "/db_probe.jsp":
             form = parse_form(body)
@@ -1028,6 +1119,18 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
+
+        protected_pages = {"/admin.html", "/rdp.html", "/production.html", "/production-admin.html"}
+        if path in protected_pages:
+            _, trusted = self.request_auth()
+            if not trusted:
+                self.send_bytes(b"Forbidden", status=403)
+                return
+
+        if path == "/auth_windows.jsp":
+            user, trusted = self.request_auth()
+            self.send_bytes(json_bytes({"ok": trusted, "user": user}), "application/json; charset=utf-8")
+            return
 
         if path == "/ping.jsp":
             url = query.get("url", [""])[0]

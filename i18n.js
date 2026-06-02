@@ -1,14 +1,14 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.1.29';
+const APP_VERSION_FALLBACK = '2.1.30';
 
 const I18N_MESSAGES = {
     ja: {
         'app.searchTitle': '環境検索',
         'app.adminTitle': 'データ管理',
         'app.rdpTitle': 'サーバ接続情報管理',
-        'app.productionTitle': '本番环境',
-        'app.productionAdminTitle': '本番環境データ',
+        'app.productionTitle': '本番環境',
+        'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
         'header.searchDesc': '特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索',
         'header.adminDesc': '既存の環境情報を修正、または新しい組織の情報を追加します',
@@ -18,8 +18,8 @@ const I18N_MESSAGES = {
         'nav.search': '環境検索',
         'nav.admin': 'データ管理',
         'nav.rdp': 'サーバ接続情報管理',
-        'nav.production': '本番环境',
-        'nav.productionAdmin': '本番環境データ',
+        'nav.production': '本番環境',
+        'nav.productionAdmin': '本番環境データ管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
         'filter.tags': 'タグで絞り込み',
@@ -150,8 +150,8 @@ const I18N_MESSAGES = {
         'app.searchTitle': '环境检索',
         'app.adminTitle': '数据管理',
         'app.rdpTitle': '远程连接信息管理',
-        'app.productionTitle': '本番环境',
-        'app.productionAdminTitle': '生产环境数据',
+        'app.productionTitle': '本番環境',
+        'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
         'header.searchDesc': '快速检索指定机构的测试环境和生产环境登录信息',
         'header.adminDesc': '维护既有环境信息，或为机构追加新的环境档案',
@@ -161,8 +161,8 @@ const I18N_MESSAGES = {
         'nav.search': '环境检索',
         'nav.admin': '数据管理',
         'nav.rdp': '远程连接信息管理',
-        'nav.production': '本番环境',
-        'nav.productionAdmin': '生产环境数据',
+        'nav.production': '本番環境',
+        'nav.productionAdmin': '本番環境データ管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
         'filter.tags': '按标签过滤',
