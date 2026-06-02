@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.1.32';
+const APP_VERSION_FALLBACK = '2.1.33';
 
 const I18N_MESSAGES = {
     ja: {
@@ -10,7 +10,7 @@ const I18N_MESSAGES = {
         'app.productionTitle': '本番環境',
         'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
-        'app.clientIp': 'Client IP {ip}',
+        'app.clientIp': 'クライアントIP {ip}',
         'header.searchDesc': '特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索',
         'header.adminDesc': '既存の環境情報を修正、または新しい組織の情報を追加します',
         'header.rdpDesc': 'Windows / Linux などのサーバ遠隔接続情報を管理します',

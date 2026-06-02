@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.33] - 2026-06-02
+
+### Fixed
+
+- Changed the Japanese client IP label from English to localized Japanese text.
+
 ## [2.1.32] - 2026-06-02
 
 ### Added
