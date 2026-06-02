@@ -158,6 +158,69 @@ def load_org_reading_overrides():
     return {name.strip(): reading.strip() for name, reading in pairs if name.strip()}
 
 
+def js_string(value):
+    return str(value or "").replace("\\", "\\\\").replace("'", "\\'")
+
+
+def save_org_reading_overrides(overrides):
+    readings_path = BASE_DIR / "org_readings.js"
+    lines = ["window.ORG_READING_OVERRIDES = {"]
+    for index, name in enumerate(sorted(overrides.keys(), key=lambda item: item.lower())):
+        suffix = "," if index < len(overrides) - 1 else ""
+        lines.append(f"    '{js_string(name)}': '{js_string(overrides[name])}'{suffix}")
+    lines.append("};")
+    readings_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def kana_text_to_hiragana(text):
+    chars = []
+    for char in str(text or ""):
+        code = ord(char)
+        if 0x30A1 <= code <= 0x30F6:
+            chars.append(chr(code - 0x60))
+        else:
+            chars.append(char)
+    return "".join(chars)
+
+
+def infer_org_reading(name):
+    text = str(name or "").strip()
+    if not text:
+        return ""
+    try:
+        import pykakasi
+        kakasi = pykakasi.kakasi()
+        converted = kakasi.convert(text)
+        reading = "".join(item.get("hira") or item.get("kana") or item.get("orig") or "" for item in converted)
+        reading = re.sub(r"[\s\-_・･]+", "", kana_text_to_hiragana(reading))
+        if reading:
+            return reading
+    except Exception:
+        pass
+    first = normalize_kana_initial(to_hiragana_initial(text))
+    if first:
+        return re.sub(r"[\s\-_・･]+", "", kana_text_to_hiragana(text))
+    return ""
+
+
+def sync_org_readings():
+    overrides = load_org_reading_overrides()
+    added = {}
+    unresolved = []
+    for name in csv_org_names():
+        if overrides.get(name):
+            continue
+        reading = infer_org_reading(name)
+        if reading:
+            overrides[name] = reading
+            added[name] = reading
+        else:
+            unresolved.append(name)
+    if added:
+        save_org_reading_overrides(overrides)
+    return {"added": added, "unresolved": unresolved}
+
+
 def csv_org_names():
     names = set()
     for path in BASE_DIR.glob("*.csv"):
@@ -201,6 +264,7 @@ def normalize_kana_initial(char):
 
 
 def org_reading_status():
+    sync_result = sync_org_readings()
     overrides = load_org_reading_overrides()
     records = []
     missing = []
@@ -212,7 +276,7 @@ def org_reading_status():
         records.append(record)
         if group == "その他" and not reading:
             missing.append(name)
-    return {"records": records, "missing": missing}
+    return {"records": records, "missing": missing, "synced": sync_result}
 
 
 def windows_user_from_headers(headers):
