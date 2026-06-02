@@ -1,0 +1,6 @@
+# Client IPs allowed to view protected pages.
+# One IP or CIDR network per line.
+# Examples:
+# 192.168.1.25
+# 192.168.1.0/24
+192.168.22.138

@@ -15,6 +15,7 @@ import time
 import urllib.parse
 import urllib.request
 import base64
+import ipaddress
 import uuid
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -51,6 +52,7 @@ BIND_ADDRESS = CONFIG.get("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
 WINDOWS_AUTH_HEADER = CONFIG.get("WINDOWS_AUTH_HEADER", "X-Remote-User")
 WINDOWS_AUTH_WHITELIST = CONFIG.get("WINDOWS_AUTH_WHITELIST", "")
+IP_AUTH_WHITELIST = CONFIG.get("IP_AUTH_WHITELIST", "")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
 GUACAMOLE_URL = CONFIG.get("GUACAMOLE_URL", "").rstrip("/")
@@ -99,6 +101,118 @@ def load_windows_auth_whitelist():
             if normalized:
                 users.add(normalized)
     return users
+
+
+def load_ip_auth_whitelist():
+    entries = []
+    raw_values = []
+    raw_values.extend(IP_AUTH_WHITELIST.split(","))
+    whitelist_path = BASE_DIR / "ip_auth_whitelist.txt"
+    if whitelist_path.exists():
+        raw_values.extend(whitelist_path.read_text(encoding="utf-8").splitlines())
+    for value in raw_values:
+        text = str(value or "").strip()
+        if not text or text.startswith("#"):
+            continue
+        try:
+            if "/" in text:
+                entries.append(ipaddress.ip_network(text, strict=False))
+            else:
+                entries.append(ipaddress.ip_address(text))
+        except ValueError:
+            continue
+    return entries
+
+
+def client_ip_from_request(headers, client_address):
+    forwarded_for = headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    real_ip = headers.get("X-Real-IP", "")
+    if real_ip:
+        return real_ip.strip()
+    return client_address[0] if client_address else ""
+
+
+def request_ip_auth(headers, client_address):
+    ip_text = client_ip_from_request(headers, client_address)
+    try:
+        ip = ipaddress.ip_address(ip_text)
+    except ValueError:
+        return ip_text, False
+    for entry in load_ip_auth_whitelist():
+        if isinstance(entry, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
+            if ip in entry:
+                return str(ip), True
+        elif ip == entry:
+            return str(ip), True
+    return str(ip), False
+
+
+def load_org_reading_overrides():
+    readings_path = BASE_DIR / "org_readings.js"
+    if not readings_path.exists():
+        return {}
+    text = readings_path.read_text(encoding="utf-8")
+    pairs = re.findall(r"'([^']+)'\s*:\s*'([^']*)'", text)
+    return {name.strip(): reading.strip() for name, reading in pairs if name.strip()}
+
+
+def csv_org_names():
+    names = set()
+    for path in BASE_DIR.glob("*.csv"):
+        try:
+            with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                for row in csv.DictReader(handle):
+                    name = str(row.get("組織名", "") or "").strip()
+                    if name:
+                        names.add(name)
+        except Exception:
+            continue
+    return sorted(names)
+
+
+def to_hiragana_initial(text):
+    if not text:
+        return ""
+    char = str(text)[0]
+    code = ord(char)
+    if 0x30A1 <= code <= 0x30F6:
+        return chr(code - 0x60)
+    return char
+
+
+def normalize_kana_initial(char):
+    mapping = {
+        "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お",
+        "が": "か", "ぎ": "き", "ぐ": "く", "げ": "け", "ご": "こ",
+        "ざ": "さ", "じ": "し", "ず": "す", "ぜ": "せ", "ぞ": "そ",
+        "だ": "た", "ぢ": "ち", "づ": "つ", "で": "て", "ど": "と",
+        "っ": "つ",
+        "ば": "は", "び": "ひ", "ぶ": "ふ", "べ": "へ", "ぼ": "ほ",
+        "ぱ": "は", "ぴ": "ひ", "ぷ": "ふ", "ぺ": "へ", "ぽ": "ほ",
+        "ゃ": "や", "ゅ": "ゆ", "ょ": "よ",
+    }
+    if char in mapping:
+        return mapping[char]
+    if char in "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん":
+        return char
+    return ""
+
+
+def org_reading_status():
+    overrides = load_org_reading_overrides()
+    records = []
+    missing = []
+    for name in csv_org_names():
+        reading = overrides.get(name, "")
+        source = "manual" if reading else "name"
+        group = normalize_kana_initial(to_hiragana_initial(reading or name)) or "その他"
+        record = {"name": name, "reading": reading, "group": group, "source": source}
+        records.append(record)
+        if group == "その他" and not reading:
+            missing.append(name)
+    return {"records": records, "missing": missing}
 
 
 def windows_user_from_headers(headers):
@@ -1022,6 +1136,9 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         user, trusted = request_windows_auth(self.headers)
         if trusted:
             return user, True
+        client_ip, ip_trusted = request_ip_auth(self.headers, self.client_address)
+        if ip_trusted:
+            return client_ip, True
         return local_windows_user_fallback(self.client_address)
 
     def do_POST(self):
@@ -1036,7 +1153,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
 
         if path == "/auth_windows.jsp":
             user, trusted = self.request_auth()
-            self.send_bytes(json_bytes({"ok": trusted, "user": user}), "application/json; charset=utf-8")
+            client_ip = client_ip_from_request(self.headers, self.client_address)
+            self.send_bytes(json_bytes({"ok": trusted, "user": user, "ip": client_ip}), "application/json; charset=utf-8")
             return
 
         protected_post_paths = {
@@ -1129,7 +1247,12 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
 
         if path == "/auth_windows.jsp":
             user, trusted = self.request_auth()
-            self.send_bytes(json_bytes({"ok": trusted, "user": user}), "application/json; charset=utf-8")
+            client_ip = client_ip_from_request(self.headers, self.client_address)
+            self.send_bytes(json_bytes({"ok": trusted, "user": user, "ip": client_ip}), "application/json; charset=utf-8")
+            return
+
+        if path == "/org_readings_status.jsp":
+            self.send_bytes(json_bytes(org_reading_status()), "application/json; charset=utf-8")
             return
 
         if path == "/ping.jsp":
