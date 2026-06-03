@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.1.33`
+当前版本：`2.1.34`
 
 ## 核心能力
 
@@ -84,6 +84,18 @@ C:\nssm\nssm.exe
 
 Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防火墙规则。默认端口为 `8999` 和 `8088`，规则会开放所有本地地址和远程地址。由于默认 `BIND_ADDRESS=0.0.0.0`，换服务器时通常不需要修改 `.env`。如果当前终端不是管理员权限，启动不会失败，但会打印需要在管理员 PowerShell 中执行的 `New-NetFirewallRule` 命令。
 
+## 域认证反向代理
+
+当 EnvPortal 服务器未加入 AD 域、且客户端 IP 可能被 NAT 改写时，可以在一台已加入域的 Windows 主机上运行 `EnvPortal Domain Proxy`。该代理使用 Windows Integrated Authentication 识别访问者，再把认证用户通过 `X-Remote-User` 转发给 20.38 上的 EnvPortal。
+
+安装代理需要在已入域 Windows 主机上以管理员权限运行：
+
+```powershell
+.\scripts\install-domain-proxy.ps1 -ListenPrefix http://+:8998/ -TargetBaseUrl http://192.168.20.38:8999/
+```
+
+允许访问的域用户写在代理安装目录的 `allowed-users.txt`，每行一个账号。20.38 侧建议设置 `TRUSTED_AUTH_PROXY_IPS`，只信任该代理主机传来的认证 header。
+
 ## 文件说明
 
 - `index.html`：环境检索首页。
@@ -91,6 +103,7 @@ Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防�
 - `rdp.html`：服务器/远程连接信息管理。
 - `i18n.js`：日文/中文多语资源。
 - `server.py`：Python 后端，负责认证、文件保存、健康检查、DB 探测、RDP 生成/签名/连接。
+- `tools/domain-proxy/`：已入域主机使用的 Windows 认证反向代理。
 - `run.py`：启动入口。
 - `db_versions.json`：数据库类型和版本候选。
 - `tags.json`：自由标签存储。

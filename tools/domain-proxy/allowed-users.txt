@@ -1,0 +1,6 @@
+# One allowed domain user per line.
+# Accepted formats:
+#   TOKYO\\x02851
+#   x02851
+#   x02851@tokyo.scientia.co.jp
+x02851

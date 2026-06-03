@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.1.34] - 2026-06-03
+
+### Added
+
+- Added a Windows Integrated Authentication reverse proxy for domain-joined intermediary hosts.
+- Added `TRUSTED_AUTH_PROXY_IPS` support so EnvPortal can limit trusted auth headers to known proxy sources.
+- Added an elevated installer script for registering the domain proxy as an automatic Windows service.
+
 ## [2.1.33] - 2026-06-02
 
 ### Fixed

@@ -53,6 +53,7 @@ AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
 WINDOWS_AUTH_HEADER = CONFIG.get("WINDOWS_AUTH_HEADER", "X-Remote-User")
 WINDOWS_AUTH_WHITELIST = CONFIG.get("WINDOWS_AUTH_WHITELIST", "")
 IP_AUTH_WHITELIST = CONFIG.get("IP_AUTH_WHITELIST", "")
+TRUSTED_AUTH_PROXY_IPS = CONFIG.get("TRUSTED_AUTH_PROXY_IPS", "")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
 GUACAMOLE_URL = CONFIG.get("GUACAMOLE_URL", "").rstrip("/")
@@ -122,6 +123,48 @@ def load_ip_auth_whitelist():
         except ValueError:
             continue
     return entries
+
+
+def parse_ip_entries(values):
+    entries = []
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text.startswith("#"):
+            continue
+        try:
+            if "/" in text:
+                entries.append(ipaddress.ip_network(text, strict=False))
+            else:
+                entries.append(ipaddress.ip_address(text))
+        except ValueError:
+            continue
+    return entries
+
+
+def ip_matches_entries(ip_text, entries):
+    try:
+        ip = ipaddress.ip_address(ip_text)
+    except ValueError:
+        return False
+    for entry in entries:
+        if isinstance(entry, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
+            if ip in entry:
+                return True
+        elif ip == entry:
+            return True
+    return False
+
+
+def trusted_auth_proxy(headers, client_address):
+    raw_values = [item for item in TRUSTED_AUTH_PROXY_IPS.split(",") if item.strip()]
+    trusted_path = BASE_DIR / "trusted_auth_proxies.txt"
+    if trusted_path.exists():
+        raw_values.extend(trusted_path.read_text(encoding="utf-8").splitlines())
+    entries = parse_ip_entries(raw_values)
+    if not entries:
+        return True
+    peer_ip = client_address[0] if client_address else ""
+    return ip_matches_entries(peer_ip, entries)
 
 
 def client_ip_from_request(headers, client_address):
@@ -1195,9 +1238,11 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             pass
 
     def request_auth(self):
-        if windows_user_from_headers(self.headers):
+        if windows_user_from_headers(self.headers) and trusted_auth_proxy(self.headers, self.client_address):
             return request_windows_auth(self.headers)
-        user, trusted = request_windows_auth(self.headers)
+        user, trusted = ("", False)
+        if trusted_auth_proxy(self.headers, self.client_address):
+            user, trusted = request_windows_auth(self.headers)
         if trusted:
             return user, True
         client_ip, ip_trusted = request_ip_auth(self.headers, self.client_address)
