@@ -3,6 +3,8 @@
 .env
 __pycache__/
 .tmp/
+logs/
+users.json
 certs/
 guacamole-drive/
 *.pyc

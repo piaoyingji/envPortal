@@ -71,6 +71,215 @@ def json_bytes(payload):
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
+PORTAL_CSV_FIELDS = [
+    "組織コード",
+    "組織名",
+    "環境グループ",
+    "構築環境名",
+    "URL",
+    "ログインID",
+    "ログインパスワード",
+    "DBタイプ",
+    "DBバージョン",
+    "DB名",
+    "DBユーザー名",
+    "DBパスワード",
+]
+RDP_CSV_FIELDS = [
+    "組織名",
+    "接続タイプ",
+    "RDPユーザー名",
+    "RDPパスワード",
+    "接続先(IP:Port)",
+]
+PRODUCTION_CSV_FIELDS = [
+    "組織名",
+    "構築環境名",
+    "使用VPN",
+    "VPN IP",
+    "VPNユーザー名",
+    "VPNパスワード",
+    "踏み台IP",
+    "踏み台ユーザー名",
+    "踏み台パスワード",
+    "AP IP",
+    "APユーザー名",
+    "APパスワード",
+    "DB IP",
+    "DBユーザー名",
+    "DBパスワード",
+]
+SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json"}
+REMOVED_MANAGEMENT_PAGES = {"/admin.html", "/rdp.html", "/production-admin.html"}
+PORTAL_MASK_FIELDS = {"ログインパスワード", "DBパスワード"}
+RDP_MASK_FIELDS = {"RDPユーザー名", "RDPパスワード"}
+PRODUCTION_MASK_FIELDS = {"VPNパスワード", "踏み台パスワード", "APパスワード", "DBパスワード"}
+USERS_PATH = BASE_DIR / "users.json"
+USER_ROLES = {"admin", "staff", "import_staff", "new_employee"}
+ROLE_FILTER_TAGS = {
+    "import_staff": "OneHR",
+    "new_employee": "社内学習",
+}
+
+
+def read_csv_records(filename, fields):
+    path = BASE_DIR / filename
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = []
+        for row in csv.DictReader(handle):
+            rows.append({field: row.get(field, "") for field in fields})
+        return rows
+
+
+def read_tags_json():
+    path = BASE_DIR / "tags.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def row_key(row):
+    return "||".join(str(row.get(field, "") or "").strip() for field in [
+        "組織コード",
+        "組織名",
+        "構築環境名",
+        "URL",
+        "ログインID",
+    ])
+
+
+def legacy_row_key(row):
+    return "||".join(str(row.get(field, "") or "").strip() for field in [
+        "組織名",
+        "構築環境名",
+        "URL",
+        "ログインID",
+    ])
+
+
+def tags_for_row(row, tags_json):
+    record = tags_json.get(row_key(row), tags_json.get(legacy_row_key(row), []))
+    if isinstance(record, list):
+        return [str(tag).strip() for tag in record if str(tag).strip()]
+    if isinstance(record, dict) and isinstance(record.get("tags"), list):
+        return [str(tag).strip() for tag in record["tags"] if str(tag).strip()]
+    return []
+
+
+def filter_tags_for_rows(tags_json, rows):
+    keys = set()
+    for row in rows:
+        keys.add(row_key(row))
+        keys.add(legacy_row_key(row))
+    return {key: value for key, value in tags_json.items() if key in keys}
+
+
+def portal_rows_for_role(rows, tags_json, role):
+    tag_name = ROLE_FILTER_TAGS.get(role)
+    if not tag_name:
+        return rows
+    return [row for row in rows if tag_name in tags_for_row(row, tags_json)]
+
+
+def load_users():
+    if not USERS_PATH.exists():
+        return {}
+    try:
+        data = json.loads(USERS_PATH.read_text(encoding="utf-8-sig") or "{}")
+        return data if isinstance(data, dict) else {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_users(users):
+    USERS_PATH.write_text(json.dumps(users, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def now_text():
+    return time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime())
+
+
+def user_profile_for(user, is_initial_admin=False):
+    normalized = normalize_windows_user(user)
+    if not normalized:
+        return {"user": "", "role": "staff", "canEdit": False, "canManageUsers": False}
+    users = load_users()
+    now = now_text()
+    record = users.get(normalized)
+    if not record:
+        record = {
+            "user": normalized,
+            "displayName": user or normalized,
+            "role": "admin" if is_initial_admin else "staff",
+            "firstSeen": now,
+            "lastSeen": now,
+        }
+        users[normalized] = record
+        save_users(users)
+    else:
+        record["lastSeen"] = now
+        record.setdefault("displayName", user or normalized)
+        if record.get("role") not in USER_ROLES:
+            record["role"] = "staff"
+        users[normalized] = record
+        save_users(users)
+    role = record.get("role", "staff")
+    return {
+        "user": normalized,
+        "displayName": record.get("displayName", normalized),
+        "role": role,
+        "canEdit": role == "admin",
+        "canManageUsers": role == "admin",
+    }
+
+
+def masked_records(rows, mask_fields):
+    return [
+        {key: ("" if key in mask_fields and value else value) for key, value in row.items()}
+        for row in rows
+    ]
+
+
+def append_change_log(user, client_ip, endpoint, filename, before_text, after_text):
+    logs_dir = BASE_DIR / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    entry = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime()),
+        "user": user or "",
+        "clientIp": client_ip or "",
+        "endpoint": endpoint,
+        "file": filename,
+        "before": before_text,
+        "after": after_text,
+        "afterSummary": {
+            "bytes": len(after_text.encode("utf-8")),
+            "lines": len(after_text.splitlines()),
+        },
+    }
+    with (logs_dir / "change_log.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def append_change_summary_log(user, client_ip, endpoint, files, change_summary):
+    logs_dir = BASE_DIR / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    entry = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime()),
+        "user": user or "",
+        "clientIp": client_ip or "",
+        "endpoint": endpoint,
+        "files": files,
+        "changeSummary": change_summary if isinstance(change_summary, dict) else {},
+    }
+    with (logs_dir / "change_log.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def parse_form(body):
     return {k: v[0] if v else "" for k, v in urllib.parse.parse_qs(body, keep_blank_values=True).items()}
 
@@ -1250,20 +1459,26 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             return client_ip, True
         return local_windows_user_fallback(self.client_address)
 
+    def request_profile(self):
+        user, initial_admin = self.request_auth()
+        client_ip = client_ip_from_request(self.headers, self.client_address)
+        profile = user_profile_for(user, initial_admin)
+        profile["ip"] = client_ip
+        profile["ok"] = bool(profile.get("user"))
+        return profile
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length).decode("utf-8", errors="replace")
         path = urllib.parse.urlparse(self.path).path
 
         if path == "/auth.jsp":
-            _, trusted = self.request_auth()
-            self.send_bytes(b"OK" if trusted else b"NG")
+            profile = self.request_profile()
+            self.send_bytes(b"OK" if profile.get("canEdit") else b"NG")
             return
 
         if path == "/auth_windows.jsp":
-            user, trusted = self.request_auth()
-            client_ip = client_ip_from_request(self.headers, self.client_address)
-            self.send_bytes(json_bytes({"ok": trusted, "user": user, "ip": client_ip}), "application/json; charset=utf-8")
+            self.send_bytes(json_bytes(self.request_profile()), "application/json; charset=utf-8")
             return
 
         protected_post_paths = {
@@ -1275,10 +1490,12 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_rdp.jsp",
             "/update_tags.jsp",
             "/update_production.jsp",
+            "/update_users.jsp",
+            "/update_portal_bundle.jsp",
         }
         if path in protected_post_paths:
-            _, trusted = self.request_auth()
-            if not trusted:
+            profile = self.request_profile()
+            if not profile.get("canEdit"):
                 self.send_bytes(b"Forbidden", status=403)
                 return
 
@@ -1329,14 +1546,82 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes(result), "application/json; charset=utf-8", status=200 if result.get("ok") else 500)
             return
 
+        if path == "/update_portal_bundle.jsp":
+            try:
+                payload = json.loads(body or "{}")
+                if not isinstance(payload, dict):
+                    raise ValueError("payload must be object")
+                data_csv = str(payload.get("dataCsv", ""))
+                rdp_csv = str(payload.get("rdpCsv", ""))
+                tags_json_text = payload.get("tagsJson", "{}")
+                if not isinstance(tags_json_text, str):
+                    tags_json_text = json.dumps(tags_json_text, ensure_ascii=False, indent=2)
+                json.loads(tags_json_text or "{}")
+                change_summary = payload.get("changeSummary", {})
+                if not isinstance(change_summary, dict):
+                    change_summary = {}
+            except Exception as exc:
+                self.send_bytes(f"Invalid portal bundle: {exc}".encode("utf-8"), status=400)
+                return
+
+            files = {
+                "data.csv": data_csv,
+                "rdp.csv": rdp_csv,
+                "tags.json": tags_json_text,
+            }
+            for filename, content in files.items():
+                (BASE_DIR / filename).write_text(content, encoding="utf-8-sig", newline="")
+            profile = self.request_profile()
+            append_change_summary_log(
+                profile.get("user", ""),
+                client_ip_from_request(self.headers, self.client_address),
+                path,
+                list(files.keys()),
+                change_summary,
+            )
+            self.send_bytes(b"success")
+            return
+
         update_map = {
             "/update_csv.jsp": "data.csv",
             "/update_rdp.jsp": "rdp.csv",
             "/update_tags.jsp": "tags.json",
             "/update_production.jsp": "production.csv",
+            "/update_users.jsp": "users.json",
         }
         if path in update_map:
-            (BASE_DIR / update_map[path]).write_text(body, encoding="utf-8-sig", newline="")
+            filename = update_map[path]
+            target_path = BASE_DIR / filename
+            before_text = target_path.read_text(encoding="utf-8-sig") if target_path.exists() else ""
+            profile = self.request_profile()
+            append_change_log(profile.get("user", ""), client_ip_from_request(self.headers, self.client_address), path, filename, before_text, body)
+            if path == "/update_users.jsp":
+                try:
+                    incoming = json.loads(body or "{}")
+                    if not isinstance(incoming, dict):
+                        raise ValueError("users payload must be object")
+                    cleaned = {}
+                    current = load_users()
+                    for key, record in incoming.items():
+                        normalized = normalize_windows_user(key)
+                        if not normalized or not isinstance(record, dict):
+                            continue
+                        role = record.get("role", "staff")
+                        if role not in USER_ROLES:
+                            role = "staff"
+                        old = current.get(normalized, {})
+                        cleaned[normalized] = {
+                            "user": normalized,
+                            "displayName": str(record.get("displayName") or old.get("displayName") or normalized),
+                            "role": role,
+                            "firstSeen": str(record.get("firstSeen") or old.get("firstSeen") or now_text()),
+                            "lastSeen": str(record.get("lastSeen") or old.get("lastSeen") or now_text()),
+                        }
+                    body = json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n"
+                except Exception as exc:
+                    self.send_bytes(f"Invalid users.json: {exc}".encode("utf-8"), status=400)
+                    return
+            target_path.write_text(body, encoding="utf-8-sig", newline="")
             self.send_bytes(b"success")
             return
 
@@ -1347,17 +1632,83 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        protected_pages = {"/admin.html", "/rdp.html", "/production.html", "/production-admin.html"}
+        if path in REMOVED_MANAGEMENT_PAGES:
+            self.send_bytes(b"Not Found", status=404)
+            return
+
+        protected_pages = set()
         if path in protected_pages:
-            _, trusted = self.request_auth()
-            if not trusted:
+            profile = self.request_profile()
+            if not profile.get("canEdit"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+
+        if path in SENSITIVE_STATIC_FILES:
+            profile = self.request_profile()
+            if not profile.get("canEdit"):
                 self.send_bytes(b"Forbidden", status=403)
                 return
 
         if path == "/auth_windows.jsp":
-            user, trusted = self.request_auth()
-            client_ip = client_ip_from_request(self.headers, self.client_address)
-            self.send_bytes(json_bytes({"ok": trusted, "user": user, "ip": client_ip}), "application/json; charset=utf-8")
+            self.send_bytes(json_bytes(self.request_profile()), "application/json; charset=utf-8")
+            return
+
+        if path == "/portal_data.jsp":
+            profile = self.request_profile()
+            role = profile.get("role", "staff")
+            data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
+            rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
+            tags_json = read_tags_json()
+            data_rows = portal_rows_for_role(data_rows, tags_json, role)
+            visible_orgs = {str(row.get("組織名", "") or "").strip() for row in data_rows}
+            if role != "admin":
+                data_rows = masked_records(data_rows, PORTAL_MASK_FIELDS)
+                rdp_rows = [row for row in rdp_rows if str(row.get("組織名", "") or "").strip() in visible_orgs]
+                rdp_rows = masked_records(rdp_rows, RDP_MASK_FIELDS)
+            self.send_bytes(json_bytes({
+                "ok": profile.get("ok", False),
+                "user": profile.get("user", ""),
+                "role": role,
+                "canEdit": profile.get("canEdit", False),
+                "canManageUsers": profile.get("canManageUsers", False),
+                "fields": PORTAL_CSV_FIELDS,
+                "rdpFields": RDP_CSV_FIELDS,
+                "data": data_rows,
+                "rdp": rdp_rows,
+                "tags": filter_tags_for_rows(tags_json, data_rows),
+            }), "application/json; charset=utf-8")
+            return
+
+        if path == "/production_data.jsp":
+            profile = self.request_profile()
+            rows = read_csv_records("production.csv", PRODUCTION_CSV_FIELDS)
+            if profile.get("role") != "admin":
+                rows = []
+            self.send_bytes(json_bytes({
+                "ok": profile.get("ok", False),
+                "user": profile.get("user", ""),
+                "role": profile.get("role", "staff"),
+                "canEdit": profile.get("canEdit", False),
+                "canManageUsers": profile.get("canManageUsers", False),
+                "fields": PRODUCTION_CSV_FIELDS,
+                "data": rows,
+            }), "application/json; charset=utf-8")
+            return
+
+        if path == "/users_data.jsp":
+            profile = self.request_profile()
+            if not profile.get("canManageUsers"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+            self.send_bytes(json_bytes({
+                "ok": True,
+                "user": profile.get("user", ""),
+                "role": profile.get("role", "staff"),
+                "canEdit": profile.get("canEdit", False),
+                "canManageUsers": profile.get("canManageUsers", False),
+                "roles": sorted(USER_ROLES),
+                "users": load_users(),
+            }), "application/json; charset=utf-8")
             return
 
         if path == "/client_info.jsp":

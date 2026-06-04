@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnvPortal - ユーザー管理</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="i18n.js"></script>
+    <style>
+        .user-admin-container {
+            width: calc(100% - 2rem);
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 0 2rem;
+        }
+        .user-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.85rem;
+        }
+        .user-toolbar h2 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
+        .user-table-wrap {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: var(--shadow-card);
+            overflow: auto;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 820px;
+        }
+        .user-table th,
+        .user-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 0.8rem;
+            text-align: left;
+            font-size: 0.88rem;
+        }
+        .user-table th {
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .user-table input,
+        .user-table select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.45rem 0.5rem;
+            font-size: 0.86rem;
+            background: #fff;
+        }
+        .readonly-cell {
+            color: var(--text-main);
+            font-family: "Segoe UI", "Meiryo UI", sans-serif;
+        }
+        .page-message {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body data-title-key="nav.users">
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>Env<span>Portal</span></h1>
+            <p>ユーザー権限を管理します</p>
+        </div>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html" data-i18n="nav.search">環境検索</a>
+                <a href="production.html" data-i18n="nav.production">本番環境</a>
+                <a href="user-admin.html" class="active" data-i18n="nav.users">ユーザー管理</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="user-admin-container">
+        <div class="user-toolbar">
+            <h2 data-i18n="nav.users">ユーザー管理</h2>
+            <button id="saveUsersBtn" type="button" class="primary-btn" onclick="saveUsers()" hidden>保存</button>
+        </div>
+        <div id="userArea" class="page-message" data-i18n="state.loading">読み込み中...</div>
+    </main>
+
+    <div id="toast" data-i18n="toast.saved">保存成功。</div>
+
+    <script>
+        let users = {};
+        let roles = [];
+
+        window.addEventListener('DOMContentLoaded', loadUsers);
+        window.addEventListener('i18n:changed', renderUsers);
+
+        function loadUsers() {
+            fetch('users_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
+                .then(payload => {
+                    users = payload.users || {};
+                    roles = payload.roles || ['admin', 'staff', 'import_staff', 'new_employee'];
+                    document.getElementById('saveUsersBtn').hidden = !payload.canManageUsers;
+                    renderUsers();
+                })
+                .catch(() => {
+                    document.getElementById('saveUsersBtn').hidden = true;
+                    document.getElementById('userArea').innerHTML = 'アクセス権限がありません。';
+                });
+        }
+
+        function renderUsers() {
+            const area = document.getElementById('userArea');
+            const rows = Object.values(users).sort((a, b) => String(a.user || '').localeCompare(String(b.user || '')));
+            if (rows.length === 0) {
+                area.className = 'page-message';
+                area.innerHTML = 'ユーザーがありません。';
+                return;
+            }
+            area.className = 'user-table-wrap';
+            area.innerHTML = `
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>${t('label.user')}</th>
+                            <th>${t('label.displayName')}</th>
+                            <th>${t('label.role')}</th>
+                            <th>${t('label.firstSeen')}</th>
+                            <th>${t('label.lastSeen')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(renderUserRow).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderUserRow(row) {
+            const key = escapeHtml(row.user || '');
+            return `
+                <tr>
+                    <td class="readonly-cell">${key}</td>
+                    <td><input data-user="${key}" data-field="displayName" value="${escapeHtml(row.displayName || row.user || '')}"></td>
+                    <td>
+                        <select data-user="${key}" data-field="role">
+                            ${roles.map(role => `<option value="${escapeHtml(role)}" ${role === row.role ? 'selected' : ''}>${roleLabel(role)}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="readonly-cell">${escapeHtml(row.firstSeen || '')}</td>
+                    <td class="readonly-cell">${escapeHtml(row.lastSeen || '')}</td>
+                </tr>
+            `;
+        }
+
+        function roleLabel(role) {
+            const labels = {
+                admin: '管理者',
+                staff: '一般職員',
+                import_staff: '導入職員',
+                new_employee: '新入社員'
+            };
+            return labels[role] || role;
+        }
+
+        function collectUsers() {
+            const next = JSON.parse(JSON.stringify(users));
+            document.querySelectorAll('[data-user][data-field]').forEach(input => {
+                const user = input.dataset.user;
+                const field = input.dataset.field;
+                if (!next[user]) next[user] = { user };
+                next[user][field] = input.value;
+            });
+            return next;
+        }
+
+        function saveUsers() {
+            const payload = collectUsers();
+            fetch('update_users.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(payload, null, 2)
+            })
+                .then(res => res.ok ? res.text() : Promise.reject(new Error('users.json save failed')))
+                .then(() => {
+                    users = payload;
+                    showToast(t('toast.saved'));
+                    loadUsers();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.1.34';
+const APP_VERSION_FALLBACK = '2.2.0';
 
 const I18N_MESSAGES = {
     ja: {
@@ -21,6 +21,7 @@ const I18N_MESSAGES = {
         'nav.rdp': 'サーバ接続情報管理',
         'nav.production': '本番環境',
         'nav.productionAdmin': '本番環境データ管理',
+        'nav.users': 'ユーザー管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
         'filter.tags': 'タグで絞り込み',
@@ -104,6 +105,10 @@ const I18N_MESSAGES = {
         'label.dbPwd': 'DB Pwd',
         'label.action': '操作',
         'label.user': 'ユーザー',
+        'label.role': 'ロール',
+        'label.displayName': '表示名',
+        'label.firstSeen': '初回アクセス',
+        'label.lastSeen': '最終アクセス',
         'label.connection': 'アドレス',
         'label.remoteAccess': '遠隔',
         'label.remoteType': 'タイプ',
@@ -165,6 +170,7 @@ const I18N_MESSAGES = {
         'nav.rdp': '远程连接信息管理',
         'nav.production': '本番環境',
         'nav.productionAdmin': '本番環境データ管理',
+        'nav.users': '用户管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
         'filter.tags': '按标签过滤',
@@ -248,6 +254,10 @@ const I18N_MESSAGES = {
         'label.dbPwd': 'DB密码',
         'label.action': '操作',
         'label.user': '用户',
+        'label.role': '角色',
+        'label.displayName': '显示名',
+        'label.firstSeen': '首次访问',
+        'label.lastSeen': '最后访问',
         'label.connection': '地址',
         'label.remoteAccess': '远程',
         'label.remoteType': '类型',

@@ -246,6 +246,28 @@
             align-items: center;
             justify-content: space-between;
         }
+        .org-filter-summary-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .org-add-btn,
+        .env-add-btn {
+            min-height: 28px;
+            padding: 0.25rem 0.65rem;
+            border-radius: 8px;
+            background: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-main) !important;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            font-weight: 700;
+            box-shadow: none;
+            transform: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
         .org-filter-menu summary::-webkit-details-marker {
             display: none;
         }
@@ -804,9 +826,162 @@
             color: #b42318 !important;
             border-color: rgba(254, 202, 202, 0.9) !important;
         }
+        .card-edit-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-left: auto;
+        }
+        .card-edit-actions .secondary-btn,
+        .card-edit-actions .primary-btn {
+            width: 30px;
+            height: 30px;
+            min-height: 30px;
+            padding: 0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-edit-actions svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+        }
+        .card-edit-actions .delete-btn {
+            width: auto;
+            padding: 0 0.55rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+        .card-edit-actions .copy-btn {
+            width: auto;
+            padding: 0 0.6rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+        .card-edit-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 0.65rem;
+            margin-top: 0.6rem;
+        }
+        .card-edit-field {
+            grid-column: span 6;
+            display: grid;
+            gap: 0.25rem;
+        }
+        .card-edit-field.wide {
+            grid-column: span 12;
+        }
+        .card-edit-field label {
+            color: var(--text-muted);
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+        .card-edit-field input,
+        .card-edit-field select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.48rem 0.58rem;
+            font: inherit;
+            font-size: 0.86rem;
+        }
+        .card-edit-section-title {
+            margin: 0.8rem 0 0.35rem;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 0.86rem;
+        }
+        .card-edit-section-title:first-child {
+            margin-top: 0;
+        }
+        .env-group-card {
+            grid-column: 1 / -1;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            background: rgba(240, 249, 255, 0.28);
+            padding: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .env-group-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 0.75rem;
+        }
+        .env-group-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+        }
         .pagination button {
             border-radius: 6px !important;
             font-weight: 560 !important;
+        }
+        @media (max-width: 900px) {
+            .card-edit-field {
+                grid-column: span 12;
+            }
+        }
+        .add-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 1rem;
+        }
+        .add-modal-content {
+            width: min(720px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+            padding: 1.25rem;
+        }
+        .add-modal-content h3 {
+            margin: 0 0 1rem;
+            color: var(--text-main);
+        }
+        .add-modal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .add-modal-field {
+            display: grid;
+            gap: 0.3rem;
+        }
+        .add-modal-field.wide {
+            grid-column: span 2;
+        }
+        .add-modal-field label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .add-modal-field input,
+        .add-modal-field select {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.55rem 0.65rem;
+            font: inherit;
+        }
+        .add-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.6rem;
+            margin-top: 1rem;
         }
     </style>
 </head>
@@ -819,10 +994,8 @@
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html" class="active" data-i18n="nav.search">環境検索</a>
-                <a href="admin.html" data-protected-nav="true" data-i18n="nav.admin" hidden>データ管理</a>
-                <a href="rdp.html" data-protected-nav="true" data-i18n="nav.rdp" hidden>サーバ接続情報管理</a>
-                <a id="productionNavLink" href="production.html" data-protected-nav="true" data-i18n="nav.production" onclick="syncProductionNavLink()" hidden>本番環境</a>
-                <a href="production-admin.html" data-protected-nav="true" data-i18n="nav.productionAdmin" hidden>本番環境データ管理</a>
+                <a id="productionNavLink" href="production.html" data-i18n="nav.production" onclick="syncProductionNavLink()">本番環境</a>
+                <a id="userAdminNavLink" href="user-admin.html" data-i18n="nav.users" hidden>ユーザー管理</a>
             </div>
         </nav>
     </header>
@@ -835,8 +1008,11 @@
         <div class="home-layout">
             <div class="side-filter-stack">
                 <div class="card org-filter-card">
-                    <details class="org-filter-menu" open>
-                        <summary>組織選択</summary>
+                    <details id="orgFilterMenu" class="org-filter-menu" open>
+                        <summary>
+                            <span class="org-filter-summary-title">組織選択</span>
+                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addOrganization(event)" hidden>ADD</button>
+                        </summary>
                         <div class="org-filter-body">
                             <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
                             <div id="orgFilterList" class="org-filter-list"></div>
@@ -852,9 +1028,11 @@
                 </div>
             </div>
 
-            <div id="resultsArea" class="env-grid">
+            <div style="min-width:0;">
+                <div id="resultsArea" class="env-grid">
                 <div style="grid-column: 1 / -1;" class="empty-state">
                     <span data-i18n="state.loading">データ読み込み中...</span>
+                </div>
                 </div>
             </div>
         </div>
@@ -884,6 +1062,17 @@
         </div>
     </div>
 
+    <div id="addModal" class="add-modal">
+        <div class="add-modal-content">
+            <h3 id="addModalTitle">追加</h3>
+            <div id="addModalFields" class="add-modal-grid"></div>
+            <div class="add-modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeAddModal()">キャンセル</button>
+                <button type="button" class="primary-btn" onclick="submitAddModal()">ADD</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let fullData = [];
         let rdpData = []; // RDP情報を保持
@@ -891,6 +1080,12 @@
         let portalConfig = {};
         let selectedTags = [];
         let isAuthenticated = false; // RDP表示の認証状態
+        let canEdit = false;
+        let canManageUsers = false;
+        let editingEnvId = '';
+        const orgFilterOpenGroups = new Set();
+        let suppressOrgFilterToggle = false;
+        let addModalContext = null;
         let currentOrgPage = 1;
         let statusRefreshTimer = null;
         let statusQueue = [];
@@ -901,6 +1096,9 @@
         const STATUS_REFRESH_MS = 60000;
         const STATUS_CHECK_CONCURRENCY = 1;
         const RENDER_BATCH_SIZE = 12;
+        const ENV_GROUP_OPTIONS = ['', 'UHR-V6', 'PHR-V7'];
+        const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
+        const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         const TAG_FILTER_GROUPS = [
             { key: 'product', label: '製品' },
             { key: 'system', label: '環境' },
@@ -922,28 +1120,16 @@
             }
             checkWindowsAuth();
 
-            // data.csv の読み込み
-            const p1 = fetch('data.csv?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(res => res.text());
-            
-            // rdp.csv の読み込み
-            const p2 = fetch('rdp.csv?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(res => res.text());
-            const p3 = fetch('tags.json?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(res => res.ok ? res.json() : {})
-                .catch(() => ({}));
-
-            Promise.all([p1, p2, p3])
-                .then(([dataCsv, rdpCsv, tagsJson]) => {
-                    tagStore = normalizeTagStore(tagsJson);
-                    const parsedData = Papa.parse(dataCsv, {
-                        header: true, skipEmptyLines: true,
-                    });
-                    const parsedRdp = Papa.parse(rdpCsv, {
-                        header: true, skipEmptyLines: true,
-                    });
-                    fullData = parsedData.data || [];
-                    rdpData = parsedRdp.data || [];
+            fetch('portal_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('portal_data load failed')))
+                .then(payload => {
+                    canEdit = Boolean(payload && payload.canEdit);
+                    canManageUsers = Boolean(payload && payload.canManageUsers);
+                    isAuthenticated = canEdit;
+                    tagStore = normalizeTagStore(payload.tags || {});
+                    fullData = assignRowIds(payload.data || [], 'env');
+                    rdpData = assignRowIds(payload.rdp || [], 'rdp');
+                    updateEditToolbar();
                     
                     initDropdown();
                     renderOrgFilterMenu();
@@ -975,20 +1161,38 @@
             fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
-                    setProtectedNavVisible(Boolean(result && result.ok));
-                    if (!result || !result.ok) return;
+                    canEdit = Boolean(result && result.canEdit);
+                    canManageUsers = Boolean(result && result.canManageUsers);
+                    updateEditToolbar();
+                    if (!result || !result.ok) {
+                        isAuthenticated = false;
+                        localStorage.removeItem('authExpiry');
+                        renderActiveView();
+                        return;
+                    }
                     isAuthenticated = true;
                     localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
                     closePwdModal();
                     renderActiveView();
                 })
-                .catch(() => setProtectedNavVisible(false));
+                .catch(() => {
+                    canEdit = false;
+                    canManageUsers = false;
+                    isAuthenticated = false;
+                    localStorage.removeItem('authExpiry');
+                    updateEditToolbar();
+                });
         }
 
-        function setProtectedNavVisible(visible) {
-            document.querySelectorAll('[data-protected-nav="true"]').forEach(link => {
-                link.hidden = !visible;
-            });
+        function assignRowIds(rows, prefix) {
+            return rows.map((row, index) => ({ ...row, __rowId: row.__rowId || `${prefix}_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}` }));
+        }
+
+        function updateEditToolbar() {
+            const orgAddBtn = document.getElementById('orgAddBtn');
+            if (orgAddBtn) orgAddBtn.hidden = !canEdit;
+            const userAdminNavLink = document.getElementById('userAdminNavLink');
+            if (userAdminNavLink) userAdminNavLink.hidden = !canManageUsers;
             syncProductionNavLink();
         }
 
@@ -1040,12 +1244,8 @@
             orgSelect.addEventListener('change', (e) => {
                 currentOrgPage = 1;
                 renderOrgFilterMenu();
-                if (e.target.value === "") {
-                    // プルダウンが空になったら初期画面に戻る
-                    renderInitialSummary();
-                } else {
-                    renderEnvironments(e.target.value);
-                }
+                syncProductionNavLink();
+                renderActiveView();
             });
         }
 
@@ -1060,9 +1260,14 @@
                 return `${org.name} ${org.code} ${org.label}`.toLowerCase().includes(keyword);
             });
 
+            list.querySelectorAll('.org-filter-group[open] summary').forEach(summary => {
+                orgFilterOpenGroups.add(summary.textContent || '');
+            });
+            suppressOrgFilterToggle = true;
             list.innerHTML = '';
             if (orgs.length === 0) {
                 list.innerHTML = `<div class="tag-empty">該当する組織がありません</div>`;
+                setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
                 return;
             }
 
@@ -1070,6 +1275,12 @@
             grouped.forEach(group => {
                 const groupEl = document.createElement('details');
                 groupEl.className = 'org-filter-group';
+                groupEl.open = orgFilterOpenGroups.has(group.label);
+                groupEl.addEventListener('toggle', () => {
+                    if (suppressOrgFilterToggle) return;
+                    if (groupEl.open) orgFilterOpenGroups.add(group.label);
+                    else orgFilterOpenGroups.delete(group.label);
+                });
                 const label = document.createElement('summary');
                 label.textContent = group.label;
                 groupEl.appendChild(label);
@@ -1084,8 +1295,7 @@
                     btn.title = org.label;
                     btn.innerHTML = `
                         <span class="org-filter-check" aria-hidden="true"></span>
-                        <span class="org-filter-name">${sanitizeHTML(org.name)}</span>
-                        ${org.code ? `<span class="org-filter-code">${sanitizeHTML(org.code)}</span>` : ''}
+                        <span class="org-filter-name">${sanitizeHTML(org.label)}</span>
                     `;
                     btn.onclick = () => selectOrgFromMenu(org.key);
                     items.appendChild(btn);
@@ -1093,6 +1303,7 @@
                 groupEl.appendChild(items);
                 list.appendChild(groupEl);
             });
+            setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
         }
 
         function getOrgOptions() {
@@ -1168,14 +1379,97 @@
                 orgSelect.value = '';
                 renderOrgFilterMenu();
                 syncProductionNavLink();
-                renderInitialSummary();
+                renderActiveView();
                 return;
             }
             orgSelect.value = orgKey;
             renderOrgFilterMenu();
             syncProductionNavLink();
-            renderEnvironments(orgKey);
+            renderActiveView();
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function addOrganization(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            openAddModal('org', '組織追加', [
+                ['組織コード', ''],
+                ['組織名', '', true],
+                ['環境グループ', '', false, 'select'],
+                ['構築環境名', '新規環境', true],
+            ]);
+        }
+
+        function openAddModal(type, title, fields, extra = {}) {
+            addModalContext = { type, fields, extra };
+            document.getElementById('addModalTitle').textContent = title;
+            document.getElementById('addModalFields').innerHTML = fields.map(([field, value, wide, kind, options]) => `
+                <div class="add-modal-field${wide ? ' wide' : ''}">
+                    <label>${sanitizeHTML(field)}</label>
+                    ${kind === 'select'
+                        ? `<select data-add-field="${sanitizeHTML(field)}">${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}</select>`
+                        : kind === 'org-select'
+                            ? `<select data-add-field="${sanitizeHTML(field)}">${(options || getOrgOptions()).map(org => `<option value="${sanitizeHTML(org.key)}" ${org.key === value ? 'selected' : ''}>${sanitizeHTML(org.label)}</option>`).join('')}</select>`
+                        : `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}">`}
+                </div>
+            `).join('');
+            document.getElementById('addModal').style.display = 'flex';
+            const firstInput = document.querySelector('#addModalFields input, #addModalFields select');
+            if (firstInput) firstInput.focus();
+        }
+
+        function closeAddModal() {
+            addModalContext = null;
+            document.getElementById('addModal').style.display = 'none';
+            document.getElementById('addModalFields').innerHTML = '';
+        }
+
+        function addModalValues() {
+            const values = {};
+            document.querySelectorAll('#addModalFields [data-add-field]').forEach(input => {
+                values[input.dataset.addField] = input.value.trim();
+            });
+            return values;
+        }
+
+        function submitAddModal() {
+            if (!addModalContext) return;
+            const values = addModalValues();
+            if (addModalContext.type === 'org') {
+                if (!values['組織名']) return alert('組織名を入力してください');
+                const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
+                DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
+                row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                fullData.push(row);
+                closeAddModal();
+                initDropdown();
+                renderOrgFilterMenu();
+                const group = getOrgGroup(row);
+                document.getElementById('orgSelect').value = group.key;
+                syncProductionNavLink();
+                renderEnvironments(group.key);
+                editEnvironmentCard(row.__rowId);
+                return;
+            }
+            if (addModalContext.type === 'env') {
+                const org = addModalContext.extra.org;
+                if (!org) return;
+                const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
+                row['組織コード'] = org.code || '';
+                row['組織名'] = org.name || '';
+                DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
+                row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                fullData.push(row);
+                closeAddModal();
+                renderEnvironments(org.key);
+                editEnvironmentCard(row.__rowId);
+            }
+            if (addModalContext.type === 'copy-env') {
+                copyEnvironmentToOrg(addModalContext.extra.rowId, values['コピー先組織']);
+            }
         }
 
         function renderTagFilters() {
@@ -1252,6 +1546,330 @@
             else renderInitialSummary();
         }
 
+        function editEnvironmentCard(rowId) {
+            if (!canEdit) return;
+            editingEnvId = rowId;
+            refreshEnvironmentCardInPlace(rowId);
+        }
+
+        function cancelEnvironmentCardEdit() {
+            const rowId = editingEnvId;
+            editingEnvId = '';
+            refreshEnvironmentCardInPlace(rowId);
+        }
+
+        function refreshEnvironmentCardInPlace(rowId) {
+            const env = fullData.find(row => row.__rowId === rowId);
+            const currentCard = document.querySelector(`.env-card[data-env-row-id="${CSS.escape(rowId)}"]`);
+            if (!env || !currentCard) {
+                renderActiveView();
+                return;
+            }
+            const replacement = createEnvironmentCard(env, Boolean(currentCard.dataset.showOrgTitle === '1'));
+            currentCard.replaceWith(replacement);
+            if (replacement.dataset.statusUrl) {
+                replacement.dataset.statusObserved = '1';
+                setTimeout(() => queueStatusCheck(replacement, true), 0);
+            }
+        }
+
+        function renderCardEditField(field, value, wide = false) {
+            return `
+                <div class="card-edit-field${wide ? ' wide' : ''}">
+                    <label>${sanitizeHTML(field)}</label>
+                    <input data-env-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value)}">
+                </div>
+            `;
+        }
+
+        function envGroupValue(row) {
+            return String(row['環境グループ'] || '').trim();
+        }
+
+        function renderEnvGroupSelect(row) {
+            const current = envGroupValue(row);
+            return `
+                <div class="card-edit-field">
+                    <label>環境グループ</label>
+                    <select data-env-field="環境グループ">
+                        ${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === current ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
+        function renderCardRdpEditor(kind, row, fallbackTarget) {
+            const remote = row || {};
+            return `
+                <div class="card-edit-grid" data-rdp-kind="${kind}" data-rdp-row-id="${escapeJs(remote.__rowId || '')}">
+                    ${renderCardEditField('接続タイプ', remote['接続タイプ'] || 'RDP')}
+                    ${renderCardEditField('RDPユーザー名', remote['RDPユーザー名'] || '')}
+                    ${renderCardEditField('RDPパスワード', remote['RDPパスワード'] || '')}
+                    ${renderCardEditField('接続先(IP:Port)', remote['接続先(IP:Port)'] || fallbackTarget || '', true)}
+                </div>
+            `;
+        }
+
+        function renderEnvironmentCardEditor(env, matchedRdps, matchedDbRdps) {
+            const envFields = [
+                ['組織コード', env['組織コード'] || '', false],
+                ['組織名', env['組織名'] || '', false],
+                ['構築環境名', env['構築環境名'] || '', false],
+                ['URL', env['URL'] || '', true],
+                ['ログインID', env['ログインID'] || '', false],
+                ['ログインパスワード', env['ログインパスワード'] || '', false],
+                ['DBタイプ', env['DBタイプ'] || '', false],
+                ['DBバージョン', env['DBバージョン'] || '', false],
+                ['DB名', env['DB名'] || '', true],
+                ['DBユーザー名', env['DBユーザー名'] || '', false],
+                ['DBパスワード', env['DBパスワード'] || '', false],
+            ].map(([field, value, wide]) => renderCardEditField(field, value, wide)).join('');
+            const tagValue = tagsForRow(env).join(', ');
+            const apEditors = (matchedRdps.length ? matchedRdps : [null])
+                .map(remote => renderCardRdpEditor('ap', remote, getEndpoint(env['URL']).host ? `${getEndpoint(env['URL']).host}${getEndpoint(env['URL']).port ? ':' + getEndpoint(env['URL']).port : ''}` : ''))
+                .join('');
+            const dbEditors = (matchedDbRdps.length ? matchedDbRdps : [null])
+                .map(remote => renderCardRdpEditor('db', remote, getEndpoint(env['DB名']).host ? `${getEndpoint(env['DB名']).host}${getEndpoint(env['DB名']).port ? ':' + getEndpoint(env['DB名']).port : ''}` : ''))
+                .join('');
+            return `
+                <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
+                    <div class="card-edit-section-title">環境情報</div>
+                    <div class="card-edit-grid">
+                        ${renderEnvGroupSelect(env)}
+                        ${envFields}
+                        <div class="card-edit-field wide">
+                            <label>Tags</label>
+                            <input data-env-tags="true" value="${sanitizeHTML(tagValue)}" placeholder="tag1, tag2">
+                        </div>
+                    </div>
+                    <div class="card-edit-section-title">AP RDP情報</div>
+                    ${apEditors}
+                    <div class="card-edit-section-title">DB RDP情報</div>
+                    ${dbEditors}
+                </div>
+            `;
+        }
+
+        function rdpEditorValues(group) {
+            const row = {};
+            group.querySelectorAll('input[data-env-field]').forEach(input => {
+                row[input.dataset.envField] = input.value.trim();
+            });
+            return row;
+        }
+
+        function cloneForLog(value) {
+            return JSON.parse(JSON.stringify(value || null));
+        }
+
+        function relatedRdpRowsForEnv(env) {
+            if (!env) return [];
+            const envHost = getHost(env['URL']);
+            const dbEndpoint = getEndpoint(env['DB名']);
+            const matchedDbRdps = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
+            const matchedApRdps = findRemotesByHost(envHost).filter(remote => !matchedDbRdps.includes(remote));
+            return matchedApRdps.concat(matchedDbRdps);
+        }
+
+        function changeSummaryFor(action, beforeEnv, afterEnv, extra = {}) {
+            return {
+                action,
+                rowId: (afterEnv && afterEnv.__rowId) || (beforeEnv && beforeEnv.__rowId) || '',
+                orgBefore: beforeEnv ? getOrgGroup(beforeEnv).label : '',
+                orgAfter: afterEnv ? getOrgGroup(afterEnv).label : '',
+                envNameBefore: beforeEnv ? (beforeEnv['構築環境名'] || '') : '',
+                envNameAfter: afterEnv ? (afterEnv['構築環境名'] || '') : '',
+                before: {
+                    env: cloneForLog(beforeEnv),
+                    rdp: cloneForLog(extra.beforeRdp || []),
+                    tags: cloneForLog(extra.beforeTags || []),
+                },
+                after: {
+                    env: cloneForLog(afterEnv),
+                    rdp: cloneForLog(extra.afterRdp || []),
+                    tags: cloneForLog(extra.afterTags || []),
+                },
+                note: extra.note || '',
+            };
+        }
+
+        function saveEnvironmentCard(rowId) {
+            if (!canEdit) return;
+            const editor = document.querySelector(`[data-card-editor="${CSS.escape(rowId)}"]`);
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!editor || !env) return;
+            const beforeEnv = cloneForLog(env);
+            const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
+            const beforeTags = cloneForLog(tagsForRow(env));
+            const originalKey = editor.dataset.originalKey || getRowKey(env);
+            editor.querySelectorAll('[data-env-field]').forEach(input => {
+                if (DATA_FIELDS.includes(input.dataset.envField)) {
+                    env[input.dataset.envField] = input.value.trim();
+                }
+            });
+            delete tagStore[originalKey];
+            const tagsInput = editor.querySelector('input[data-env-tags]');
+            const tags = String(tagsInput ? tagsInput.value : '')
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(Boolean);
+            const updatedKey = getRowKey(env);
+            if (tags.length > 0) tagStore[updatedKey] = tags;
+
+            editor.querySelectorAll('[data-rdp-kind]').forEach(group => {
+                const values = rdpEditorValues(group);
+                const hasAny = RDP_FIELDS.some(field => String(values[field] || '').trim());
+                const existingId = group.dataset.rdpRowId || '';
+                const existing = existingId ? rdpData.find(row => row.__rowId === existingId) : null;
+                if (!hasAny) {
+                    if (existing) rdpData = rdpData.filter(row => row.__rowId !== existingId);
+                    return;
+                }
+                const target = existing || { __rowId: `rdp_${Date.now()}_${Math.random().toString(36).slice(2)}` };
+                target['組織名'] = env['組織名'] || '';
+                RDP_FIELDS.forEach(field => {
+                    if (field !== '組織名') target[field] = values[field] || '';
+                });
+                if (!existing) rdpData.push(target);
+            });
+
+            const summary = changeSummaryFor('save-env', beforeEnv, env, {
+                beforeRdp,
+                afterRdp: relatedRdpRowsForEnv(env),
+                beforeTags,
+                afterTags: tagsForRow(env),
+            });
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    editingEnvId = '';
+                    renderTagFilters();
+                    refreshEnvironmentCardInPlace(rowId);
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function addEnvironmentToOrg(orgKey, groupName = '') {
+            if (!canEdit) return;
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            if (!org) return;
+            openAddModal('env', '環境追加', [
+                ['環境グループ', ENV_GROUP_OPTIONS.includes(groupName) ? groupName : '', false, 'select'],
+                ['構築環境名', '新規環境', true],
+                ['URL', '', true],
+                ['ログインID', ''],
+                ['ログインパスワード', ''],
+            ], { org });
+        }
+
+        function deleteEnvironmentCard(rowId) {
+            if (!canEdit) return;
+            if (!confirm('この環境を削除しますか？')) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            const beforeEnv = cloneForLog(env);
+            const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
+            const beforeTags = cloneForLog(tagsForRow(env));
+            if (env) delete tagStore[getRowKey(env)];
+            if (env) {
+                const envHost = getHost(env['URL']);
+                const dbEndpoint = getEndpoint(env['DB名']);
+                rdpData = rdpData.filter(remote => {
+                    const remoteEndpoint = getEndpoint(remote['接続先(IP:Port)']);
+                    if (envHost && getHost(remote['接続先(IP:Port)']) === envHost) return false;
+                    if (dbEndpoint.host && sameEndpoint(remoteEndpoint, dbEndpoint)) return false;
+                    return true;
+                });
+            }
+            fullData = fullData.filter(row => row.__rowId !== rowId);
+            const summary = changeSummaryFor('delete-env', beforeEnv, null, {
+                beforeRdp,
+                beforeTags,
+            });
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    renderTagFilters();
+                    renderActiveView();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function savePortalFiles(changeSummary = {}) {
+            const dataCsv = Papa.unparse({ fields: DATA_FIELDS, data: fullData }, { quotes: true });
+            const rdpCsv = Papa.unparse({ fields: RDP_FIELDS, data: rdpData }, { quotes: true });
+            const tagsJson = JSON.stringify(tagStore, null, 2);
+            return fetch('update_portal_bundle.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, changeSummary })
+            }).then(res => res.ok ? res.text() : Promise.reject(new Error('portal bundle save failed')));
+        }
+
+        function copyEnvironmentCard(rowId) {
+            if (!canEdit) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!env) return;
+            const currentOrgKey = getOrgGroup(env).key;
+            const orgs = getOrgOptions().filter(org => org.key !== currentOrgKey);
+            if (orgs.length === 0) return alert('コピー先組織がありません');
+            openAddModal('copy-env', '環境コピー', [
+                ['コピー先組織', orgs[0].key, true, 'org-select', orgs],
+            ], { rowId });
+        }
+
+        function copyEnvironmentToOrg(rowId, targetOrgKey) {
+            if (!canEdit) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            const targetOrg = getOrgOptions().find(org => org.key === targetOrgKey);
+            if (!env || !targetOrg) return;
+            const beforeEnv = cloneForLog(env);
+            const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
+            const beforeTags = cloneForLog(tagsForRow(env));
+
+            const newEnv = { ...env };
+            newEnv.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            newEnv['組織コード'] = targetOrg.code || '';
+            newEnv['組織名'] = targetOrg.name || '';
+            newEnv['構築環境名'] = `${newEnv['構築環境名'] || '新規環境'} Copy`;
+            fullData.push(newEnv);
+
+            const tags = tagsForRow(env).slice();
+            if (tags.length) tagStore[getRowKey(newEnv)] = tags;
+
+            const envHost = getHost(env['URL']);
+            const dbEndpoint = getEndpoint(env['DB名']);
+            const dbMatches = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
+            const apMatches = findRemotesByHost(envHost).filter(remote => !dbMatches.includes(remote));
+            const copiedRdpRows = [];
+            apMatches.concat(dbMatches).forEach(remote => {
+                const copied = { ...remote };
+                copied.__rowId = `rdp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                copied['組織名'] = targetOrg.name || '';
+                rdpData.push(copied);
+                copiedRdpRows.push(copied);
+            });
+
+            closeAddModal();
+            const summary = changeSummaryFor('copy-env', beforeEnv, newEnv, {
+                beforeRdp,
+                afterRdp: copiedRdpRows,
+                beforeTags,
+                afterTags: tagsForRow(newEnv),
+                note: `copy to ${targetOrg.label}`,
+            });
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    initDropdown();
+                    renderOrgFilterMenu();
+                    document.getElementById('orgSelect').value = targetOrg.key;
+                    syncProductionNavLink();
+                    renderEnvironments(targetOrg.key);
+                    editEnvironmentCard(newEnv.__rowId);
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
         function changePage(direction) {
             currentOrgPage += direction;
             renderInitialSummary();
@@ -1312,8 +1930,7 @@
                 card.className = 'org-summary-card';
                 card.innerHTML = `
                     <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
-                        <span>${sanitizeHTML(org.name)}</span>
-                        ${org.code ? `<span class="org-code">${sanitizeHTML(org.code)}</span>` : ''}
+                        <span>${sanitizeHTML(org.label)}</span>
                     </div>
                     <div class="org-badges-wrapper">
                         ${envHtml}
@@ -1353,7 +1970,7 @@
             document.getElementById('orgSelect').value = orgKey;
             renderOrgFilterMenu();
             syncProductionNavLink();
-            renderEnvironments(orgKey);
+            renderActiveView();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -1411,8 +2028,8 @@
             const banner = document.createElement('div');
             banner.className = 'active-org-banner';
             banner.innerHTML = `
-                <div class="active-org-name">${sanitizeHTML(orgInfo.name)}</div>
-                ${orgInfo.code ? `<div class="active-org-code">${sanitizeHTML(orgInfo.code)}</div>` : ''}
+                <div class="active-org-name">${sanitizeHTML(orgInfo.label)}</div>
+                ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(selectedOrgKey)}')">ADD</button>` : ''}
             `;
             resultsArea.appendChild(banner);
 
@@ -1426,9 +2043,35 @@
                     ${t('button.backList')}
                 </button>
             `;
-            renderEnvironmentCardsBatched(matchedEnvs, selectedTags.length > 0, resultsArea, () => {
-                resultsArea.appendChild(backBtnWrapper);
-                startRegisteredStatusChecks();
+            renderEnvironmentGroupBlocks(matchedEnvs, resultsArea, selectedTags.length > 0);
+            resultsArea.appendChild(backBtnWrapper);
+            startRegisteredStatusChecks();
+        }
+
+        function renderEnvironmentGroupBlocks(envs, targetArea, showOrgTitle = false) {
+            const groups = new Map();
+            envs.forEach(env => {
+                const explicitGroup = envGroupValue(env);
+                const key = explicitGroup || `__single_${env.__rowId}`;
+                const title = explicitGroup || (env['構築環境名'] || t('unset.name'));
+                if (!groups.has(key)) groups.set(key, { title, groupValue: explicitGroup, rows: [] });
+                groups.get(key).rows.push(env);
+            });
+            Array.from(groups.values()).forEach(group => {
+                const groupBlock = document.createElement('div');
+                groupBlock.className = 'env-group-card';
+                const title = document.createElement('div');
+                title.className = 'env-group-title';
+                title.innerHTML = `
+                    <span>${sanitizeHTML(group.title || t('unset.name'))}</span>
+                    ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">ADD</button>` : ''}
+                `;
+                const list = document.createElement('div');
+                list.className = 'env-group-list';
+                group.rows.forEach(env => list.appendChild(createEnvironmentCard(env, showOrgTitle)));
+                groupBlock.appendChild(title);
+                groupBlock.appendChild(list);
+                targetArea.appendChild(groupBlock);
             });
         }
 
@@ -1464,12 +2107,12 @@
                 section.className = 'tag-org-section';
                 section.innerHTML = `
                     <div class="active-org-banner">
-                        <div class="active-org-name">${sanitizeHTML(org.name)}</div>
-                        ${org.code ? `<div class="active-org-code">${sanitizeHTML(org.code)}</div>` : ''}
+                        <div class="active-org-name">${sanitizeHTML(org.label)}</div>
                     </div>
                 `;
                 resultsArea.appendChild(section);
-                renderEnvironmentCardsBatched(org.envs, false, section, renderNextOrg, token);
+                renderEnvironmentGroupBlocks(org.envs, section, false);
+                renderNextOrg();
             };
             renderNextOrg();
         }
@@ -1502,6 +2145,8 @@
         function createEnvironmentCard(env, showOrgTitle) {
             const card = document.createElement('div');
             card.className = 'env-card';
+            card.dataset.envRowId = env.__rowId || '';
+            card.dataset.showOrgTitle = showOrgTitle ? '1' : '0';
 
             const org = getOrgGroup(env);
             const safeUrl = sanitizeHTML(env['URL']);
@@ -1542,6 +2187,7 @@
             let rdpTagHtml = '';
             let apRdpInfoHtml = '';
             let dbRdpInfoHtml = '';
+            const isEditingCard = canEdit && editingEnvId === env.__rowId;
 
             function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix, itemIndex, totalItems, embedded = false) {
                 if (!remote) return '';
@@ -1618,21 +2264,16 @@
                 rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }
 
-            card.innerHTML = `
-                <div class="env-card-title-wrap">
-                    <div class="env-card-title-row">
-                    <span class="env-card-title-main">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        ${sanitizeHTML(env['構築環境名'])}
-                        ${rdpTagHtml}
-                        ${orgTitleHtml}
-                    </span>
-                    <span id="${statusBadgeId}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: #f7f7f7; color: #888; font-weight: bold; border: 1px solid #e0e0e0; display: none; align-items: center; gap: 5px;">
-                        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#ccc;"></span>${t('status.checking')}
-                    </span>
-                    </div>
-                    ${tagHtml ? `<div class="env-card-tag-row">${tagHtml}</div>` : ''}
-                </div>
+            const editActionsHtml = canEdit ? `
+                <span class="card-edit-actions">
+                    ${isEditingCard
+                        ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="保存" aria-label="保存">${saveActionIcon()}</button>`
+                        : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="編集" aria-label="編集">${editActionIcon()}</button>`}
+                    ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="コピー" aria-label="コピー">COPY</button>` : ''}
+                    ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="削除" aria-label="削除">DEL</button>` : ''}
+                </span>
+            ` : '';
+            const viewBodyHtml = `
                 <div id="${statusMetaId}" class="env-status-meta"></div>
                 <div class="env-detail-wrapper">
                     <div class="env-detail">
@@ -1676,7 +2317,26 @@
                     ${apRdpInfoHtml}
                 </div>
             `;
-            if (safeUrl) {
+
+            card.innerHTML = `
+                <div class="env-card-title-wrap">
+                    <div class="env-card-title-row">
+                    <span class="env-card-title-main">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: sub;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        ${sanitizeHTML(env['構築環境名'])}
+                        ${rdpTagHtml}
+                        ${orgTitleHtml}
+                    </span>
+                    ${editActionsHtml}
+                    <span id="${statusBadgeId}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 20px; background-color: #f7f7f7; color: #888; font-weight: bold; border: 1px solid #e0e0e0; display: none; align-items: center; gap: 5px;">
+                        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#ccc;"></span>${t('status.checking')}
+                    </span>
+                    </div>
+                    ${tagHtml ? `<div class="env-card-tag-row">${tagHtml}</div>` : ''}
+                </div>
+                ${isEditingCard ? renderEnvironmentCardEditor(env, matchedRdps, matchedDbRdps) : viewBodyHtml}
+            `;
+            if (safeUrl && !isEditingCard) {
                 card.dataset.statusUrl = safeUrl;
                 card.dataset.statusBadgeId = statusBadgeId;
                 card.dataset.statusMetaId = statusMetaId;
@@ -1915,6 +2575,14 @@
 
         function copyIcon() {
             return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        }
+
+        function editActionIcon() {
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 19V6.5A2.5 2.5 0 0 1 6.5 4H13"></path><path d="M14 19H4"></path><path d="M8 16l2.7-.7L19 7a2.1 2.1 0 0 0-3-3L7.7 12.3 7 15z"></path></svg>';
+        }
+
+        function saveActionIcon() {
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"></path><path d="M8 3v6h8V3"></path><path d="M8 21v-7h8v7"></path></svg>';
         }
 
         function globeIcon() {
@@ -2293,7 +2961,7 @@
                 key: isUnset ? '__unset__' : (code || `name:${name}`),
                 code,
                 name: isUnset ? t('unset.org') : displayName,
-                label: isUnset ? t('unset.org') : (code ? `${code} - ${displayName}` : displayName),
+                label: isUnset ? t('unset.org') : (code ? `${code} ${displayName}` : displayName),
                 isUnset
             };
         }

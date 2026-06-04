@@ -1,29 +1,27 @@
 ﻿{
-  "9272||大阪広域水道企業団||UHR||https://192.168.10.204/hr/package/auth/view/Login.html||00100405": [
+  "TOK||東京-受入テスト||PHR-受入||http://192.168.22.138:8080/phr/login||tokyo01": [
+    "受入",
+    "PHR",
+    "東京"
+  ],
+  "FSC||森林整備センター||UHR-本番相当||http://10.148.0.142:8080/uhr/login||fscuser": [
+    "本番相当",
+    "UHR"
+  ],
+  "STD||標準版||UPDS-検証||http://192.168.20.55:3080/upds/login||testuser": [
     "社内",
-    "開発",
+    "UPDS",
+    "検証"
+  ],
+  "STD||標準版||UHR-東京-受入テスト||http://192.168.20.54:3080/uhr/package/auth/view/Login.html||000001": [
+    "社内",
     "UHR",
-    "テスト",
-    "カスタマイズ"
+    "受入",
+    "テスト"
   ],
-  "9137||青少年教育振興機構||UHR||https://192.168.22.124/uhr/package/auth/view/Login.html||000001": [
+  "TOK||東京-受入テスト||UPDS-検証 Copy||http://192.168.20.55:3080/upds/login||testuser": [
     "社内",
-    "開発",
-    "UHR"
-  ],
-  "0408||筑波大学||UHR||http://192.168.22.124:8081/uhr/package/auth/view/Login.html||99999923": [
-    "社内",
-    "開発",
-    "UHR"
-  ],
-  "0528||大分大学||UHR||http://192.168.22.124:8880/UPDSHR/package/auth/view/Login.html||000001": [
-    "社内",
-    "開発",
-    "UHR"
-  ],
-  "0000||标准版||UHR||http://192.168.22.124:8080/uhr-demo/package/auth/view/Login.html||000001": [
-    "社内",
-    "教育",
-    "UHR"
+    "UPDS",
+    "検証"
   ]
 }

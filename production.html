@@ -64,6 +64,71 @@
             align-items: center;
             justify-content: space-between;
         }
+        .org-filter-summary-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .org-add-btn {
+            min-height: 28px;
+            padding: 0.25rem 0.65rem;
+            border-radius: 8px;
+            background: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-main) !important;
+            font-size: 0.78rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .add-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 1rem;
+        }
+        .add-modal-content {
+            width: min(720px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+            padding: 1.25rem;
+        }
+        .add-modal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .add-modal-field {
+            display: grid;
+            gap: 0.3rem;
+        }
+        .add-modal-field.wide {
+            grid-column: span 2;
+        }
+        .add-modal-field label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .add-modal-field input {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.55rem 0.65rem;
+            font: inherit;
+        }
+        .add-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.6rem;
+            margin-top: 1rem;
+        }
         .org-filter-menu summary::-webkit-details-marker {
             display: none;
         }
@@ -290,6 +355,61 @@
             height: 30px;
             min-width: 30px;
         }
+        .production-card-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-left: auto;
+        }
+        .production-card-actions .secondary-btn,
+        .production-card-actions .primary-btn {
+            width: 30px;
+            height: 30px;
+            min-height: 30px;
+            padding: 0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .production-card-actions svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+        }
+        .production-editor-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .production-editor-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .production-editor-field {
+            grid-column: span 4;
+            display: grid;
+            gap: 0.3rem;
+        }
+        .production-editor-field label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .production-editor-field input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.55rem 0.65rem;
+            font: inherit;
+        }
+        .production-editor-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.75rem;
+        }
         @media (max-width: 1100px) {
             .home-container {
                 width: calc(100% - 1rem);
@@ -353,10 +473,8 @@
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html" data-i18n="nav.search">環境検索</a>
-                <a href="admin.html" data-protected-nav="true" data-i18n="nav.admin" hidden>データ管理</a>
-                <a href="rdp.html" data-protected-nav="true" data-i18n="nav.rdp" hidden>サーバ接続情報管理</a>
                 <a href="production.html" class="active" data-i18n="nav.production">本番環境</a>
-                <a href="production-admin.html" data-protected-nav="true" data-i18n="nav.productionAdmin" hidden>本番環境データ管理</a>
+                <a id="userAdminNavLink" href="user-admin.html" data-i18n="nav.users" hidden>ユーザー管理</a>
             </div>
         </nav>
     </header>
@@ -365,8 +483,11 @@
         <div class="home-layout">
             <div class="side-filter-stack">
                 <div class="card org-filter-card">
-                    <details class="org-filter-menu" open>
-                        <summary>組織選択</summary>
+                    <details id="orgFilterMenu" class="org-filter-menu" open>
+                        <summary>
+                            <span class="org-filter-summary-title">組織選択</span>
+                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" hidden>ADD</button>
+                        </summary>
                         <div class="org-filter-body">
                             <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
                             <div id="orgFilterList" class="org-filter-list"></div>
@@ -386,10 +507,36 @@
 
     <div id="toast" data-i18n="toast.copied">コピーしました</div>
 
+    <div id="addModal" class="add-modal">
+        <div class="add-modal-content">
+            <h3>本番環境追加</h3>
+            <div id="addModalFields" class="add-modal-grid">
+                <div class="add-modal-field wide">
+                    <label>組織名</label>
+                    <input data-add-field="組織名">
+                </div>
+                <div class="add-modal-field wide">
+                    <label>構築環境名</label>
+                    <input data-add-field="構築環境名" value="新規本番環境">
+                </div>
+            </div>
+            <div class="add-modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeProductionAddModal()">キャンセル</button>
+                <button type="button" class="primary-btn" onclick="submitProductionAddModal()">ADD</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let productionData = [];
         let selectedOrg = '';
         let initialOrgApplied = false;
+        let canEdit = false;
+        let canManageUsers = false;
+        let editingProductionId = '';
+        const orgFilterOpenGroups = new Set();
+        let suppressOrgFilterToggle = false;
+        const PRODUCTION_FIELDS = ["組織名","構築環境名","使用VPN","VPN IP","VPNユーザー名","VPNパスワード","踏み台IP","踏み台ユーザー名","踏み台パスワード","AP IP","APユーザー名","APパスワード","DB IP","DBユーザー名","DBパスワード"];
 
         const FIELD_GROUPS = [
             { title: 'section.productionVpn', fields: [
@@ -424,23 +571,21 @@
         });
 
         function loadProductionData() {
-            fetch('production.csv?t=' + new Date().getTime(), { cache: 'no-store' })
-                .then(response => response.ok ? response.text() : '')
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            productionData = results.data.filter(hasProductionInfo);
-                            applyInitialOrgFromQuery();
-                            renderOrgFilterMenu();
-                            renderProduction();
-                        }
-                    });
+            fetch('production_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(response => response.ok ? response.json() : Promise.reject(new Error('production_data load failed')))
+                .then(payload => {
+                    canEdit = Boolean(payload && payload.canEdit);
+                    canManageUsers = Boolean(payload && payload.canManageUsers);
+                    productionData = assignRowIds((payload.data || []).filter(hasProductionInfo), 'prod');
+                    updateOrgAddButton();
+                    applyInitialOrgFromQuery();
+                    renderOrgFilterMenu();
+                    renderProduction();
                 })
                 .catch(error => {
-                    console.error('production.csv load failed:', error);
+                    console.error('production_data load failed:', error);
                     productionData = [];
+                    updateOrgAddButton();
                     renderOrgFilterMenu();
                     renderProduction();
                 });
@@ -459,14 +604,29 @@
         function checkWindowsAuth() {
             fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : { ok: false })
-                .then(result => setProtectedNavVisible(Boolean(result && result.ok)))
-                .catch(() => setProtectedNavVisible(false));
+                .then(result => {
+                    canEdit = Boolean(result && result.canEdit);
+                    canManageUsers = Boolean(result && result.canManageUsers);
+                    updateOrgAddButton();
+                    renderProduction();
+                })
+                .catch(() => {
+                    canEdit = false;
+                    canManageUsers = false;
+                    updateOrgAddButton();
+                    renderProduction();
+                });
         }
 
-        function setProtectedNavVisible(visible) {
-            document.querySelectorAll('[data-protected-nav="true"]').forEach(link => {
-                link.hidden = !visible;
-            });
+        function assignRowIds(rows, prefix) {
+            return rows.map((row, index) => ({ ...row, __rowId: row.__rowId || `${prefix}_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}` }));
+        }
+
+        function updateOrgAddButton() {
+            const orgAddBtn = document.getElementById('orgAddBtn');
+            if (orgAddBtn) orgAddBtn.hidden = !canEdit;
+            const userAdminNavLink = document.getElementById('userAdminNavLink');
+            if (userAdminNavLink) userAdminNavLink.hidden = !canManageUsers;
         }
 
         function renderOrgFilterMenu() {
@@ -479,15 +639,26 @@
                 return org.toLowerCase().includes(keyword);
             });
 
+            list.querySelectorAll('.org-filter-group[open] summary').forEach(summary => {
+                orgFilterOpenGroups.add(summary.textContent || '');
+            });
+            suppressOrgFilterToggle = true;
             list.innerHTML = '';
             if (orgs.length === 0) {
                 list.innerHTML = `<div class="production-placeholder">該当する組織がありません</div>`;
+                setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
                 return;
             }
 
             groupOrgsByKana(orgs).forEach(group => {
                 const groupEl = document.createElement('details');
                 groupEl.className = 'org-filter-group';
+                groupEl.open = orgFilterOpenGroups.has(group.label);
+                groupEl.addEventListener('toggle', () => {
+                    if (suppressOrgFilterToggle) return;
+                    if (groupEl.open) orgFilterOpenGroups.add(group.label);
+                    else orgFilterOpenGroups.delete(group.label);
+                });
                 const label = document.createElement('summary');
                 label.textContent = group.label;
                 groupEl.appendChild(label);
@@ -510,6 +681,7 @@
                 groupEl.appendChild(items);
                 list.appendChild(groupEl);
             });
+            setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
         }
 
         function getOrgOptions() {
@@ -579,6 +751,79 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        function addProductionOrganization(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            document.getElementById('addModal').style.display = 'flex';
+            const firstInput = document.querySelector('#addModalFields input');
+            if (firstInput) firstInput.focus();
+        }
+
+        function closeProductionAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        function submitProductionAddModal() {
+            if (!canEdit) return;
+            const values = {};
+            document.querySelectorAll('#addModalFields [data-add-field]').forEach(input => {
+                values[input.dataset.addField] = input.value.trim();
+            });
+            if (!values['組織名']) return alert('組織名を入力してください');
+            const row = Object.fromEntries(PRODUCTION_FIELDS.map(field => [field, '']));
+            row['組織名'] = values['組織名'];
+            row['構築環境名'] = values['構築環境名'] || '新規本番環境';
+            row.__rowId = `prod_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            productionData.push(row);
+            selectedOrg = row['組織名'];
+            editingProductionId = row.__rowId;
+            closeProductionAddModal();
+            renderOrgFilterMenu();
+            renderProduction();
+        }
+
+        function editProductionCard(rowId) {
+            if (!canEdit) return;
+            editingProductionId = rowId;
+            renderProduction();
+        }
+
+        function saveProductionCard(rowId) {
+            if (!canEdit) return;
+            document.querySelectorAll(`#productionArea input[data-row-id="${CSS.escape(rowId)}"]`).forEach(input => {
+                const row = productionData.find(item => item.__rowId === input.dataset.rowId);
+                if (row) row[input.dataset.field] = input.value.trim();
+            });
+            const csv = Papa.unparse({ fields: PRODUCTION_FIELDS, data: productionData }, { quotes: true });
+            fetch('update_production.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                body: csv
+            })
+                .then(res => res.ok ? res.text() : Promise.reject(new Error('production.csv save failed')))
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    editingProductionId = '';
+                    renderOrgFilterMenu();
+                    renderProduction();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function renderProductionCardEditor(row) {
+            const rowId = escapeJs(row.__rowId);
+            const fields = PRODUCTION_FIELDS.map(field => `
+                <div class="production-editor-field">
+                    <label>${escapeHtml(field)}</label>
+                    <input data-row-id="${rowId}" data-field="${escapeHtml(field)}" value="${escapeHtml(row[field] || '')}">
+                </div>
+            `).join('');
+            return `<div class="production-editor-grid">${fields}</div>`;
+        }
+
         function renderProduction() {
             const area = document.getElementById('productionArea');
             const rows = productionData.filter(row => {
@@ -601,6 +846,14 @@
 
         function renderProductionCard(row) {
             const sections = FIELD_GROUPS.map(group => renderSection(row, group)).join('');
+            const isEditing = canEdit && editingProductionId === row.__rowId;
+            const actions = canEdit ? `
+                <span class="production-card-actions">
+                    ${isEditing
+                        ? `<button type="button" class="primary-btn" onclick="saveProductionCard('${escapeJs(row.__rowId)}')" title="保存" aria-label="保存">${saveActionIcon()}</button>`
+                        : `<button type="button" class="secondary-btn" onclick="editProductionCard('${escapeJs(row.__rowId)}')" title="編集" aria-label="編集">${editActionIcon()}</button>`}
+                </span>
+            ` : '';
             return `
                 <div class="production-card">
                     <div class="production-card-head">
@@ -608,9 +861,10 @@
                             <div class="production-title">${escapeHtml(row['構築環境名'] || t('unset.name'))}</div>
                             <div class="production-subtitle">${escapeHtml(row['組織名'] || t('unset.org'))}</div>
                         </div>
+                        ${actions}
                         <span class="production-tag">${t('nav.production')}</span>
                     </div>
-                    <div class="production-blocks">${sections}</div>
+                    ${isEditing ? renderProductionCardEditor(row) : `<div class="production-blocks">${sections}</div>`}
                 </div>
             `;
         }
@@ -666,6 +920,12 @@
 
         function copyIcon() {
             return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+        }
+        function editActionIcon() {
+            return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 19V6.5A2.5 2.5 0 0 1 6.5 4H13"/><path d="M14 19H4"/><path d="M8 16l2.7-.7L19 7a2.1 2.1 0 0 0-3-3L7.7 12.3 7 15z"/></svg>`;
+        }
+        function saveActionIcon() {
+            return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3"/><path d="M8 21v-7h8v7"/></svg>`;
         }
     </script>
 </body>
