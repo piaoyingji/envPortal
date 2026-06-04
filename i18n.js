@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.1';
+const APP_VERSION_FALLBACK = '2.2.2';
 
 const I18N_MESSAGES = {
     ja: {

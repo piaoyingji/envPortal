@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.2] - 2026-06-04
+
+### Fixed
+
+- Stopped tracking `.env` so deployed server-specific runtime configuration no longer blocks Git updates.
+
 ## [2.2.1] - 2026-06-04
 
 ### Fixed
