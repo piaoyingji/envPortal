@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.1] - 2026-06-04
+
+### Fixed
+
+- Stopped tracking runtime data and generated deployment files that can block automatic Git updates on deployed servers.
+
 ## [2.1.34] - 2026-06-03
 
 ### Added
