@@ -35,6 +35,63 @@
             border-left: 6px solid var(--primary);
             border-bottom: 1px solid var(--border);
         }
+        .org-name-header-main {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .org-level-actions,
+        .group-level-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex: 0 0 auto;
+        }
+        .org-level-actions button,
+        .group-level-actions button {
+            min-height: 28px;
+            padding: 0.25rem 0.65rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+        .org-level-actions button:not(.env-add-btn):not(.org-add-btn),
+        .group-level-actions button:not(.env-add-btn):not(.org-add-btn) {
+            width: 30px;
+            height: 30px;
+            min-height: 30px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .org-level-actions svg,
+        .group-level-actions svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+            display: block;
+        }
+        .org-list-toolbar {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.85rem;
+            box-shadow: var(--shadow-card);
+        }
+        .org-list-toolbar-title {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1rem;
+        }
         .org-name-header:hover {
             color: var(--primary-hover);
         }
@@ -1010,8 +1067,7 @@
                 <div class="card org-filter-card">
                     <details id="orgFilterMenu" class="org-filter-menu" open>
                         <summary>
-                            <span class="org-filter-summary-title">組織選択</span>
-                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addOrganization(event)" hidden>ADD</button>
+                            <span class="org-filter-summary-title" data-i18n="label.orgSelect">組織選択</span>
                         </summary>
                         <div class="org-filter-body">
                             <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
@@ -1021,7 +1077,7 @@
                 </div>
                 <div class="card tag-filter-card">
                     <div class="tag-filter-title">
-                        <label>Tags</label>
+                        <label data-i18n="label.tags">タグ</label>
                         <span class="tag-filter-hint" data-i18n="filter.tagsHint">複数選択で AND 条件</span>
                     </div>
                     <div id="tagFilterPanel" class="tag-filter-panel"></div>
@@ -1064,11 +1120,11 @@
 
     <div id="addModal" class="add-modal">
         <div class="add-modal-content">
-            <h3 id="addModalTitle">追加</h3>
+            <h3 id="addModalTitle" data-i18n="modal.add">追加</h3>
             <div id="addModalFields" class="add-modal-grid"></div>
             <div class="add-modal-actions">
-                <button type="button" class="secondary-btn" onclick="closeAddModal()">キャンセル</button>
-                <button type="button" class="primary-btn" onclick="submitAddModal()">ADD</button>
+                <button type="button" class="secondary-btn" onclick="closeAddModal()" data-i18n="button.cancel">キャンセル</button>
+                <button id="addModalSubmitBtn" type="button" class="primary-btn" onclick="submitAddModal()" data-i18n="button.add">ADD</button>
             </div>
         </div>
     </div>
@@ -1136,6 +1192,7 @@
                     renderTagFilters();
                     renderInitialSummary();
                     loadPortalConfig();
+                    syncOrgReadingsAndRefresh();
                 })
                 .catch(error => {
                     console.error('データの取得に失敗しました:', error);
@@ -1189,8 +1246,6 @@
         }
 
         function updateEditToolbar() {
-            const orgAddBtn = document.getElementById('orgAddBtn');
-            if (orgAddBtn) orgAddBtn.hidden = !canEdit;
             const userAdminNavLink = document.getElementById('userAdminNavLink');
             if (userAdminNavLink) userAdminNavLink.hidden = !canManageUsers;
             syncProductionNavLink();
@@ -1266,7 +1321,7 @@
             suppressOrgFilterToggle = true;
             list.innerHTML = '';
             if (orgs.length === 0) {
-                list.innerHTML = `<div class="tag-empty">該当する組織がありません</div>`;
+                list.innerHTML = `<div class="tag-empty">${t('state.noMatchedOrg')}</div>`;
                 setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
                 return;
             }
@@ -1313,6 +1368,20 @@
                 if (!group.isUnset && !orgMap.has(group.key)) orgMap.set(group.key, group);
             });
             return Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+        }
+
+        function syncOrgReadingsAndRefresh() {
+            fetch('org_readings_status.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('org readings load failed')))
+                .then(payload => {
+                    const overrides = { ...(window.ORG_READING_OVERRIDES || {}) };
+                    (payload.records || []).forEach(record => {
+                        if (record.name && record.reading) overrides[record.name] = record.reading;
+                    });
+                    window.ORG_READING_OVERRIDES = overrides;
+                    renderOrgFilterMenu();
+                })
+                .catch(error => console.warn('org readings sync failed:', error));
         }
 
         function groupOrgsByKana(orgs) {
@@ -1395,22 +1464,44 @@
                 event.stopPropagation();
             }
             if (!canEdit) return;
-            openAddModal('org', '組織追加', [
+            openAddModal('org', 'modal.orgAdd', [
                 ['組織コード', ''],
                 ['組織名', '', true],
-                ['環境グループ', '', false, 'select'],
+                ['環境グループ', 'UHR-V6', false, 'group-input'],
                 ['構築環境名', '新規環境', true],
             ]);
         }
 
-        function openAddModal(type, title, fields, extra = {}) {
+        function groupNameOptions() {
+            return uniqueTags(ENV_GROUP_OPTIONS.concat(fullData.map(row => envGroupValue(row))).filter(Boolean));
+        }
+
+        function modalFieldLabel(field) {
+            const labels = {
+                '組織コード': 'label.orgCode',
+                '組織名': 'label.orgName',
+                '環境グループ': 'label.envGroup',
+                '構築環境名': 'label.envName',
+                'URL': 'label.url',
+                'ログインID': 'label.loginId',
+                'ログインパスワード': 'label.password',
+                'コピー先組織': 'label.copyTargetOrg'
+            };
+            return labels[field] ? t(labels[field]) : field;
+        }
+
+        function openAddModal(type, titleKey, fields, extra = {}) {
             addModalContext = { type, fields, extra };
-            document.getElementById('addModalTitle').textContent = title;
-            document.getElementById('addModalFields').innerHTML = fields.map(([field, value, wide, kind, options]) => `
+            document.getElementById('addModalTitle').textContent = t(titleKey);
+            const submitBtn = document.getElementById('addModalSubmitBtn');
+            if (submitBtn) submitBtn.textContent = type.startsWith('edit-') ? t('button.save') : t('button.add');
+            document.getElementById('addModalFields').innerHTML = fields.map(([field, value, wide, kind, options], index) => `
                 <div class="add-modal-field${wide ? ' wide' : ''}">
-                    <label>${sanitizeHTML(field)}</label>
+                    <label>${sanitizeHTML(modalFieldLabel(field))}</label>
                     ${kind === 'select'
                         ? `<select data-add-field="${sanitizeHTML(field)}">${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}</select>`
+                        : kind === 'group-input'
+                            ? `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}" list="groupOptions_${index}"><datalist id="groupOptions_${index}">${groupNameOptions().map(option => `<option value="${sanitizeHTML(option)}"></option>`).join('')}</datalist>`
                         : kind === 'org-select'
                             ? `<select data-add-field="${sanitizeHTML(field)}">${(options || getOrgOptions()).map(org => `<option value="${sanitizeHTML(org.key)}" ${org.key === value ? 'selected' : ''}>${sanitizeHTML(org.label)}</option>`).join('')}</select>`
                         : `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}">`}
@@ -1439,7 +1530,7 @@
             if (!addModalContext) return;
             const values = addModalValues();
             if (addModalContext.type === 'org') {
-                if (!values['組織名']) return alert('組織名を入力してください');
+                if (!values['組織名']) return alert(t('error.orgNameRequired'));
                 const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -1454,12 +1545,25 @@
                 editEnvironmentCard(row.__rowId);
                 return;
             }
+            if (addModalContext.type === 'edit-org') {
+                updateOrganization(addModalContext.extra.orgKey, values);
+                return;
+            }
+            if (addModalContext.type === 'group') {
+                addGroupToOrg(addModalContext.extra.orgKey, values);
+                return;
+            }
+            if (addModalContext.type === 'edit-group') {
+                updateGroup(addModalContext.extra.orgKey, addModalContext.extra.groupValue, values);
+                return;
+            }
             if (addModalContext.type === 'env') {
                 const org = addModalContext.extra.org;
                 if (!org) return;
                 const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
                 row['組織コード'] = org.code || '';
                 row['組織名'] = org.name || '';
+                row['環境グループ'] = addModalContext.extra.groupName || '';
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 fullData.push(row);
@@ -1586,18 +1690,6 @@
             return String(row['環境グループ'] || '').trim();
         }
 
-        function renderEnvGroupSelect(row) {
-            const current = envGroupValue(row);
-            return `
-                <div class="card-edit-field">
-                    <label>環境グループ</label>
-                    <select data-env-field="環境グループ">
-                        ${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === current ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}
-                    </select>
-                </div>
-            `;
-        }
-
         function renderCardRdpEditor(kind, row, fallbackTarget) {
             const remote = row || {};
             return `
@@ -1612,8 +1704,6 @@
 
         function renderEnvironmentCardEditor(env, matchedRdps, matchedDbRdps) {
             const envFields = [
-                ['組織コード', env['組織コード'] || '', false],
-                ['組織名', env['組織名'] || '', false],
                 ['構築環境名', env['構築環境名'] || '', false],
                 ['URL', env['URL'] || '', true],
                 ['ログインID', env['ログインID'] || '', false],
@@ -1635,7 +1725,6 @@
                 <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
                     <div class="card-edit-section-title">環境情報</div>
                     <div class="card-edit-grid">
-                        ${renderEnvGroupSelect(env)}
                         ${envFields}
                         <div class="card-edit-field wide">
                             <label>Tags</label>
@@ -1691,6 +1780,143 @@
                 },
                 note: extra.note || '',
             };
+        }
+
+        function moveTagsForRow(beforeRow, afterRow) {
+            if (!beforeRow || !afterRow) return;
+            const oldKey = getRowKey(beforeRow);
+            const oldLegacyKey = getLegacyRowKey(beforeRow);
+            const record = tagStore[oldKey] || tagStore[oldLegacyKey];
+            delete tagStore[oldKey];
+            delete tagStore[oldLegacyKey];
+            if (record && ((Array.isArray(record) && record.length) || (record.tags && record.tags.length))) {
+                tagStore[getRowKey(afterRow)] = record;
+            }
+        }
+
+        function openOrganizationEdit(orgKey, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            if (!org) return;
+            openAddModal('edit-org', 'modal.orgEdit', [
+                ['組織コード', org.code || ''],
+                ['組織名', org.name || '', true],
+            ], { orgKey });
+        }
+
+        function updateOrganization(orgKey, values) {
+            if (!canEdit) return;
+            const nextCode = String(values['組織コード'] || '').trim();
+            const nextName = String(values['組織名'] || '').trim();
+            if (!nextName) return alert(t('error.orgNameRequired'));
+            const rows = fullData.filter(row => getOrgGroup(row).key === orgKey);
+            if (rows.length === 0) return;
+            const beforeRows = rows.map(row => cloneForLog(row));
+            const beforeOrg = getOrgGroup(rows[0]);
+            rows.forEach((row, index) => {
+                const beforeRow = cloneForLog(row);
+                row['組織コード'] = nextCode;
+                row['組織名'] = nextName;
+                moveTagsForRow(beforeRow, row);
+            });
+            rdpData.forEach(remote => {
+                if ((remote['組織名'] || '').trim() === beforeOrg.name) {
+                    remote['組織名'] = nextName;
+                }
+            });
+            const afterOrg = getOrgGroup(rows[0]);
+            const summary = {
+                action: 'edit-org',
+                level: 'org',
+                before: { org: beforeOrg, rows: beforeRows },
+                after: { org: afterOrg, rows: rows.map(row => cloneForLog(row)) },
+            };
+            closeAddModal();
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    initDropdown();
+                    renderOrgFilterMenu();
+                    document.getElementById('orgSelect').value = afterOrg.key;
+                    syncProductionNavLink();
+                    renderEnvironments(afterOrg.key);
+                    renderTagFilters();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function openGroupAdd(orgKey, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            openAddModal('group', 'modal.groupAdd', [
+                ['環境グループ', 'UHR-V6', false, 'group-input'],
+                ['構築環境名', '新規環境', true],
+            ], { orgKey });
+        }
+
+        function addGroupToOrg(orgKey, values) {
+            if (!canEdit) return;
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            if (!org) return;
+            const groupName = String(values['環境グループ'] || '').trim();
+            if (!groupName) return alert(t('error.groupRequired'));
+            const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
+            row['組織コード'] = org.code || '';
+            row['組織名'] = org.name || '';
+            row['環境グループ'] = groupName;
+            row['構築環境名'] = values['構築環境名'] || '新規環境';
+            row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            fullData.push(row);
+            closeAddModal();
+            renderEnvironments(org.key);
+            editEnvironmentCard(row.__rowId);
+        }
+
+        function openGroupEdit(orgKey, groupValue, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            openAddModal('edit-group', 'modal.groupEdit', [
+                ['環境グループ', groupValue || '', true, 'group-input'],
+            ], { orgKey, groupValue });
+        }
+
+        function updateGroup(orgKey, groupValue, values) {
+            if (!canEdit) return;
+            const nextGroup = String(values['環境グループ'] || '').trim();
+            if (!nextGroup) return alert(t('error.groupRequired'));
+            const rows = fullData.filter(row => getOrgGroup(row).key === orgKey && envGroupValue(row) === groupValue);
+            if (rows.length === 0) return;
+            const beforeRows = rows.map(row => cloneForLog(row));
+            rows.forEach(row => {
+                const beforeRow = cloneForLog(row);
+                row['環境グループ'] = nextGroup;
+                moveTagsForRow(beforeRow, row);
+            });
+            const summary = {
+                action: 'edit-group',
+                level: 'group',
+                org: getOrgGroup(rows[0]),
+                before: { group: groupValue, rows: beforeRows },
+                after: { group: nextGroup, rows: rows.map(row => cloneForLog(row)) },
+            };
+            closeAddModal();
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    renderTagFilters();
+                    renderEnvironments(orgKey);
+                })
+                .catch(err => alert(t('error.save') + err.message));
         }
 
         function saveEnvironmentCard(rowId) {
@@ -1753,18 +1979,17 @@
             if (!canEdit) return;
             const org = getOrgOptions().find(item => item.key === orgKey);
             if (!org) return;
-            openAddModal('env', '環境追加', [
-                ['環境グループ', ENV_GROUP_OPTIONS.includes(groupName) ? groupName : '', false, 'select'],
+            openAddModal('env', 'modal.envAdd', [
                 ['構築環境名', '新規環境', true],
                 ['URL', '', true],
                 ['ログインID', ''],
                 ['ログインパスワード', ''],
-            ], { org });
+            ], { org, groupName });
         }
 
         function deleteEnvironmentCard(rowId) {
             if (!canEdit) return;
-            if (!confirm('この環境を削除しますか？')) return;
+            if (!confirm(t('confirm.deleteEnv'))) return;
             const env = fullData.find(row => row.__rowId === rowId);
             const beforeEnv = cloneForLog(env);
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
@@ -1811,8 +2036,8 @@
             if (!env) return;
             const currentOrgKey = getOrgGroup(env).key;
             const orgs = getOrgOptions().filter(org => org.key !== currentOrgKey);
-            if (orgs.length === 0) return alert('コピー先組織がありません');
-            openAddModal('copy-env', '環境コピー', [
+            if (orgs.length === 0) return alert(t('error.noCopyTargetOrg'));
+            openAddModal('copy-env', 'modal.envCopy', [
                 ['コピー先組織', orgs[0].key, true, 'org-select', orgs],
             ], { rowId });
         }
@@ -1890,6 +2115,18 @@
                 return;
             }
 
+            if (canEdit) {
+                const toolbar = document.createElement('div');
+                toolbar.className = 'org-list-toolbar';
+                toolbar.innerHTML = `
+                    <div class="org-list-toolbar-title">${t('label.orgList')}</div>
+                    <div class="org-level-actions">
+                        <button type="button" class="secondary-btn org-add-btn" onclick="addOrganization(event)">ADD</button>
+                    </div>
+                `;
+                resultsArea.appendChild(toolbar);
+            }
+
             const orgMap = new Map();
             getFilteredData().forEach(item => {
                 const org = getOrgGroup(item);
@@ -1905,7 +2142,11 @@
             });
 
             if (orgMap.size === 0) {
-                resultsArea.innerHTML = `<div style="grid-column: 1 / -1;" class="empty-state">${t('state.noData')}</div>`;
+                const empty = document.createElement('div');
+                empty.style.gridColumn = '1 / -1';
+                empty.className = 'empty-state';
+                empty.textContent = t('state.noData');
+                resultsArea.appendChild(empty);
                 return;
             }
 
@@ -1930,7 +2171,12 @@
                 card.className = 'org-summary-card';
                 card.innerHTML = `
                     <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
-                        <span>${sanitizeHTML(org.label)}</span>
+                        <span class="org-name-header-main">${sanitizeHTML(org.label)}</span>
+                        ${canEdit ? `
+                            <span class="org-level-actions">
+                                <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
+                            </span>
+                        ` : ''}
                     </div>
                     <div class="org-badges-wrapper">
                         ${envHtml}
@@ -2029,7 +2275,12 @@
             banner.className = 'active-org-banner';
             banner.innerHTML = `
                 <div class="active-org-name">${sanitizeHTML(orgInfo.label)}</div>
-                ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(selectedOrgKey)}')">ADD</button>` : ''}
+                ${canEdit ? `
+                    <div class="org-level-actions">
+                        <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
+                        <button type="button" class="secondary-btn env-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">ADD</button>
+                    </div>
+                ` : ''}
             `;
             resultsArea.appendChild(banner);
 
@@ -2064,7 +2315,12 @@
                 title.className = 'env-group-title';
                 title.innerHTML = `
                     <span>${sanitizeHTML(group.title || t('unset.name'))}</span>
-                    ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">ADD</button>` : ''}
+                    ${canEdit ? `
+                        <span class="group-level-actions">
+                            <button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
+                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">ADD</button>
+                        </span>
+                    ` : ''}
                 `;
                 const list = document.createElement('div');
                 list.className = 'env-group-list';
@@ -2267,10 +2523,10 @@
             const editActionsHtml = canEdit ? `
                 <span class="card-edit-actions">
                     ${isEditingCard
-                        ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="保存" aria-label="保存">${saveActionIcon()}</button>`
-                        : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="編集" aria-label="編集">${editActionIcon()}</button>`}
+                        ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
+                        : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
                     ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="コピー" aria-label="コピー">COPY</button>` : ''}
-                    ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="削除" aria-label="削除">DEL</button>` : ''}
+                    ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">DEL</button>` : ''}
                 </span>
             ` : '';
             const viewBodyHtml = `

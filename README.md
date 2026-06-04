@@ -2,13 +2,17 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.2`
+当前版本：`2.2.3`
 
 ## 核心能力
 
-- 机构/客户按“编码 + 名称”管理，避免通过重复输入机构名称来分组。
+- 环境检索按 `组织 → 环境组 → 环境` 三层管理。环境组使用 `data.csv` 的 `環境グループ` 字段，例如 `UHR-V6`、`PHR-V7`。
+- 机构/客户按“编码 + 名称”管理，组织属性可在环境检索画面直接编辑，并批量反映到该组织下的环境。
+- 组属性可在环境检索画面直接编辑，并批量反映到该组织该组下的环境。
+- 环境卡片只维护该环境自身的 URL、登录信息、DB、AP/DB RDP 和 tags，组织/组信息不再混在环境编辑里。
 - 每个服务器/环境支持独立标签，标签可以跨机构自由过滤，例如 `DEMO`、`教育`、`社内`。
 - 标签过滤支持分类展示、多选 AND 条件，并包含系统自动生成标签，例如数据库类型、数据库版本、RDP/SSH。
+- 组织选择支持五十音分类。`org_readings.js` 不存在时，后端会通过 `/org_readings_status.jsp` 自动补齐并生成本地读音映射。
 - 首页按机构显示紧凑摘要，环境卡片通过显式展开/收回按钮查看详情，减少默认页面空白。
 - 首页环境摘要使用流式网格布局，适配多服务器机构。
 - 环境健康检查会返回 HTTP 状态、响应时间、TTL 和 OS 推测，并按分钟刷新。
@@ -18,8 +22,10 @@ EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，�
 - RDP 文件可生成并签名；工具会自动创建 EnvPortal 自签名证书，也提供证书下载。
 - 全站 i18n 多语资源化，默认日文，支持中文，并记住上次选择语言。
 - 主画面 header 会显示当前客户端 IP 与应用版本，便于确认访问来源。
-- 三个旧版页面采用接近 Base UI 官网的低装饰视觉风格，使用浅色背景、细边框、克制阴影和淡色半透明标签。
-- 数据存储使用本地 JSON/CSV 文件，不依赖真实数据库。
+- 角色权限支持 `admin`、`staff`、`import_staff`、`new_employee`。管理员可编辑全部信息和管理用户，其他角色按规则查看脱敏或限定数据。
+- 环境搜索、本番环境和用户管理合并为当前主页面，不再使用独立的旧管理页面。
+- 数据存储使用本地 JSON/CSV 文件，不依赖真实数据库。运行数据文件不进入 Git，避免部署更新覆盖现场数据。
+- 环境检索保存使用统一的 `update_portal_bundle.jsp`，一次保存 `data.csv`、`rdp.csv`、`tags.json`，change log 记录差分摘要而不是整份 CSV。
 - 后端已切换为 Python，保留 `start.bat`，并提供 `start.sh`，为后续 Linux 部署做准备。
 - Windows 启动时会检查并尝试开放 EnvPortal 与 Guacamole 的入站端口。
 
@@ -37,7 +43,9 @@ Linux / macOS:
 ./start.sh
 ```
 
-默认读取 `.env`：
+启动时读取本地 `.env`。`.env` 已从 Git 管理中移除并加入 `.gitignore`，用于保存部署服务器自己的端口、认证代理和 Guacamole 配置。
+
+如果 `.env` 不存在，`server.py` 使用默认端口 `8080`。如果需要沿用既有端口 `8999`，请在本地重新创建 `.env`：
 
 ```env
 PORT=8999
@@ -53,6 +61,12 @@ GUACAMOLE_PASSWORD=
 
 ```text
 http://localhost:8999
+```
+
+未创建 `.env` 时访问地址为：
+
+```text
+http://localhost:8080
 ```
 
 ## Windows 远端部署 / 自启动
@@ -82,7 +96,18 @@ C:\nssm\nssm.exe
 
 `BIND_ADDRESS=0.0.0.0` 时会监听所有网卡，局域网内可使用本机 IP 访问。
 
-Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防火墙规则。默认端口为 `8999` 和 `8088`，规则会开放所有本地地址和远程地址。由于默认 `BIND_ADDRESS=0.0.0.0`，换服务器时通常不需要修改 `.env`。如果当前终端不是管理员权限，启动不会失败，但会打印需要在管理员 PowerShell 中执行的 `New-NetFirewallRule` 命令。
+Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防火墙规则。未配置 `.env` 时 EnvPortal 默认端口为 `8080`，Guacamole 默认端口为 `8088`。如果当前终端不是管理员权限，启动不会失败，但会打印需要在管理员 PowerShell 中执行的 `New-NetFirewallRule` 命令。
+
+## 用户角色与认证
+
+EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`canEdit`、`canManageUsers`。角色信息保存在本地 `users.json`：
+
+- `admin`：管理员，可查看全部信息、编辑环境/本番环境、维护用户。
+- `staff`：一般职员，可查看环境检索中的非敏感摘要。
+- `import_staff`：导入职员，只能查看带 `OneHR` tag 的环境。
+- `new_employee`：新员工，只能查看带 `社内学習` tag 的环境。
+
+首次访问的域用户会自动登记为 `staff`。既有 Windows/IP 白名单用户首次迁移为 `admin`。写入接口仅 admin 可用。
 
 ## 域认证反向代理
 
@@ -98,18 +123,23 @@ Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防�
 
 ## 文件说明
 
-- `index.html`：环境检索首页。
-- `admin.html`：环境数据管理。
-- `rdp.html`：服务器/远程连接信息管理。
+- `index.html`：环境检索首页，包含组织、环境组、环境、tags、AP/DB RDP 的查看与编辑。
+- `production.html`：本番环境查看与编辑。
+- `user-admin.html`：用户和角色管理。
 - `i18n.js`：日文/中文多语资源。
 - `server.py`：Python 后端，负责认证、文件保存、健康检查、DB 探测、RDP 生成/签名/连接。
 - `tools/domain-proxy/`：已入域主机使用的 Windows 认证反向代理。
 - `run.py`：启动入口。
 - `db_versions.json`：数据库类型和版本候选。
-- `tags.json`：自由标签存储。
-- `data.csv`：环境档案数据，本地运行数据文件。
+- `data.csv`：环境档案数据，本地运行数据文件，包含 `環境グループ`。
 - `rdp.csv`：远程连接档案数据，本地运行数据文件。
+- `production.csv`：本番环境数据，本地运行数据文件。
+- `tags.json`：自由标签存储，本地运行数据文件。
+- `users.json`：用户角色存储，本地运行数据文件。
+- `org_readings.js`：组织名读音映射，本地自动生成文件。
 - `images/sea01.jpg`：旧版顶部主题背景图保留文件，当前默认样式不再使用该背景。
+
+以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`users.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
 
 ## 版本规则
 

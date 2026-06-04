@@ -485,7 +485,7 @@
                 <div class="card org-filter-card">
                     <details id="orgFilterMenu" class="org-filter-menu" open>
                         <summary>
-                            <span class="org-filter-summary-title">組織選択</span>
+                            <span class="org-filter-summary-title" data-i18n="label.orgSelect">組織選択</span>
                             <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" hidden>ADD</button>
                         </summary>
                         <div class="org-filter-body">
@@ -509,19 +509,19 @@
 
     <div id="addModal" class="add-modal">
         <div class="add-modal-content">
-            <h3>本番環境追加</h3>
+            <h3 data-i18n="modal.productionAdd">本番環境追加</h3>
             <div id="addModalFields" class="add-modal-grid">
                 <div class="add-modal-field wide">
-                    <label>組織名</label>
+                    <label data-i18n="label.orgName">組織名</label>
                     <input data-add-field="組織名">
                 </div>
                 <div class="add-modal-field wide">
-                    <label>構築環境名</label>
+                    <label data-i18n="label.envName">構築環境名</label>
                     <input data-add-field="構築環境名" value="新規本番環境">
                 </div>
             </div>
             <div class="add-modal-actions">
-                <button type="button" class="secondary-btn" onclick="closeProductionAddModal()">キャンセル</button>
+                <button type="button" class="secondary-btn" onclick="closeProductionAddModal()" data-i18n="button.cancel">キャンセル</button>
                 <button type="button" class="primary-btn" onclick="submitProductionAddModal()">ADD</button>
             </div>
         </div>
@@ -581,6 +581,7 @@
                     applyInitialOrgFromQuery();
                     renderOrgFilterMenu();
                     renderProduction();
+                    syncOrgReadingsAndRefresh();
                 })
                 .catch(error => {
                     console.error('production_data load failed:', error);
@@ -645,7 +646,7 @@
             suppressOrgFilterToggle = true;
             list.innerHTML = '';
             if (orgs.length === 0) {
-                list.innerHTML = `<div class="production-placeholder">該当する組織がありません</div>`;
+                list.innerHTML = `<div class="production-placeholder">${t('state.noMatchedOrg')}</div>`;
                 setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
                 return;
             }
@@ -687,6 +688,20 @@
         function getOrgOptions() {
             return Array.from(new Set(productionData.map(row => (row['組織名'] || '').trim()).filter(Boolean)))
                 .sort((a, b) => a.localeCompare(b, 'ja'));
+        }
+
+        function syncOrgReadingsAndRefresh() {
+            fetch('org_readings_status.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('org readings load failed')))
+                .then(payload => {
+                    const overrides = { ...(window.ORG_READING_OVERRIDES || {}) };
+                    (payload.records || []).forEach(record => {
+                        if (record.name && record.reading) overrides[record.name] = record.reading;
+                    });
+                    window.ORG_READING_OVERRIDES = overrides;
+                    renderOrgFilterMenu();
+                })
+                .catch(error => console.warn('org readings sync failed:', error));
         }
 
         function groupOrgsByKana(orgs) {
@@ -772,7 +787,7 @@
             document.querySelectorAll('#addModalFields [data-add-field]').forEach(input => {
                 values[input.dataset.addField] = input.value.trim();
             });
-            if (!values['組織名']) return alert('組織名を入力してください');
+            if (!values['組織名']) return alert(t('error.orgNameRequired'));
             const row = Object.fromEntries(PRODUCTION_FIELDS.map(field => [field, '']));
             row['組織名'] = values['組織名'];
             row['構築環境名'] = values['構築環境名'] || '新規本番環境';
@@ -850,8 +865,8 @@
             const actions = canEdit ? `
                 <span class="production-card-actions">
                     ${isEditing
-                        ? `<button type="button" class="primary-btn" onclick="saveProductionCard('${escapeJs(row.__rowId)}')" title="保存" aria-label="保存">${saveActionIcon()}</button>`
-                        : `<button type="button" class="secondary-btn" onclick="editProductionCard('${escapeJs(row.__rowId)}')" title="編集" aria-label="編集">${editActionIcon()}</button>`}
+                        ? `<button type="button" class="primary-btn" onclick="saveProductionCard('${escapeJs(row.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
+                        : `<button type="button" class="secondary-btn" onclick="editProductionCard('${escapeJs(row.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
                 </span>
             ` : '';
             return `

@@ -2,6 +2,26 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.3] - 2026-06-04
+
+### Added
+
+- Added organization, environment group, and environment level editing in the environment search screen.
+- Added backend default organization readings and frontend refresh through `org_readings_status.jsp`.
+
+### Changed
+
+- Localized the remaining hierarchy editing, production add, and user management UI text through shared i18n resources.
+- Updated README and changelog documentation to reflect the current role, local data, hierarchy editing, reading sync, and bundled save behavior.
+- Split environment search editing into organization, environment group, and environment levels.
+- Moved organization add actions out of the left organization selector and into the main hierarchy area.
+- Limited environment card editing to environment-owned fields while organization and group edits update matching rows in bulk.
+
+### Fixed
+
+- Fixed blank edit icon buttons in organization and group headers.
+- Restored organization kana grouping when local `org_readings.js` does not exist.
+
 ## [2.2.2] - 2026-06-04
 
 ### Fixed

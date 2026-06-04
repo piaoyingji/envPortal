@@ -75,7 +75,7 @@
     <header class="top-header">
         <div class="logo-area">
             <h1>Env<span>Portal</span></h1>
-            <p>ユーザー権限を管理します</p>
+            <p data-i18n="userAdmin.description">ユーザー権限を管理します</p>
         </div>
         <nav class="main-nav">
             <div class="main-nav-inner">
@@ -89,7 +89,7 @@
     <main class="user-admin-container">
         <div class="user-toolbar">
             <h2 data-i18n="nav.users">ユーザー管理</h2>
-            <button id="saveUsersBtn" type="button" class="primary-btn" onclick="saveUsers()" hidden>保存</button>
+            <button id="saveUsersBtn" type="button" class="primary-btn" onclick="saveUsers()" data-i18n="button.save" hidden>保存</button>
         </div>
         <div id="userArea" class="page-message" data-i18n="state.loading">読み込み中...</div>
     </main>
@@ -114,7 +114,7 @@
                 })
                 .catch(() => {
                     document.getElementById('saveUsersBtn').hidden = true;
-                    document.getElementById('userArea').innerHTML = 'アクセス権限がありません。';
+                    document.getElementById('userArea').innerHTML = t('userAdmin.noPermission');
                 });
         }
 
@@ -123,7 +123,7 @@
             const rows = Object.values(users).sort((a, b) => String(a.user || '').localeCompare(String(b.user || '')));
             if (rows.length === 0) {
                 area.className = 'page-message';
-                area.innerHTML = 'ユーザーがありません。';
+                area.innerHTML = t('userAdmin.noUsers');
                 return;
             }
             area.className = 'user-table-wrap';

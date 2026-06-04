@@ -120,6 +120,11 @@ ROLE_FILTER_TAGS = {
     "import_staff": "OneHR",
     "new_employee": "社内学習",
 }
+DEFAULT_ORG_READINGS = {
+    "標準版": "ひょうじゅんばん",
+    "森林整備センター": "しんりんせいびせんたー",
+    "東京-受入テスト": "とうきょううけいれてすと",
+}
 
 
 def read_csv_records(filename, fields):
@@ -403,11 +408,13 @@ def request_ip_auth(headers, client_address):
 
 def load_org_reading_overrides():
     readings_path = BASE_DIR / "org_readings.js"
+    overrides = dict(DEFAULT_ORG_READINGS)
     if not readings_path.exists():
-        return {}
+        return overrides
     text = readings_path.read_text(encoding="utf-8")
     pairs = re.findall(r"'([^']+)'\s*:\s*'([^']*)'", text)
-    return {name.strip(): reading.strip() for name, reading in pairs if name.strip()}
+    overrides.update({name.strip(): reading.strip() for name, reading in pairs if name.strip()})
+    return overrides
 
 
 def js_string(value):
@@ -468,7 +475,7 @@ def sync_org_readings():
             added[name] = reading
         else:
             unresolved.append(name)
-    if added:
+    if added or not (BASE_DIR / "org_readings.js").exists():
         save_org_reading_overrides(overrides)
     return {"added": added, "unresolved": unresolved}
 
