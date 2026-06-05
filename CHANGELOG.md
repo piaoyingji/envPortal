@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.4] - 2026-06-05
+
+### Changed
+
+- Display users in user management as `user（lastIp）`.
+- Store `firstIp` and `lastIp` for domain/local user visits without using IP as a persisted user identity.
+- Preserve user IP metadata when saving role and display name changes.
+
 ## [2.2.3] - 2026-06-04
 
 ### Added

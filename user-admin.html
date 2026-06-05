@@ -147,9 +147,11 @@
 
         function renderUserRow(row) {
             const key = escapeHtml(row.user || '');
+            const userIp = row.lastIp || row.ip || '';
+            const userLabel = userIp ? `${row.user || ''}（${userIp}）` : (row.user || '');
             return `
                 <tr>
-                    <td class="readonly-cell">${key}</td>
+                    <td class="readonly-cell">${escapeHtml(userLabel)}</td>
                     <td><input data-user="${key}" data-field="displayName" value="${escapeHtml(row.displayName || row.user || '')}"></td>
                     <td>
                         <select data-user="${key}" data-field="role">

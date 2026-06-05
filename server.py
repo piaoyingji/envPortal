@@ -209,7 +209,7 @@ def now_text():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime())
 
 
-def user_profile_for(user, is_initial_admin=False):
+def user_profile_for(user, is_initial_admin=False, client_ip=""):
     normalized = normalize_windows_user(user)
     if not normalized:
         return {"user": "", "role": "staff", "canEdit": False, "canManageUsers": False}
@@ -223,12 +223,17 @@ def user_profile_for(user, is_initial_admin=False):
             "role": "admin" if is_initial_admin else "staff",
             "firstSeen": now,
             "lastSeen": now,
+            "firstIp": client_ip or "",
+            "lastIp": client_ip or "",
         }
         users[normalized] = record
         save_users(users)
     else:
         record["lastSeen"] = now
         record.setdefault("displayName", user or normalized)
+        if client_ip:
+            record.setdefault("firstIp", record.get("lastIp") or client_ip)
+            record["lastIp"] = client_ip
         if record.get("role") not in USER_ROLES:
             record["role"] = "staff"
         users[normalized] = record
@@ -240,6 +245,7 @@ def user_profile_for(user, is_initial_admin=False):
         "role": role,
         "canEdit": role == "admin",
         "canManageUsers": role == "admin",
+        "lastIp": record.get("lastIp", ""),
     }
 
 
@@ -1455,21 +1461,33 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
 
     def request_auth(self):
         if windows_user_from_headers(self.headers) and trusted_auth_proxy(self.headers, self.client_address):
-            return request_windows_auth(self.headers)
+            user, trusted = request_windows_auth(self.headers)
+            return user, trusted, "windows"
         user, trusted = ("", False)
         if trusted_auth_proxy(self.headers, self.client_address):
             user, trusted = request_windows_auth(self.headers)
         if trusted:
-            return user, True
+            return user, True, "windows"
         client_ip, ip_trusted = request_ip_auth(self.headers, self.client_address)
         if ip_trusted:
-            return client_ip, True
-        return local_windows_user_fallback(self.client_address)
+            return client_ip, True, "ip"
+        user, trusted = local_windows_user_fallback(self.client_address)
+        return user, trusted, "local" if user else ""
 
     def request_profile(self):
-        user, initial_admin = self.request_auth()
+        user, initial_admin, auth_source = self.request_auth()
         client_ip = client_ip_from_request(self.headers, self.client_address)
-        profile = user_profile_for(user, initial_admin)
+        if auth_source == "ip":
+            profile = {
+                "user": user,
+                "displayName": user,
+                "role": "admin",
+                "canEdit": True,
+                "canManageUsers": True,
+                "lastIp": client_ip,
+            }
+        else:
+            profile = user_profile_for(user, initial_admin, client_ip)
         profile["ip"] = client_ip
         profile["ok"] = bool(profile.get("user"))
         return profile
@@ -1623,6 +1641,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                             "role": role,
                             "firstSeen": str(record.get("firstSeen") or old.get("firstSeen") or now_text()),
                             "lastSeen": str(record.get("lastSeen") or old.get("lastSeen") or now_text()),
+                            "firstIp": str(record.get("firstIp") or old.get("firstIp") or ""),
+                            "lastIp": str(record.get("lastIp") or old.get("lastIp") or ""),
                         }
                     body = json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n"
                 except Exception as exc:
