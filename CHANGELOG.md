@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.30] - 2026-06-05
+
+### Fixed
+
+- Added local `roles.json` to `.gitignore` because role master data is a deployment site data file.
+
 ## [2.2.29] - 2026-06-05
 
 ### Added

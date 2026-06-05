@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.29`
+当前版本：`2.2.30`
 
 ## 核心能力
 
@@ -160,10 +160,11 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `tags.json`：自由标签存储，本地运行数据文件。
 - `tag_categories.json`：TAG 分类配置，本地运行数据文件，缺失时后端默认生成“其他”分类。
 - `users.json`：用户角色存储，本地运行数据文件。
+- `roles.json`：角色权限主数据，本地运行数据文件。
 - `org_readings.js`：组织名读音映射，本地自动生成文件。
 - `images/sea01.jpg`：旧版顶部主题背景图保留文件，当前默认样式不再使用该背景。
 
-以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
+以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`roles.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
 
 ## 版本规则
 

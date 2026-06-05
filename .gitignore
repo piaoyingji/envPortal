@@ -6,6 +6,7 @@ __pycache__/
 .tmp/
 logs/
 users.json
+roles.json
 tags.json
 tag_categories.json
 org_readings.js
