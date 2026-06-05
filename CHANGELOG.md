@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.15] - 2026-06-05
+
+### Fixed
+
+- Aligned the organization list title row and edit action button in the search page so the text and icon button sit centered on the same header line.
+
 ## [2.2.14] - 2026-06-05
 
 ### Added

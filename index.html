@@ -26,14 +26,21 @@
             font-weight: bold;
             color: var(--primary);
             cursor: pointer;
-            padding: 0.2rem 0.5rem 0.2rem 0.8rem;
-            margin-bottom: 0.9rem;
+            padding: 0.2rem 0 0.2rem 0.8rem;
+            display: flex;
+            align-items: center;
+            min-height: 36px;
+            min-width: 0;
+            border-left: 6px solid var(--primary);
+        }
+        .org-summary-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            border-left: 6px solid var(--primary);
             border-bottom: 1px solid var(--border);
+            margin-bottom: 0.9rem;
+            padding: 0.15rem 0.35rem 0.55rem 0;
         }
         .org-name-header-main {
             min-width: 0;
@@ -45,6 +52,7 @@
         .group-level-actions {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.45rem;
             flex: 0 0 auto;
         }
@@ -836,9 +844,18 @@
         .active-org-name {
             color: var(--text-main) !important;
             border-left: 0 !important;
-            border-bottom: 1px solid var(--border) !important;
             padding-left: 0 !important;
             font-weight: 650 !important;
+        }
+        .org-name-header {
+            border-bottom: 0 !important;
+        }
+        .active-org-name {
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .org-summary-header .org-level-actions {
+            align-self: center;
+            margin-left: auto;
         }
         .org-code,
         .active-org-code {
@@ -2177,8 +2194,10 @@
                 const card = document.createElement('div');
                 card.className = 'org-summary-card';
                 card.innerHTML = `
-                    <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
-                        <span class="org-name-header-main">${sanitizeHTML(org.label)}</span>
+                    <div class="org-summary-header">
+                        <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
+                            <span class="org-name-header-main">${sanitizeHTML(org.label)}</span>
+                        </div>
                         ${canEdit ? `
                             <span class="org-level-actions">
                                 <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
