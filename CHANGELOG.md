@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.6] - 2026-06-05
+
+### Added
+
+- Added AD attribute lookup in the domain proxy for display name, email, department, and title.
+- Stored forwarded AD user metadata in EnvPortal user profiles.
+
 ## [2.2.5] - 2026-06-05
 
 ### Added

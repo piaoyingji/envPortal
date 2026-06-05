@@ -1,4 +1,5 @@
 using System.Net;
+using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
@@ -88,7 +89,7 @@ sealed class ProxyWorker : BackgroundService
         var target = BuildTargetUri(context.Request);
         using var request = new HttpRequestMessage(new HttpMethod(context.Request.HttpMethod), target);
         CopyRequestHeaders(context.Request, request);
-        AddAuthHeaders(request, rawUser, context.Request.RemoteEndPoint?.Address.ToString() ?? "");
+        AddAuthHeaders(request, rawUser, context.Request.RemoteEndPoint?.Address.ToString() ?? "", LookupDomainUser(rawUser));
 
         if (context.Request.HasEntityBody)
         {
@@ -181,7 +182,51 @@ sealed class ProxyWorker : BackgroundService
         return text.Trim().ToLowerInvariant();
     }
 
-    private void AddAuthHeaders(HttpRequestMessage request, string rawUser, string clientIp)
+    private DomainUserInfo LookupDomainUser(string rawUser)
+    {
+        try
+        {
+            using var context = new PrincipalContext(ContextType.Domain);
+            using var user = UserPrincipal.FindByIdentity(context, rawUser)
+                ?? UserPrincipal.FindByIdentity(context, NormalizeUser(rawUser));
+            if (user is null)
+            {
+                return new DomainUserInfo();
+            }
+
+            return new DomainUserInfo
+            {
+                DisplayName = user.DisplayName ?? "",
+                Email = user.EmailAddress ?? "",
+                Department = ReadDirectoryProperty(user, "department"),
+                Title = ReadDirectoryProperty(user, "title")
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to look up AD attributes for {User}", rawUser);
+            return new DomainUserInfo();
+        }
+    }
+
+    private static string ReadDirectoryProperty(UserPrincipal user, string name)
+    {
+        try
+        {
+            if (user.GetUnderlyingObject() is System.DirectoryServices.DirectoryEntry entry &&
+                entry.Properties.Contains(name) &&
+                entry.Properties[name].Value is not null)
+            {
+                return Convert.ToString(entry.Properties[name].Value) ?? "";
+            }
+        }
+        catch
+        {
+        }
+        return "";
+    }
+
+    private void AddAuthHeaders(HttpRequestMessage request, string rawUser, string clientIp, DomainUserInfo info)
     {
         var headerName = config["Proxy:HeaderName"] ?? "X-Remote-User";
         request.Headers.Remove(headerName);
@@ -190,6 +235,19 @@ sealed class ProxyWorker : BackgroundService
         request.Headers.TryAddWithoutValidation("X-Forwarded-User", rawUser);
         request.Headers.Remove("X-Forwarded-For");
         request.Headers.TryAddWithoutValidation("X-Forwarded-For", clientIp);
+        AddOptionalHeader(request, "X-Remote-Display-Name", info.DisplayName);
+        AddOptionalHeader(request, "X-Remote-Mail", info.Email);
+        AddOptionalHeader(request, "X-Remote-Department", info.Department);
+        AddOptionalHeader(request, "X-Remote-Title", info.Title);
+    }
+
+    private static void AddOptionalHeader(HttpRequestMessage request, string name, string value)
+    {
+        request.Headers.Remove(name);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
     }
 
     private void ApplyCorsHeaders(HttpListenerRequest request, HttpListenerResponse response)
@@ -255,5 +313,13 @@ sealed class ProxyWorker : BackgroundService
         response.ContentType = "text/plain; charset=utf-8";
         await response.OutputStream.WriteAsync(bytes, cancellationToken);
         response.OutputStream.Close();
+    }
+
+    private sealed class DomainUserInfo
+    {
+        public string DisplayName { get; init; } = "";
+        public string Email { get; init; } = "";
+        public string Department { get; init; } = "";
+        public string Title { get; init; } = "";
     }
 }

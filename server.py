@@ -210,7 +210,8 @@ def now_text():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime())
 
 
-def user_profile_for(user, is_initial_admin=False, client_ip=""):
+def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
+    metadata = metadata or {}
     normalized = normalize_windows_user(user)
     if not normalized:
         return {"user": "", "role": "staff", "canEdit": False, "canManageUsers": False}
@@ -220,7 +221,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip=""):
     if not record:
         record = {
             "user": normalized,
-            "displayName": user or normalized,
+            "displayName": metadata.get("displayName") or user or normalized,
             "role": "admin" if is_initial_admin else "staff",
             "firstSeen": now,
             "lastSeen": now,
@@ -231,12 +232,18 @@ def user_profile_for(user, is_initial_admin=False, client_ip=""):
         save_users(users)
     else:
         record["lastSeen"] = now
-        record.setdefault("displayName", user or normalized)
+        if metadata.get("displayName"):
+            record["displayName"] = metadata["displayName"]
+        else:
+            record.setdefault("displayName", user or normalized)
         if client_ip:
             record.setdefault("firstIp", record.get("lastIp") or client_ip)
             record["lastIp"] = client_ip
         if record.get("role") not in USER_ROLES:
             record["role"] = "staff"
+        for key in ("email", "department", "title"):
+            if metadata.get(key):
+                record[key] = metadata[key]
         users[normalized] = record
         save_users(users)
     role = record.get("role", "staff")
@@ -247,6 +254,9 @@ def user_profile_for(user, is_initial_admin=False, client_ip=""):
         "canEdit": role == "admin",
         "canManageUsers": role == "admin",
         "lastIp": record.get("lastIp", ""),
+        "email": record.get("email", ""),
+        "department": record.get("department", ""),
+        "title": record.get("title", ""),
     }
 
 
@@ -566,6 +576,15 @@ def request_windows_auth(headers):
     raw_user = windows_user_from_headers(headers)
     user = normalize_windows_user(raw_user)
     return user, bool(user and user in load_windows_auth_whitelist())
+
+
+def windows_user_metadata_from_headers(headers):
+    return {
+        "displayName": (headers.get("X-Remote-Display-Name") or "").strip(),
+        "email": (headers.get("X-Remote-Mail") or "").strip(),
+        "department": (headers.get("X-Remote-Department") or "").strip(),
+        "title": (headers.get("X-Remote-Title") or "").strip(),
+    }
 
 
 def local_windows_user_fallback(client_address):
@@ -1488,7 +1507,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "lastIp": client_ip,
             }
         else:
-            profile = user_profile_for(user, initial_admin, client_ip)
+            profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
         profile["ip"] = client_ip
         profile["ok"] = bool(profile.get("user"))
         return profile
