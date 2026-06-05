@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.20';
+const APP_VERSION_FALLBACK = '2.2.21';
 
 const I18N_MESSAGES = {
     ja: {
@@ -371,6 +371,9 @@ const I18N_MESSAGES = {
 
 let PORTAL_RUNTIME_CONFIG_PROMISE = null;
 let PORTAL_RUNTIME_CONFIG = null;
+let PORTAL_AUTH_PROMISE = null;
+let PORTAL_AUTH_PROFILE = null;
+const PORTAL_AUTH_STORAGE_KEY = 'envPortalAuthProfile';
 
 function loadPortalRuntimeConfig() {
     if (PORTAL_RUNTIME_CONFIG_PROMISE) return PORTAL_RUNTIME_CONFIG_PROMISE;
@@ -398,13 +401,96 @@ function portalProxyUrl(path) {
     return base + String(path || '').replace(/^\/+/, '');
 }
 
+function isAuthEndpoint(path) {
+    return String(path || '').replace(/^\/+/, '').split('?', 1)[0] === 'auth_windows.jsp';
+}
+
+function isProtectedPortalEndpoint(path) {
+    const endpoint = String(path || '').replace(/^\/+/, '').split('?', 1)[0];
+    return [
+        'portal_data.jsp',
+        'production_data.jsp',
+        'users_data.jsp',
+        'roles_data.jsp',
+        'auth.jsp',
+        'db_probe.jsp',
+        'rdp_file.jsp',
+        'rdp_connect.jsp',
+        'guacamole_connect.jsp',
+        'update_csv.jsp',
+        'update_rdp.jsp',
+        'update_tags.jsp',
+        'update_production.jsp',
+        'update_users.jsp',
+        'update_roles.jsp',
+        'update_portal_bundle.jsp'
+    ].includes(endpoint);
+}
+
+function readStoredPortalAuth() {
+    try {
+        const profile = JSON.parse(sessionStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || 'null');
+        if (!profile || !profile.authToken || !profile.authTokenExpiresAt) return null;
+        if (Number(profile.authTokenExpiresAt) * 1000 <= Date.now() + 30000) return null;
+        return profile;
+    } catch (e) {
+        return null;
+    }
+}
+
+function storePortalAuth(profile) {
+    if (!profile || !profile.authToken || !profile.authTokenExpiresAt) return;
+    PORTAL_AUTH_PROFILE = profile;
+    try {
+        sessionStorage.setItem(PORTAL_AUTH_STORAGE_KEY, JSON.stringify(profile));
+    } catch (e) {
+        // Session storage can be disabled by browser policy.
+    }
+}
+
+function loadPortalAuth() {
+    const stored = readStoredPortalAuth();
+    if (stored) {
+        PORTAL_AUTH_PROFILE = stored;
+        return Promise.resolve(stored);
+    }
+    if (PORTAL_AUTH_PROMISE) return PORTAL_AUTH_PROMISE;
+    PORTAL_AUTH_PROMISE = loadPortalRuntimeConfig()
+        .then(() => {
+            const authPath = 'auth_windows.jsp?t=' + new Date().getTime();
+            const url = portalProxyEnabled() ? portalProxyUrl(authPath) : authPath;
+            const options = portalProxyEnabled()
+                ? { cache: 'no-store', credentials: 'include' }
+                : { cache: 'no-store' };
+            return fetch(url, options);
+        })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+            if (profile && profile.authToken) storePortalAuth(profile);
+            return profile;
+        })
+        .catch(() => null)
+        .finally(() => {
+            PORTAL_AUTH_PROMISE = null;
+        });
+    return PORTAL_AUTH_PROMISE;
+}
+
 function portalFetch(path, options = {}) {
     return loadPortalRuntimeConfig().then(() => {
-        const viaProxy = portalProxyEnabled();
-        const requestOptions = viaProxy
-            ? { ...options, credentials: options.credentials || 'include' }
-            : options;
-        return fetch(viaProxy ? portalProxyUrl(path) : path, requestOptions);
+        if (!portalProxyEnabled()) return fetch(path, options);
+        if (isAuthEndpoint(path)) {
+            return loadPortalAuth().then(profile => new Response(JSON.stringify(profile || { ok: false }), {
+                status: profile && profile.ok ? 200 : 401,
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+        if (!isProtectedPortalEndpoint(path)) return fetch(path, options);
+        return loadPortalAuth().then(profile => {
+            const headers = new Headers(options.headers || {});
+            if (profile && profile.authToken) headers.set('X-EnvPortal-Auth', profile.authToken);
+            return fetch(path, { ...options, headers });
+        });
     });
 }
 

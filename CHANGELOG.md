@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.21] - 2026-06-05
+
+### Fixed
+
+- Reduced refresh latency by using the domain proxy only to obtain a short-lived domain auth token, then calling protected EnvPortal APIs directly with that token.
+- Restored direct calls for connectivity checks and organization reading sync because those endpoints do not require domain identity.
+
 ## [2.2.20] - 2026-06-05
 
 ### Fixed

@@ -1,6 +1,8 @@
 import csv
 import ctypes
 from ctypes import wintypes
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -68,6 +70,8 @@ GUACAMOLE_USERNAME = CONFIG.get("GUACAMOLE_USERNAME", "")
 GUACAMOLE_PASSWORD = CONFIG.get("GUACAMOLE_PASSWORD", "")
 DOMAIN_AUTH_PROXY_URL = CONFIG.get("DOMAIN_AUTH_PROXY_URL", "").rstrip("/")
 DOMAIN_AUTH_AUTO_PROBE = env_bool("DOMAIN_AUTH_AUTO_PROBE", False)
+AUTH_TOKEN_SECRET = CONFIG.get("AUTH_TOKEN_SECRET", AUTH_PASSWORD)
+AUTH_TOKEN_TTL_SECONDS = int(CONFIG.get("AUTH_TOKEN_TTL_SECONDS", "28800"))
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
 GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 GUACAMOLE_DRIVE_RETENTION_HOURS = env_float("GUACAMOLE_DRIVE_RETENTION_HOURS", 24)
@@ -316,6 +320,62 @@ def save_users(users):
 
 def now_text():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime())
+
+
+def base64url_encode(value):
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def base64url_decode(value):
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
+
+
+def sign_auth_token(user, expires_at):
+    payload = f"{normalize_windows_user(user)}.{int(expires_at)}"
+    signature = hmac.new(AUTH_TOKEN_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest()
+    return f"{base64url_encode(payload.encode('utf-8'))}.{base64url_encode(signature)}"
+
+
+def verify_auth_token(token):
+    text = str(token or "").strip()
+    if "." not in text:
+        return ""
+    payload_part, signature_part = text.split(".", 1)
+    try:
+        payload = base64url_decode(payload_part).decode("utf-8")
+        expected = base64url_encode(hmac.new(AUTH_TOKEN_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest())
+    except Exception:
+        return ""
+    if not hmac.compare_digest(signature_part, expected):
+        return ""
+    user, _, expires_text = payload.rpartition(".")
+    try:
+        expires_at = int(expires_text)
+    except ValueError:
+        return ""
+    if expires_at < int(time.time()):
+        return ""
+    return normalize_windows_user(user)
+
+
+def auth_token_from_headers(headers):
+    value = headers.get("X-EnvPortal-Auth", "")
+    if value:
+        return value.strip()
+    authorization = headers.get("Authorization", "")
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return ""
+
+
+def attach_auth_token(profile):
+    if not profile.get("user"):
+        return profile
+    expires_at = int(time.time()) + AUTH_TOKEN_TTL_SECONDS
+    profile["authToken"] = sign_auth_token(profile["user"], expires_at)
+    profile["authTokenExpiresAt"] = expires_at
+    return profile
 
 
 def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
@@ -1555,6 +1615,9 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             pass
 
     def request_auth(self):
+        token_user = verify_auth_token(auth_token_from_headers(self.headers))
+        if token_user:
+            return token_user, False, "token"
         if windows_user_from_headers(self.headers) and trusted_auth_proxy(self.headers, self.client_address):
             user, trusted = request_windows_auth(self.headers)
             return user, trusted, "windows"
@@ -1565,6 +1628,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         user, initial_admin, auth_source = self.request_auth()
         client_ip = client_ip_from_request(self.headers, self.client_address)
         profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
+        if auth_source == "windows":
+            attach_auth_token(profile)
         profile["ip"] = client_ip
         profile["ok"] = bool(profile.get("user"))
         return profile
