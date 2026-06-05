@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.17] - 2026-06-05
+
+### Fixed
+
+- Added a versioned `i18n.js` script URL so browsers do not keep an older script without the system management menu.
+- Changed the top-right metadata from client IP display to current user display, hiding IP-only identities.
+
 ## [2.2.16] - 2026-06-05
 
 ### Added

@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js"></script>
+    <script src="i18n.js?v=2.2.17"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -576,6 +576,7 @@
                 .then(payload => {
                     canEdit = Boolean(payload && payload.canEdit);
                     canManageUsers = Boolean(payload && payload.canManageUsers);
+                    setCurrentUser(payload);
                     setSystemMenuVisible(payload && payload.role === 'admin');
                     productionData = assignRowIds((payload.data || []).filter(hasProductionInfo), 'prod');
                     updateOrgAddButton();
@@ -614,6 +615,7 @@
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);
                     canManageUsers = Boolean(result && result.canManageUsers);
+                    setCurrentUser(result);
                     setSystemMenuVisible(result && result.role === 'admin');
                     updateOrgAddButton();
                     renderProduction();
@@ -621,6 +623,7 @@
                 .catch(() => {
                     canEdit = false;
                     canManageUsers = false;
+                    setCurrentUser(null);
                     setSystemMenuVisible(false);
                     updateOrgAddButton();
                     renderProduction();

@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.16';
+const APP_VERSION_FALLBACK = '2.2.17';
 
 const I18N_MESSAGES = {
     ja: {
@@ -10,7 +10,7 @@ const I18N_MESSAGES = {
         'app.productionTitle': '本番環境',
         'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
-        'app.clientIp': 'クライアントIP {ip}',
+        'app.currentUser': 'ユーザー {name}',
         'header.searchDesc': '特定の組織の各種テストおよび本番環境のログイン情報をすばやく検索',
         'header.adminDesc': '既存の環境情報を修正、または新しい組織の情報を追加します',
         'header.rdpDesc': 'Windows / Linux などのサーバ遠隔接続情報を管理します',
@@ -192,7 +192,7 @@ const I18N_MESSAGES = {
         'app.productionTitle': '本番環境',
         'app.productionAdminTitle': '本番環境データ管理',
         'app.version': 'Version {version}',
-        'app.clientIp': '客户端IP {ip}',
+        'app.currentUser': '用户 {name}',
         'header.searchDesc': '快速检索指定机构的测试环境和生产环境登录信息',
         'header.adminDesc': '维护既有环境信息，或为机构追加新的环境档案',
         'header.rdpDesc': '维护 Windows / Linux 等服务器远程连接信息',
@@ -407,8 +407,8 @@ function applyI18n(root = document) {
     if (switcher) switcher.value = lang;
     const versionLabel = document.getElementById('appVersionLabel');
     if (versionLabel) versionLabel.textContent = t('app.version', { version: versionLabel.dataset.version || APP_VERSION_FALLBACK });
-    const clientIpLabel = document.getElementById('clientIpLabel');
-    if (clientIpLabel && clientIpLabel.dataset.ip) clientIpLabel.textContent = t('app.clientIp', { ip: clientIpLabel.dataset.ip });
+    const currentUserLabel = document.getElementById('currentUserLabel');
+    if (currentUserLabel && currentUserLabel.dataset.name) currentUserLabel.textContent = t('app.currentUser', { name: currentUserLabel.dataset.name });
     const systemMenuLabel = document.getElementById('systemMenuLabel');
     if (systemMenuLabel) systemMenuLabel.textContent = t('nav.system');
 }
@@ -429,21 +429,34 @@ function loadAppVersion() {
         });
 }
 
-function loadClientIp() {
-    const clientIpLabel = document.getElementById('clientIpLabel');
-    if (!clientIpLabel) return;
-    fetch('client_info.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+function isIpLikeUser(value) {
+    const text = String(value || '').trim();
+    return /^(\d{1,3}\.){3}\d{1,3}$/.test(text) || text.includes(':');
+}
+
+function setCurrentUser(profile) {
+    const label = document.getElementById('currentUserLabel');
+    if (!label) return;
+    const name = String((profile && (profile.displayName || profile.user)) || '').trim();
+    if (!name || isIpLikeUser(name)) {
+        label.hidden = true;
+        label.dataset.name = '';
+        label.textContent = '';
+        return;
+    }
+    label.dataset.name = name;
+    label.textContent = t('app.currentUser', { name });
+    label.hidden = false;
+}
+
+function loadCurrentUser() {
+    fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
         .then(res => res.ok ? res.json() : null)
-        .then(config => {
-            const ip = String((config && config.clientIp) || '').trim();
-            if (!ip) return;
-            clientIpLabel.dataset.ip = ip;
-            clientIpLabel.textContent = t('app.clientIp', { ip });
-            clientIpLabel.hidden = false;
+        .then(profile => {
+            setCurrentUser(profile);
+            if (profile && profile.role === 'admin') setSystemMenuVisible(true);
         })
-        .catch(() => {
-            clientIpLabel.hidden = true;
-        });
+        .catch(() => setCurrentUser(null));
 }
 
 function initI18n() {
@@ -460,7 +473,7 @@ function initI18n() {
                 </select>
             </div>
             <div class="client-meta">
-                <span id="clientIpLabel" class="client-ip" hidden></span>
+                <span id="currentUserLabel" class="client-ip" hidden></span>
                 <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
             </div>
             <details id="systemMenu" class="system-menu" hidden>
@@ -473,7 +486,7 @@ function initI18n() {
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
-        loadClientIp();
+        loadCurrentUser();
         loadAppVersion();
     }
     applyI18n();

@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js"></script>
+    <script src="i18n.js?v=2.2.17"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1197,6 +1197,7 @@
                 .then(payload => {
                     canEdit = Boolean(payload && payload.canEdit);
                     canManageUsers = Boolean(payload && payload.canManageUsers);
+                    setCurrentUser(payload);
                     setSystemMenuVisible(payload && payload.role === 'admin');
                     isAuthenticated = canEdit;
                     tagStore = normalizeTagStore(payload.tags || {});
@@ -1244,6 +1245,7 @@
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);
                     canManageUsers = Boolean(result && result.canManageUsers);
+                    setCurrentUser(result);
                     setSystemMenuVisible(result && result.role === 'admin');
                     updateEditToolbar();
                     if (!result || !result.ok) {
@@ -1261,6 +1263,7 @@
                     canEdit = false;
                     canManageUsers = false;
                     isAuthenticated = false;
+                    setCurrentUser(null);
                     setSystemMenuVisible(false);
                     localStorage.removeItem('authExpiry');
                     updateEditToolbar();

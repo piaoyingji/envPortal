@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ユーザー管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js"></script>
+    <script src="i18n.js?v=2.2.17"></script>
     <style>
         .user-admin-container {
             width: calc(100% - 2rem);
@@ -112,12 +112,14 @@
                     roles = normalizeRoles(payload.roles || []);
                     currentUser = payload.user || '';
                     canManageUsers = Boolean(payload.canManageUsers);
+                    setCurrentUser(payload);
                     setSystemMenuVisible(payload.role === 'admin');
                     document.getElementById('saveUsersBtn').hidden = !canManageUsers;
                     renderUsers();
                 })
                 .catch(() => {
                     canManageUsers = false;
+                    setCurrentUser(null);
                     setSystemMenuVisible(false);
                     document.getElementById('saveUsersBtn').hidden = true;
                     document.getElementById('userArea').innerHTML = t('userAdmin.noPermission');

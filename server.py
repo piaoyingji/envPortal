@@ -1847,6 +1847,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({
                 "ok": profile.get("ok", False),
                 "user": profile.get("user", ""),
+                "displayName": profile.get("displayName", ""),
+                "email": profile.get("email", ""),
+                "department": profile.get("department", ""),
+                "title": profile.get("title", ""),
                 "role": role,
                 "canEdit": profile.get("canEdit", False),
                 "canManageUsers": profile.get("canManageUsers", False),
@@ -1866,6 +1870,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({
                 "ok": profile.get("ok", False),
                 "user": profile.get("user", ""),
+                "displayName": profile.get("displayName", ""),
+                "email": profile.get("email", ""),
+                "department": profile.get("department", ""),
+                "title": profile.get("title", ""),
                 "role": profile.get("role", "staff"),
                 "canEdit": profile.get("canEdit", False),
                 "canManageUsers": profile.get("canManageUsers", False),
