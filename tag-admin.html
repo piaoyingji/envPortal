@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnvPortal - TAG分類管理</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="i18n.js?v=2.2.29"></script>
+    <style>
+        .tag-admin-container {
+            width: calc(100% - 2rem);
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 0 2rem;
+        }
+        .tag-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.85rem;
+        }
+        .tag-toolbar h2 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
+        .tag-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tag-help {
+            margin: 0 0 0.85rem;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+        }
+        .tag-admin-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.85rem;
+        }
+        .category-panel {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: var(--shadow-card);
+            padding: 0.9rem;
+        }
+        .category-head {
+            display: grid;
+            grid-template-columns: minmax(160px, 260px) 1fr auto;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .category-head input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.45rem 0.5rem;
+            font-size: 0.86rem;
+            background: #fff;
+        }
+        .category-head input[readonly] {
+            color: var(--text-muted);
+            background: #f8fafc;
+        }
+        .tag-chip-list {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            min-height: 34px;
+            padding: 0.45rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .tag-admin-chip {
+            border: 1px solid #d7e6ee;
+            border-radius: 999px;
+            background: #f5fbfc;
+            color: #315766;
+            padding: 0.28rem 0.58rem;
+            font-size: 0.8rem;
+            line-height: 1.2;
+            cursor: pointer;
+        }
+        .tag-admin-chip:hover {
+            background: #eaf5f8;
+        }
+        .tag-admin-chip.assigned {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+        .tag-admin-chip.active {
+            background: #111;
+            color: #fff;
+            border-color: #111;
+        }
+        .tag-empty-line {
+            color: var(--text-muted);
+            font-size: 0.83rem;
+        }
+        .page-message {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            color: var(--text-muted);
+        }
+        @media (max-width: 760px) {
+            .tag-toolbar,
+            .category-head {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+            .tag-toolbar {
+                display: grid;
+            }
+        }
+    </style>
+</head>
+<body data-title-key="nav.tagCategories">
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>Env<span>Portal</span></h1>
+            <p data-i18n="tagAdmin.description">TAG分類を明示的に管理します</p>
+        </div>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html" data-i18n="nav.search">環境検索</a>
+                <a href="production.html" data-i18n="nav.production">本番環境</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="tag-admin-container">
+        <div class="tag-toolbar">
+            <h2 data-i18n="nav.tagCategories">TAG分類管理</h2>
+            <div class="tag-actions">
+                <button id="addCategoryBtn" type="button" class="secondary-btn" onclick="addCategory()" data-i18n="button.add" hidden>追加</button>
+                <button id="saveCategoriesBtn" type="button" class="primary-btn" onclick="saveCategories()" data-i18n="button.save" hidden>保存</button>
+            </div>
+        </div>
+        <p class="tag-help" data-i18n="tagAdmin.help">TAGを選択して分類へ追加します。分類から外したTAGはその他へ移動します。</p>
+        <div id="tagAdminArea" class="page-message" data-i18n="state.loading">読み込み中...</div>
+    </main>
+
+    <div id="toast" data-i18n="toast.saved">保存成功。</div>
+
+    <script>
+        let tagCategories = normalizeTagCategories(null);
+        let allTags = [];
+        let selectedTag = '';
+        let canManageUsers = false;
+
+        window.addEventListener('DOMContentLoaded', loadTagCategories);
+        window.addEventListener('i18n:changed', renderTagCategories);
+
+        function loadTagCategories() {
+            portalFetch('tag_categories_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
+                .then(payload => {
+                    tagCategories = normalizeTagCategories(payload.tagCategories || {});
+                    allTags = uniqueTags(payload.tags || []);
+                    canManageUsers = Boolean(payload.canManageUsers);
+                    setCurrentUser(payload);
+                    setSystemMenuVisible(isSystemAdmin(payload));
+                    document.getElementById('addCategoryBtn').hidden = !canManageUsers;
+                    document.getElementById('saveCategoriesBtn').hidden = !canManageUsers;
+                    renderTagCategories();
+                })
+                .catch(() => {
+                    canManageUsers = false;
+                    setCurrentUser(null);
+                    setSystemMenuVisible(false);
+                    document.getElementById('addCategoryBtn').hidden = true;
+                    document.getElementById('saveCategoriesBtn').hidden = true;
+                    document.getElementById('tagAdminArea').innerHTML = t('tagAdmin.noPermission');
+                });
+        }
+
+        function renderTagCategories() {
+            const area = document.getElementById('tagAdminArea');
+            if (!allTags.length) {
+                area.className = 'page-message';
+                area.innerHTML = t('tagAdmin.noTags');
+                return;
+            }
+            area.className = 'tag-admin-grid';
+            area.innerHTML = tagCategories.categories.map((category, index) => renderCategoryPanel(category, index)).join('');
+        }
+
+        function renderCategoryPanel(category, index) {
+            const isOther = category.id === 'other';
+            const tags = allTags.filter(tag => categoryIdForTag(tag) === category.id);
+            return `
+                <section class="category-panel">
+                    <div class="category-head">
+                        <input data-category-index="${index}" value="${escapeHtml(categoryLabel(category))}" ${isOther ? 'readonly' : ''} oninput="syncCategoryInputs()">
+                        <div class="tag-chip-list" aria-label="${escapeHtml(t('label.assignedTags'))}">
+                            ${tags.length ? tags.map(tag => renderTagChip(tag, true)).join('') : `<span class="tag-empty-line">${escapeHtml(t('tagAdmin.noTags'))}</span>`}
+                        </div>
+                        ${isOther ? '' : `<button type="button" class="secondary-btn" onclick="deleteCategory('${escapeJs(category.id)}')">${t('button.delete')}</button>`}
+                    </div>
+                    ${isOther ? '' : `<div class="tag-chip-list" aria-label="${escapeHtml(t('label.availableTags'))}">${availableTagsFor(category.id).map(tag => renderMoveChip(tag, category.id)).join('') || `<span class="tag-empty-line">${escapeHtml(t('tagAdmin.unassigned'))}</span>`}</div>`}
+                </section>
+            `;
+        }
+
+        function renderTagChip(tag, assigned) {
+            const active = selectedTag === tag ? ' active' : '';
+            return `<button type="button" class="tag-admin-chip ${assigned ? 'assigned' : ''}${active}" onclick="toggleTagOut('${escapeJs(tag)}')" title="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
+        }
+
+        function renderMoveChip(tag, categoryId) {
+            return `<button type="button" class="tag-admin-chip" onclick="assignTag('${escapeJs(tag)}', '${escapeJs(categoryId)}')" title="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
+        }
+
+        function availableTagsFor(categoryId) {
+            return allTags.filter(tag => categoryIdForTag(tag) !== categoryId);
+        }
+
+        function toggleTagOut(tag) {
+            selectedTag = selectedTag === tag ? '' : tag;
+            if (categoryIdForTag(tag) !== 'other') {
+                tagCategories.assignments[tag] = 'other';
+                selectedTag = '';
+            }
+            renderTagCategories();
+        }
+
+        function assignTag(tag, categoryId) {
+            if (!tag || !categoryId || categoryId === 'other') return;
+            tagCategories.assignments[tag] = categoryId;
+            selectedTag = '';
+            renderTagCategories();
+        }
+
+        function syncCategoryInputs() {
+            document.querySelectorAll('[data-category-index]').forEach(input => {
+                const index = Number(input.dataset.categoryIndex);
+                if (!tagCategories.categories[index] || tagCategories.categories[index].id === 'other') return;
+                tagCategories.categories[index].label = input.value;
+            });
+        }
+
+        function addCategory() {
+            if (!canManageUsers) return;
+            syncCategoryInputs();
+            const id = uniqueCategoryId('category');
+            tagCategories.categories.splice(tagCategories.categories.length - 1, 0, {
+                id,
+                label: t('label.categoryName'),
+                protected: false
+            });
+            renderTagCategories();
+        }
+
+        function deleteCategory(categoryId) {
+            if (!canManageUsers || categoryId === 'other') return;
+            if (!confirm(t('confirm.delete'))) return;
+            syncCategoryInputs();
+            tagCategories.categories = tagCategories.categories.filter(category => category.id !== categoryId);
+            Object.keys(tagCategories.assignments).forEach(tag => {
+                if (tagCategories.assignments[tag] === categoryId) tagCategories.assignments[tag] = 'other';
+            });
+            renderTagCategories();
+        }
+
+        function saveCategories() {
+            if (!canManageUsers) return;
+            syncCategoryInputs();
+            portalFetch('update_tag_categories.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(tagCategories, null, 2)
+            })
+                .then(res => res.ok ? res.text() : Promise.reject(new Error('tag_categories.json save failed')))
+                .then(() => {
+                    showToast(t('toast.saved'));
+                    loadTagCategories();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function normalizeTagCategories(config) {
+            const source = config && typeof config === 'object' ? config : {};
+            const categories = [];
+            const seen = new Set();
+            (Array.isArray(source.categories) ? source.categories : []).forEach(category => {
+                if (!category || typeof category !== 'object') return;
+                const id = normalizeCategoryId(category.id);
+                if (!id || id === 'other' || seen.has(id)) return;
+                categories.push({ id, label: String(category.label || id).trim() || id, protected: false });
+                seen.add(id);
+            });
+            categories.push({ id: 'other', label: '其他', protected: true });
+            const validIds = new Set(categories.map(category => category.id));
+            const assignments = {};
+            const rawAssignments = source.assignments && typeof source.assignments === 'object' ? source.assignments : {};
+            Object.keys(rawAssignments).forEach(tag => {
+                const tagName = String(tag || '').trim();
+                if (!tagName) return;
+                const id = normalizeCategoryId(rawAssignments[tag]);
+                assignments[tagName] = validIds.has(id) ? id : 'other';
+            });
+            return { categories, assignments };
+        }
+
+        function categoryIdForTag(tag) {
+            return tagCategories.assignments[String(tag || '').trim()] || 'other';
+        }
+
+        function categoryLabel(category) {
+            if (category.id === 'other') return t('tagGroup.other');
+            return category.label || category.id;
+        }
+
+        function normalizeCategoryId(value) {
+            return String(value || '').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        }
+
+        function uniqueCategoryId(base) {
+            const existing = new Set(tagCategories.categories.map(category => category.id));
+            let index = tagCategories.categories.length;
+            let id = `${base}_${Date.now().toString(36)}_${index}`;
+            while (existing.has(id)) {
+                index += 1;
+                id = `${base}_${Date.now().toString(36)}_${index}`;
+            }
+            return id;
+        }
+
+        function uniqueTags(values) {
+            const seen = new Set();
+            return values.map(value => String(value || '').trim()).filter(value => {
+                if (!value || seen.has(value)) return false;
+                seen.add(value);
+                return true;
+            }).sort();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeJs(value) {
+            return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+    </script>
+</body>
+</html>

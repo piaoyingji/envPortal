@@ -121,13 +121,16 @@ PRODUCTION_CSV_FIELDS = [
     "DBユーザー名",
     "DBパスワード",
 ]
-SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json"}
+SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json", "/tag_categories.json"}
 REMOVED_MANAGEMENT_PAGES = {"/admin.html", "/rdp.html", "/production-admin.html"}
 PORTAL_MASK_FIELDS = {"ログインパスワード", "DBパスワード"}
 RDP_MASK_FIELDS = {"RDPユーザー名", "RDPパスワード"}
 PRODUCTION_MASK_FIELDS = {"VPNパスワード", "踏み台パスワード", "APパスワード", "DBパスワード"}
 USERS_PATH = BASE_DIR / "users.json"
 ROLES_PATH = BASE_DIR / "roles.json"
+TAG_CATEGORIES_PATH = BASE_DIR / "tag_categories.json"
+OTHER_TAG_CATEGORY_ID = "other"
+OTHER_TAG_CATEGORY_LABEL = "其他"
 DEFAULT_ROLES = {
     "admin": {
         "key": "admin",
@@ -138,6 +141,7 @@ DEFAULT_ROLES = {
         "canEditProduction": True,
         "canEdit": True,
         "canManageUsers": True,
+        "dataTags": [],
         "filterTag": "",
         "protected": True,
     },
@@ -150,6 +154,7 @@ DEFAULT_ROLES = {
         "canEditProduction": False,
         "canEdit": False,
         "canManageUsers": False,
+        "dataTags": [],
         "filterTag": "",
         "protected": False,
     },
@@ -162,6 +167,7 @@ DEFAULT_ROLES = {
         "canEditProduction": False,
         "canEdit": False,
         "canManageUsers": False,
+        "dataTags": ["OneHR"],
         "filterTag": "OneHR",
         "protected": False,
     },
@@ -174,6 +180,7 @@ DEFAULT_ROLES = {
         "canEditProduction": False,
         "canEdit": False,
         "canManageUsers": False,
+        "dataTags": ["社内学習"],
         "filterTag": "社内学習",
         "protected": False,
     },
@@ -206,6 +213,66 @@ def read_tags_json():
         return {}
 
 
+def normalize_tag_category_id(value):
+    key = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value or "").strip()).strip("_").lower()
+    return key or ""
+
+
+def normalize_tag_categories_config(raw=None, known_tags=None):
+    source = raw if isinstance(raw, dict) else {}
+    raw_categories = source.get("categories") if isinstance(source.get("categories"), list) else []
+    categories = []
+    seen = set()
+    for item in raw_categories:
+        if not isinstance(item, dict):
+            continue
+        category_id = normalize_tag_category_id(item.get("id"))
+        if not category_id or category_id == OTHER_TAG_CATEGORY_ID or category_id in seen:
+            continue
+        label = str(item.get("label") or category_id).strip() or category_id
+        categories.append({
+            "id": category_id,
+            "label": label,
+            "protected": False,
+        })
+        seen.add(category_id)
+
+    categories.append({
+        "id": OTHER_TAG_CATEGORY_ID,
+        "label": OTHER_TAG_CATEGORY_LABEL,
+        "protected": True,
+    })
+    valid_ids = {category["id"] for category in categories}
+    assignments = {}
+    raw_assignments = source.get("assignments") if isinstance(source.get("assignments"), dict) else {}
+    for tag, category_id in raw_assignments.items():
+        tag_name = str(tag or "").strip()
+        if not tag_name:
+            continue
+        normalized_id = normalize_tag_category_id(category_id)
+        assignments[tag_name] = normalized_id if normalized_id in valid_ids else OTHER_TAG_CATEGORY_ID
+
+    for tag in known_tags or []:
+        tag_name = str(tag or "").strip()
+        if tag_name and tag_name not in assignments:
+            assignments[tag_name] = OTHER_TAG_CATEGORY_ID
+
+    return {
+        "categories": categories,
+        "assignments": assignments,
+    }
+
+
+def read_tag_categories_json(known_tags=None):
+    if not TAG_CATEGORIES_PATH.exists():
+        return normalize_tag_categories_config(None, known_tags)
+    try:
+        raw = json.loads(TAG_CATEGORIES_PATH.read_text(encoding="utf-8-sig") or "{}")
+    except json.JSONDecodeError:
+        raw = {}
+    return normalize_tag_categories_config(raw, known_tags)
+
+
 def row_key(row):
     return "||".join(str(row.get(field, "") or "").strip() for field in [
         "組織コード",
@@ -234,6 +301,78 @@ def tags_for_row(row, tags_json):
     return []
 
 
+def unique_tags(values):
+    result = []
+    seen = set()
+    for value in values:
+        tag = str(value or "").strip()
+        if not tag or tag in seen:
+            continue
+        seen.add(tag)
+        result.append(tag)
+    return result
+
+
+def endpoint_host(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urllib.parse.urlparse(text)
+        if parsed.scheme and parsed.hostname:
+            return parsed.hostname
+    except Exception:
+        pass
+    first_part = text.split("/", 1)[0]
+    if first_part.startswith("[") and "]" in first_part:
+        return first_part[1:first_part.index("]")]
+    match = re.match(r"^(.+):(\d+)$", first_part)
+    if match:
+        return match.group(1).strip()
+    return first_part.split(":", 1)[0].strip()
+
+
+def detect_remote_type_record(remote):
+    explicit_type = str(remote.get("接続タイプ") or remote.get("接続種別") or remote.get("タイプ") or "").strip()
+    if explicit_type:
+        return explicit_type.upper()
+    target = str(remote.get("接続先(IP:Port)") or "")
+    match = re.search(r":(\d+)\s*$", target)
+    if match and match.group(1) == "22":
+        return "SSH"
+    if match and match.group(1) == "3389":
+        return "RDP"
+    return ""
+
+
+def auto_tags_for_row(row, rdp_rows):
+    tags = []
+    db_type = str(row.get("DBタイプ") or "").strip()
+    db_version = str(row.get("DBバージョン") or "").strip()
+    if db_type:
+        tags.append(db_type)
+    if db_type and db_version:
+        tags.append(f"{db_type} {db_version}")
+    elif db_version:
+        tags.append(f"DB {db_version}")
+
+    hosts = {endpoint_host(row.get("URL")), endpoint_host(row.get("DB名"))}
+    hosts.discard("")
+    if hosts:
+        for remote in rdp_rows:
+            if endpoint_host(remote.get("接続先(IP:Port)")) in hosts:
+                tags.append(detect_remote_type_record(remote))
+    return unique_tags(tags)
+
+
+def all_known_tags(rows, tags_json, rdp_rows):
+    tags = []
+    for row in rows:
+        tags.extend(tags_for_row(row, tags_json))
+        tags.extend(auto_tags_for_row(row, rdp_rows))
+    return sorted(unique_tags(tags))
+
+
 def filter_tags_for_rows(tags_json, rows):
     keys = set()
     for row in rows:
@@ -244,6 +383,20 @@ def filter_tags_for_rows(tags_json, rows):
 
 def normalize_role_key(value):
     return re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value or "").strip()).strip("_").lower()
+
+
+def normalize_role_data_tags(record, defaults):
+    record = record if isinstance(record, dict) else {}
+    raw_values = record.get("dataTags", defaults.get("dataTags", []))
+    if isinstance(raw_values, list):
+        values = raw_values
+    else:
+        values = re.split(r"[,，\n]+", str(raw_values or ""))
+    legacy_tag = str(record.get("filterTag") or defaults.get("filterTag") or "").strip()
+    tags = unique_tags(values)
+    if legacy_tag and not tags:
+        tags = [legacy_tag]
+    return tags
 
 
 def normalize_role_record(key, record):
@@ -262,9 +415,11 @@ def normalize_role_record(key, record):
         "canEditProduction": bool((record or {}).get("canEditProduction", defaults.get("canEditProduction", legacy_can_edit))),
         "canEdit": legacy_can_edit,
         "canManageUsers": bool((record or {}).get("canManageUsers", defaults.get("canManageUsers", False))),
+        "dataTags": normalize_role_data_tags(record, defaults),
         "filterTag": str((record or {}).get("filterTag") or defaults.get("filterTag") or "").strip(),
         "protected": protected,
     }
+    role["filterTag"] = role["dataTags"][0] if role["dataTags"] else ""
     if role["canEditPortal"]:
         role["canViewPortal"] = True
     if role["canEditProduction"]:
@@ -277,6 +432,8 @@ def normalize_role_record(key, record):
         role["canEditProduction"] = True
         role["canEdit"] = True
         role["canManageUsers"] = True
+        role["dataTags"] = []
+        role["filterTag"] = ""
         role["protected"] = True
     return role
 
@@ -314,6 +471,8 @@ def save_roles(roles):
     cleaned["admin"]["canViewProduction"] = True
     cleaned["admin"]["canEditProduction"] = True
     cleaned["admin"]["canManageUsers"] = True
+    cleaned["admin"]["dataTags"] = []
+    cleaned["admin"]["filterTag"] = ""
     cleaned["admin"]["protected"] = True
     ROLES_PATH.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -331,11 +490,27 @@ def role_config(role):
     return roles.get(role) or roles.get("staff") or DEFAULT_ROLES["staff"]
 
 
-def portal_rows_for_role(rows, tags_json, role):
-    tag_name = role_config(role).get("filterTag", "")
-    if not tag_name:
+def all_tags_for_row(row, tags_json, rdp_rows):
+    return unique_tags(tags_for_row(row, tags_json) + auto_tags_for_row(row, rdp_rows))
+
+
+def effective_role_data_tags(role_info, known_tags):
+    tags = unique_tags(role_info.get("dataTags", []))
+    if not tags and role_info.get("filterTag"):
+        tags = [str(role_info.get("filterTag") or "").strip()]
+    valid_tags = set(unique_tags(known_tags))
+    return [tag for tag in tags if tag in valid_tags]
+
+
+def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
+    role_info = role_config(role)
+    if role_info.get("key") == "admin":
         return rows
-    return [row for row in rows if tag_name in tags_for_row(row, tags_json)]
+    valid_known_tags = known_tags if known_tags is not None else all_known_tags(rows, tags_json, rdp_rows)
+    allowed_tags = set(effective_role_data_tags(role_info, valid_known_tags))
+    if not allowed_tags:
+        return []
+    return [row for row in rows if allowed_tags.intersection(all_tags_for_row(row, tags_json, rdp_rows))]
 
 
 def profile_response_fields(profile):
@@ -1723,7 +1898,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             if not profile.get("canEditProduction"):
                 self.send_bytes(b"Forbidden", status=403)
                 return
-        if path in {"/update_users.jsp", "/update_roles.jsp"}:
+        if path in {"/update_users.jsp", "/update_roles.jsp", "/update_tag_categories.jsp"}:
             profile = self.request_profile()
             if not profile.get("canManageUsers"):
                 self.send_bytes(b"Forbidden", status=403)
@@ -1819,6 +1994,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_production.jsp": "production.csv",
             "/update_users.jsp": "users.json",
             "/update_roles.jsp": "roles.json",
+            "/update_tag_categories.jsp": "tag_categories.json",
         }
         if path in update_map:
             filename = update_map[path]
@@ -1867,6 +2043,20 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 except Exception as exc:
                     self.send_bytes(f"Invalid roles.json: {exc}".encode("utf-8"), status=400)
                     return
+            if path == "/update_tag_categories.jsp":
+                try:
+                    incoming = json.loads(body or "{}")
+                    if not isinstance(incoming, dict):
+                        raise ValueError("tag categories payload must be object")
+                    data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
+                    rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
+                    tags_json = read_tags_json()
+                    known_tags = all_known_tags(data_rows, tags_json, rdp_rows)
+                    normalized = normalize_tag_categories_config(incoming, known_tags)
+                    body = json.dumps(normalized, ensure_ascii=False, indent=2) + "\n"
+                except Exception as exc:
+                    self.send_bytes(f"Invalid tag_categories.json: {exc}".encode("utf-8"), status=400)
+                    return
             target_path.write_text(body, encoding="utf-8-sig", newline="")
             self.send_bytes(b"success")
             return
@@ -1889,7 +2079,12 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 self.send_bytes(b"Forbidden", status=403)
                 return
 
-        if path in SENSITIVE_STATIC_FILES:
+        if path == "/tag_categories.json":
+            profile = self.request_profile()
+            if not profile.get("canManageUsers"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+        elif path in SENSITIVE_STATIC_FILES:
             profile = self.request_profile()
             if not profile.get("canEdit"):
                 self.send_bytes(b"Forbidden", status=403)
@@ -1905,15 +2100,18 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
             rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
             tags_json = read_tags_json()
+            all_portal_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             if not profile.get("canViewPortal"):
                 data_rows = []
                 rdp_rows = []
-            data_rows = portal_rows_for_role(data_rows, tags_json, role)
+            data_rows = portal_rows_for_role(data_rows, tags_json, rdp_rows, role, all_portal_tags)
             visible_orgs = {str(row.get("組織名", "") or "").strip() for row in data_rows}
             if not profile.get("canEditPortal"):
                 data_rows = masked_records(data_rows, PORTAL_MASK_FIELDS)
                 rdp_rows = [row for row in rdp_rows if str(row.get("組織名", "") or "").strip() in visible_orgs]
                 rdp_rows = masked_records(rdp_rows, RDP_MASK_FIELDS)
+            known_tags = all_known_tags(data_rows, tags_json, rdp_rows)
+            tag_categories = read_tag_categories_json(known_tags)
             self.send_bytes(json_bytes({
                 "ok": profile.get("ok", False),
                 **profile_response_fields({**profile, "role": role}),
@@ -1922,6 +2120,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "data": data_rows,
                 "rdp": rdp_rows,
                 "tags": filter_tags_for_rows(tags_json, data_rows),
+                "tagCategories": tag_categories,
             }), "application/json; charset=utf-8")
             return
 
@@ -1962,7 +2161,25 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 **profile_response_fields(profile),
                 "roles": role_options(),
+                "tags": all_known_tags(read_csv_records("data.csv", PORTAL_CSV_FIELDS), read_tags_json(), read_csv_records("rdp.csv", RDP_CSV_FIELDS)),
                 "users": load_users(),
+            }), "application/json; charset=utf-8")
+            return
+
+        if path == "/tag_categories_data.jsp":
+            profile = self.request_profile()
+            if not profile.get("canManageUsers"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+            data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
+            rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
+            tags_json = read_tags_json()
+            known_tags = all_known_tags(data_rows, tags_json, rdp_rows)
+            self.send_bytes(json_bytes({
+                "ok": True,
+                **profile_response_fields(profile),
+                "tagCategories": read_tag_categories_json(known_tags),
+                "tags": known_tags,
             }), "application/json; charset=utf-8")
             return
 

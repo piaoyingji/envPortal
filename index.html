@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.27"></script>
+    <script src="i18n.js?v=2.2.29"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1149,6 +1149,7 @@
         let fullData = [];
         let rdpData = []; // RDP情報を保持
         let tagStore = {};
+        let tagCategoryConfig = normalizeTagCategories(null);
         let portalConfig = {};
         let selectedTags = [];
         let isAuthenticated = false; // RDP表示の認証状態
@@ -1172,13 +1173,6 @@
         const ENV_GROUP_OPTIONS = ['', 'UHR-V6', 'PHR-V7'];
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
-        const TAG_FILTER_GROUPS = [
-            { key: 'product', labelKey: 'tagGroup.product' },
-            { key: 'system', labelKey: 'tagGroup.system' },
-            { key: 'software', labelKey: 'tagGroup.software' },
-            { key: 'version', labelKey: 'tagGroup.version' },
-            { key: 'other', labelKey: 'tagGroup.other' }
-        ];
         const AUTO_TAG_PROVIDERS = [
             autoDbTagsForRow,
             autoRemoteTagsForRow
@@ -1220,6 +1214,7 @@
             setSystemMenuVisible(isSystemAdmin(payload));
             isAuthenticated = canEdit;
             tagStore = normalizeTagStore(payload.tags || {});
+            tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
             fullData = assignRowIds(payload.data || [], 'env');
             rdpData = assignRowIds(payload.rdp || [], 'rdp');
             updateEditToolbar();
@@ -1633,14 +1628,14 @@
                 return;
             }
             const groups = groupTags(Array.from(tagSet).sort());
-            TAG_FILTER_GROUPS.forEach(group => {
-                const tags = groups[group.key] || [];
+            tagCategoryConfig.categories.forEach(group => {
+                const tags = groups[group.id] || [];
                 if (tags.length === 0) return;
                 const row = document.createElement('div');
                 row.className = 'tag-filter-group';
                 const label = document.createElement('div');
                 label.className = 'tag-filter-group-label';
-                label.textContent = t(group.labelKey);
+                label.textContent = tagCategoryLabel(group);
                 const items = document.createElement('div');
                 items.className = 'tag-filter-group-items';
                 tags.forEach(tag => {
@@ -3127,6 +3122,44 @@
             return tagsJson;
         }
 
+        function normalizeTagCategories(config) {
+            const source = config && typeof config === 'object' ? config : {};
+            const categories = Array.isArray(source.categories) ? source.categories : [];
+            const cleaned = [];
+            const seen = new Set();
+            categories.forEach(category => {
+                if (!category || typeof category !== 'object') return;
+                const id = normalizeCategoryId(category.id);
+                if (!id || id === 'other' || seen.has(id)) return;
+                cleaned.push({
+                    id,
+                    label: String(category.label || id).trim() || id,
+                    protected: false
+                });
+                seen.add(id);
+            });
+            cleaned.push({ id: 'other', label: '其他', protected: true });
+            const validIds = new Set(cleaned.map(category => category.id));
+            const assignments = {};
+            const rawAssignments = source.assignments && typeof source.assignments === 'object' ? source.assignments : {};
+            Object.keys(rawAssignments).forEach(tag => {
+                const tagName = String(tag || '').trim();
+                if (!tagName) return;
+                const id = normalizeCategoryId(rawAssignments[tag]);
+                assignments[tagName] = validIds.has(id) ? id : 'other';
+            });
+            return { categories: cleaned, assignments };
+        }
+
+        function normalizeCategoryId(value) {
+            return String(value || '').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        }
+
+        function tagCategoryLabel(category) {
+            if (category && category.id === 'other') return t('tagGroup.other');
+            return String((category && category.label) || '').trim() || '';
+        }
+
         function getRowKey(row) {
             return [
                 row['組織コード'] || '',
@@ -3206,33 +3239,31 @@
 
         function groupTags(tags) {
             return tags.reduce((groups, tag) => {
-                const group = tagFilterGroupKey(tag);
+                const group = tagCategoryId(tag);
                 if (!groups[group]) groups[group] = [];
                 groups[group].push(tag);
                 return groups;
             }, {});
         }
 
-        function tagFilterGroupKey(tag) {
-            const text = String(tag || '').trim();
-            const upper = text.toUpperCase();
-            if (/^(PHR|UHR|UPDS|DEMO)$/.test(upper)) return 'product';
-            if (/^(社内|受入|庶務事務|教育|検証|開発|テスト|デモ|カスタマイズ)$/.test(text)) return 'system';
-            if (/^(ORACLE|POSTGRESQL|RDP|SSH)$/.test(upper)) return 'software';
-            if (/^V\d+(?:\.\d+)*$/i.test(text)) return 'version';
-            if (/^(ORACLE|POSTGRESQL)\s+\d+/i.test(text)) return 'version';
-            return 'other';
+        function tagCategoryId(tag) {
+            const tagName = String(tag || '').trim();
+            return tagCategoryConfig.assignments[tagName] || 'other';
         }
 
         function tagColor(tag) {
-            const palette = {
-                product: { bg: 'rgba(236, 253, 245, 0.70)', activeBg: 'rgba(209, 250, 229, 0.92)', text: '#047857', border: 'rgba(167, 243, 208, 0.95)' },
-                system: { bg: 'rgba(255, 247, 237, 0.72)', activeBg: 'rgba(255, 237, 213, 0.94)', text: '#c2410c', border: 'rgba(254, 215, 170, 0.95)' },
-                software: { bg: 'rgba(239, 246, 255, 0.72)', activeBg: 'rgba(219, 234, 254, 0.94)', text: '#1d4ed8', border: 'rgba(191, 219, 254, 0.95)' },
-                version: { bg: 'rgba(245, 243, 255, 0.72)', activeBg: 'rgba(237, 233, 254, 0.94)', text: '#6d28d9', border: 'rgba(221, 214, 254, 0.95)' },
-                other: { bg: 'rgba(253, 242, 248, 0.70)', activeBg: 'rgba(252, 231, 243, 0.92)', text: '#be185d', border: 'rgba(251, 207, 232, 0.95)' }
-            };
-            return palette[tagFilterGroupKey(tag)] || palette.other;
+            const palette = [
+                { bg: 'rgba(236, 253, 245, 0.70)', activeBg: 'rgba(209, 250, 229, 0.92)', text: '#047857', border: 'rgba(167, 243, 208, 0.95)' },
+                { bg: 'rgba(255, 247, 237, 0.72)', activeBg: 'rgba(255, 237, 213, 0.94)', text: '#c2410c', border: 'rgba(254, 215, 170, 0.95)' },
+                { bg: 'rgba(239, 246, 255, 0.72)', activeBg: 'rgba(219, 234, 254, 0.94)', text: '#1d4ed8', border: 'rgba(191, 219, 254, 0.95)' },
+                { bg: 'rgba(245, 243, 255, 0.72)', activeBg: 'rgba(237, 233, 254, 0.94)', text: '#6d28d9', border: 'rgba(221, 214, 254, 0.95)' },
+                { bg: 'rgba(240, 253, 250, 0.72)', activeBg: 'rgba(204, 251, 241, 0.94)', text: '#0f766e', border: 'rgba(153, 246, 228, 0.95)' }
+            ];
+            const other = { bg: 'rgba(253, 242, 248, 0.70)', activeBg: 'rgba(252, 231, 243, 0.92)', text: '#be185d', border: 'rgba(251, 207, 232, 0.95)' };
+            const categoryId = tagCategoryId(tag);
+            if (categoryId === 'other') return other;
+            const index = Math.max(0, tagCategoryConfig.categories.findIndex(category => category.id === categoryId));
+            return palette[index % palette.length] || other;
         }
 
         function renderTagChip(tag, isManual = true) {

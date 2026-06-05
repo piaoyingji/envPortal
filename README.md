@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.27`
+当前版本：`2.2.29`
 
 ## 核心能力
 
@@ -11,7 +11,8 @@ EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，�
 - 组属性可在环境检索画面直接编辑，并批量反映到该组织该组下的环境。
 - 环境卡片只维护该环境自身的 URL、登录信息、DB、AP/DB RDP 和 tags，组织/组信息不再混在环境编辑里。
 - 每个服务器/环境支持独立标签，标签可以跨机构自由过滤，例如 `DEMO`、`教育`、`社内`。
-- 标签过滤支持分类展示、多选 AND 条件，并包含系统自动生成标签，例如数据库类型、数据库版本、RDP/SSH。
+- 标签过滤支持分类展示、多选 AND 条件，分类由系统管理中的 TAG 分类管理画面显式维护；系统自动生成标签默认进入“其他”。
+- 角色支持功能权限和数据权限分层维护，数据权限通过一组有效 TAG 控制可见环境数据。
 - 组织选择支持五十音分类。`org_readings.js` 不存在时，后端会通过 `/org_readings_status.jsp` 自动补齐并生成本地读音映射。
 - 首页按机构显示紧凑摘要，环境卡片通过显式展开/收回按钮查看详情，减少默认页面空白。
 - 首页环境摘要使用流式网格布局，适配多服务器机构。
@@ -107,7 +108,9 @@ EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回角色和�
 - `import_staff`：导入职员，只能查看带 `OneHR` tag 的环境。
 - `new_employee`：新员工，只能查看带 `社内学習` tag 的环境。
 
-首次访问的域用户会自动登记为 `staff`。既有 Windows 白名单用户首次迁移为 `admin`。角色权限可在系统管理的角色管理画面维护，包括环境查询、环境编辑、生产查询、生产编辑、系统管理和标签查询限制。右上角系统管理菜单仅管理员权限用户可见，用户管理和角色管理写入接口需要管理权限。客户端 IP 仅用于审计和辅助显示，不能作为登录身份或授权依据。
+首次访问的域用户会自动登记为 `staff`。既有 Windows 白名单用户首次迁移为 `admin`。角色权限可在系统管理的角色管理画面维护，包括环境查询、环境编辑、生产查询、生产编辑、系统管理和数据权限 TAG。右上角系统管理菜单仅管理员权限用户可见，用户管理和角色管理写入接口需要管理权限。客户端 IP 仅用于审计和辅助显示，不能作为登录身份或授权依据。
+
+角色数据权限使用 `dataTags` 数组保存。管理员角色不限制数据，其他角色只显示命中 `dataTags` 中任一有效 TAG 的环境。有效 TAG 来自当前环境数据中的手工 TAG 和系统自动 TAG；如果某个 TAG 已经从数据中删除，即使仍残留在角色配置中，也不会继续授予可见数据。
 
 ## 域认证反向代理
 
@@ -145,6 +148,7 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `production.html`：本番环境查看与编辑。
 - `user-admin.html`：用户管理。
 - `role-admin.html`：角色管理。
+- `tag-admin.html`：TAG 分类管理。
 - `i18n.js`：日文/中文多语资源。
 - `server.py`：Python 后端，负责认证、文件保存、健康检查、DB 探测、RDP 生成/签名/连接。
 - `tools/domain-proxy/`：已入域主机使用的 Windows 认证反向代理。
@@ -154,11 +158,12 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `rdp.csv`：远程连接档案数据，本地运行数据文件。
 - `production.csv`：本番环境数据，本地运行数据文件。
 - `tags.json`：自由标签存储，本地运行数据文件。
+- `tag_categories.json`：TAG 分类配置，本地运行数据文件，缺失时后端默认生成“其他”分类。
 - `users.json`：用户角色存储，本地运行数据文件。
 - `org_readings.js`：组织名读音映射，本地自动生成文件。
 - `images/sea01.jpg`：旧版顶部主题背景图保留文件，当前默认样式不再使用该背景。
 
-以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`users.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
+以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
 
 ## 版本规则
 

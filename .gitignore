@@ -7,6 +7,7 @@ __pycache__/
 logs/
 users.json
 tags.json
+tag_categories.json
 org_readings.js
 ip_auth_whitelist.txt
 windows_auth_whitelist.txt

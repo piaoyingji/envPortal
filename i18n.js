@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.27';
+const APP_VERSION_FALLBACK = '2.2.29';
 
 const I18N_MESSAGES = {
     ja: {
@@ -23,6 +23,7 @@ const I18N_MESSAGES = {
         'nav.productionAdmin': '本番環境データ管理',
         'nav.users': 'ユーザー管理',
         'nav.roles': 'ロール管理',
+        'nav.tagCategories': 'TAG分類管理',
         'nav.system': 'システム管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
@@ -132,6 +133,7 @@ const I18N_MESSAGES = {
         'label.canViewProduction': '本番検索',
         'label.canEditProduction': '本番編集',
         'label.canManageUsers': '管理権限',
+        'label.dataTags': 'データ権限TAG',
         'label.filterTag': '表示制限タグ',
         'label.displayName': '表示名',
         'label.firstSeen': '初回アクセス',
@@ -186,7 +188,17 @@ const I18N_MESSAGES = {
         'roleAdmin.description': 'ロールと権限を管理します',
         'roleAdmin.noRoles': 'ロールがありません。',
         'roleAdmin.noPermission': 'ロール管理権限がありません。',
-        'roleAdmin.filterHelp': '検索権限で表示可否を制御します。表示制限タグが空欄の場合は許可された全データを表示します。タグ名を入れると該当タグのデータだけ表示します。',
+        'roleAdmin.filterHelp': '機能権限で画面操作を制御し、データ権限TAGで表示データを制御します。存在しないTAGはデータ権限として無効です。',
+        'roleAdmin.dataTagsAll': '全データ',
+        'roleAdmin.dataTagsNone': '有効なTAGがありません',
+        'tagAdmin.description': 'TAG分類を明示的に管理します',
+        'tagAdmin.noPermission': 'TAG分類管理権限がありません。',
+        'tagAdmin.noTags': '分類できるTAGがありません。',
+        'tagAdmin.help': 'TAGを選択して分類へ追加します。分類から外したTAGはその他へ移動します。',
+        'tagAdmin.unassigned': 'その他',
+        'label.categoryName': '分類名',
+        'label.assignedTags': '分類内TAG',
+        'label.availableTags': 'その他のTAG',
         'userAdmin.noPermission': 'アクセス権限がありません。',
         'userAdmin.noUsers': 'ユーザーがありません。',
         'status.checking': '確認中...',
@@ -226,6 +238,7 @@ const I18N_MESSAGES = {
         'nav.productionAdmin': '本番環境データ管理',
         'nav.users': '用户管理',
         'nav.roles': '角色管理',
+        'nav.tagCategories': 'TAG分类管理',
         'nav.system': '系统管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
@@ -335,6 +348,7 @@ const I18N_MESSAGES = {
         'label.canViewProduction': '生产查询',
         'label.canEditProduction': '生产编辑',
         'label.canManageUsers': '管理权限',
+        'label.dataTags': '数据权限TAG',
         'label.filterTag': '显示限制标签',
         'label.displayName': '显示名',
         'label.firstSeen': '首次访问',
@@ -389,7 +403,17 @@ const I18N_MESSAGES = {
         'roleAdmin.description': '管理角色与权限',
         'roleAdmin.noRoles': '暂无角色。',
         'roleAdmin.noPermission': '没有角色管理权限。',
-        'roleAdmin.filterHelp': '查询权限控制是否可查看。显示限制标签留空时显示已授权的全部数据，填写标签名时只显示包含该标签的数据。',
+        'roleAdmin.filterHelp': '功能权限控制画面操作，数据权限TAG控制可见数据。不存在的TAG不会作为有效数据权限。',
+        'roleAdmin.dataTagsAll': '全部数据',
+        'roleAdmin.dataTagsNone': '没有有效TAG',
+        'tagAdmin.description': '显式管理TAG分类',
+        'tagAdmin.noPermission': '没有TAG分类管理权限。',
+        'tagAdmin.noTags': '没有可分类的TAG。',
+        'tagAdmin.help': '选择TAG加入分类。从分类中移出的TAG会进入其他。',
+        'tagAdmin.unassigned': '其他',
+        'label.categoryName': '分类名',
+        'label.assignedTags': '分类内TAG',
+        'label.availableTags': '其他TAG',
         'userAdmin.noPermission': '没有访问权限。',
         'userAdmin.noUsers': '没有用户。',
         'status.checking': '确认中...',
@@ -454,6 +478,7 @@ function isProtectedPortalEndpoint(path) {
         'production_data.jsp',
         'users_data.jsp',
         'roles_data.jsp',
+        'tag_categories_data.jsp',
         'auth.jsp',
         'db_probe.jsp',
         'rdp_file.jsp',
@@ -465,6 +490,7 @@ function isProtectedPortalEndpoint(path) {
         'update_production.jsp',
         'update_users.jsp',
         'update_roles.jsp',
+        'update_tag_categories.jsp',
         'update_portal_bundle.jsp'
     ].includes(endpoint);
 }
@@ -674,6 +700,7 @@ function initI18n() {
             <div class="system-menu-panel">
                 <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
                 <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
+                <a href="tag-admin.html" data-system-link="tag-admin.html" data-i18n="nav.tagCategories">${t('nav.tagCategories')}</a>
             </div>
         `;
         navInner.appendChild(menu);

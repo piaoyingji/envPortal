@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ロール管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.2.27"></script>
+    <script src="i18n.js?v=2.2.29"></script>
     <style>
         .role-admin-container {
             width: calc(100% - 2rem);
@@ -40,7 +40,7 @@
         .role-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1120px;
+            min-width: 1420px;
         }
         .role-table th,
         .role-table td {
@@ -76,6 +76,33 @@
         .role-check input {
             width: 18px;
             height: 18px;
+        }
+        .role-data-tags {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            min-width: 260px;
+        }
+        .role-data-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.25rem 0.45rem;
+            background: #fafafa;
+            color: var(--text-main);
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+        .role-data-tag input {
+            width: 14px;
+            height: 14px;
+        }
+        .role-data-note {
+            color: var(--text-muted);
+            font-size: 0.8rem;
         }
         .role-help {
             margin: 0 0 0.85rem;
@@ -113,7 +140,7 @@
                 <button id="saveRolesBtn" type="button" class="primary-btn" onclick="saveRoles()" data-i18n="button.save" hidden>保存</button>
             </div>
         </div>
-        <p class="role-help" data-i18n="roleAdmin.filterHelp">検索権限で表示可否を制御します。表示制限タグが空欄の場合は許可された全データを表示します。タグ名を入れると該当タグのデータだけ表示します。</p>
+        <p class="role-help" data-i18n="roleAdmin.filterHelp">機能権限で画面操作を制御し、データ権限TAGで表示データを制御します。存在しないTAGはデータ権限として無効です。</p>
         <div id="roleArea" class="page-message" data-i18n="state.loading">読み込み中...</div>
     </main>
 
@@ -121,6 +148,7 @@
 
     <script>
         let roles = [];
+        let allTags = [];
         let canManageUsers = false;
 
         window.addEventListener('DOMContentLoaded', loadRoles);
@@ -131,6 +159,7 @@
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
                 .then(payload => {
                     roles = normalizeRoles(payload.roles || []);
+                    allTags = uniqueTags(payload.tags || []);
                     canManageUsers = Boolean(payload.canManageUsers);
                     setCurrentUser(payload);
                     setSystemMenuVisible(isSystemAdmin(payload));
@@ -158,6 +187,7 @@
                 canEditProduction: roleFlag(role, 'canEditProduction', Boolean(role.canEdit)),
                 canEdit: Boolean(role.canEditPortal || role.canEditProduction || role.canEdit),
                 canManageUsers: Boolean(role.canManageUsers),
+                dataTags: normalizeDataTags(role.dataTags || role.filterTag || []),
                 filterTag: String(role.filterTag || '').trim(),
                 protected: Boolean(role.protected || role.key === 'admin')
             })).filter(role => role.key);
@@ -187,7 +217,7 @@
                             <th>${t('label.canViewProduction')}</th>
                             <th>${t('label.canEditProduction')}</th>
                             <th>${t('label.canManageUsers')}</th>
-                            <th>${t('label.filterTag')}</th>
+                            <th>${t('label.dataTags')}</th>
                             <th>${t('label.action')}</th>
                         </tr>
                     </thead>
@@ -210,10 +240,22 @@
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canViewProduction" ${role.canViewProduction ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEditProduction" ${role.canEditProduction ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canManageUsers" ${role.canManageUsers ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
-                    <td><input type="text" data-index="${index}" data-field="filterTag" value="${escapeHtml(role.filterTag)}"></td>
+                    <td>${renderDataTagCell(role, index)}</td>
                     <td>${role.protected ? '' : `<button type="button" class="secondary-btn" onclick="deleteRole(${index})" ${disabled}>${t('button.delete')}</button>`}</td>
                 </tr>
             `;
+        }
+
+        function renderDataTagCell(role, index) {
+            if (role.key === 'admin') return `<span class="role-data-note">${escapeHtml(t('roleAdmin.dataTagsAll'))}</span>`;
+            if (!allTags.length) return `<span class="role-data-note">${escapeHtml(t('roleAdmin.dataTagsNone'))}</span>`;
+            const selected = new Set(normalizeDataTags(role.dataTags));
+            return `<div class="role-data-tags">${allTags.map(tag => `
+                <label class="role-data-tag" title="${escapeHtml(tag)}">
+                    <input type="checkbox" data-role-index="${index}" data-role-tag="${escapeHtml(tag)}" ${selected.has(tag) ? 'checked' : ''}>
+                    <span>${escapeHtml(tag)}</span>
+                </label>
+            `).join('')}</div>`;
         }
 
         function syncRoleInputs() {
@@ -223,6 +265,16 @@
                 if (!roles[index]) return;
                 if (input.type === 'checkbox') roles[index][field] = input.checked;
                 else roles[index][field] = input.value;
+            });
+            roles.forEach((role, index) => {
+                if (role.key === 'admin') {
+                    role.dataTags = [];
+                    return;
+                }
+                role.dataTags = Array.from(document.querySelectorAll(`[data-role-index="${index}"][data-role-tag]:checked`))
+                    .map(input => input.dataset.roleTag)
+                    .filter(Boolean);
+                role.filterTag = role.dataTags[0] || '';
             });
         }
 
@@ -238,6 +290,7 @@
                 canEditProduction: false,
                 canEdit: false,
                 canManageUsers: false,
+                dataTags: [],
                 filterTag: '',
                 protected: false
             });
@@ -267,11 +320,19 @@
                     canEditProduction: Boolean(role.canEditProduction),
                     canEdit: Boolean(role.canEditPortal || role.canEditProduction),
                     canManageUsers: Boolean(role.canManageUsers),
-                    filterTag: role.filterTag || '',
+                    dataTags: key === 'admin' ? [] : normalizeDataTags(role.dataTags),
+                    filterTag: key === 'admin' ? '' : (normalizeDataTags(role.dataTags)[0] || ''),
                     protected: Boolean(role.protected || key === 'admin')
                 };
             });
             return payload;
+        }
+
+        function normalizeDataTags(value) {
+            const values = Array.isArray(value)
+                ? value
+                : String(value || '').split(/[,，\n]+/);
+            return uniqueTags(values);
         }
 
         function saveRoles() {
@@ -291,6 +352,15 @@
 
         function normalizeRoleKey(value) {
             return String(value || '').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        }
+
+        function uniqueTags(values) {
+            const seen = new Set();
+            return values.map(value => String(value || '').trim()).filter(value => {
+                if (!value || seen.has(value)) return false;
+                seen.add(value);
+                return true;
+            }).sort();
         }
 
         function showToast(message) {

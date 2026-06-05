@@ -2,6 +2,29 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.29] - 2026-06-05
+
+### Added
+
+- Added role data permissions based on a configurable `dataTags` list.
+- Added data permission TAG assignment checkboxes to role management.
+
+### Changed
+
+- Changed portal data filtering to intersect role `dataTags` with currently existing manual and automatic TAGs.
+- Kept legacy `filterTag` compatibility while using `dataTags` as the effective role data permission model.
+
+## [2.2.28] - 2026-06-05
+
+### Added
+
+- Added explicit TAG category management under the system management menu.
+- Added `tag_categories.json` normalization so deleted categories move their TAGs to the fixed `other` category.
+
+### Changed
+
+- Changed home page TAG filters to use managed category assignments instead of automatic frontend grouping rules.
+
 ## [2.2.27] - 2026-06-05
 
 ### Added
