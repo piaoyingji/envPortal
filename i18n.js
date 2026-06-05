@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.21';
+const APP_VERSION_FALLBACK = '2.2.22';
 
 const I18N_MESSAGES = {
     ja: {
@@ -429,9 +429,14 @@ function isProtectedPortalEndpoint(path) {
 
 function readStoredPortalAuth() {
     try {
-        const profile = JSON.parse(sessionStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || 'null');
+        const raw = localStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || sessionStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || 'null';
+        const profile = JSON.parse(raw);
         if (!profile || !profile.authToken || !profile.authTokenExpiresAt) return null;
-        if (Number(profile.authTokenExpiresAt) * 1000 <= Date.now() + 30000) return null;
+        if (Number(profile.authTokenExpiresAt) * 1000 <= Date.now() + 30000) {
+            localStorage.removeItem(PORTAL_AUTH_STORAGE_KEY);
+            sessionStorage.removeItem(PORTAL_AUTH_STORAGE_KEY);
+            return null;
+        }
         return profile;
     } catch (e) {
         return null;
@@ -442,9 +447,10 @@ function storePortalAuth(profile) {
     if (!profile || !profile.authToken || !profile.authTokenExpiresAt) return;
     PORTAL_AUTH_PROFILE = profile;
     try {
+        localStorage.setItem(PORTAL_AUTH_STORAGE_KEY, JSON.stringify(profile));
         sessionStorage.setItem(PORTAL_AUTH_STORAGE_KEY, JSON.stringify(profile));
     } catch (e) {
-        // Session storage can be disabled by browser policy.
+        // Browser storage can be disabled by policy.
     }
 }
 

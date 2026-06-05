@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.22] - 2026-06-05
+
+### Fixed
+
+- Cached the short-lived domain auth token across pages until expiry so management screens do not wait for Windows authentication again after the first successful probe.
+
 ## [2.2.21] - 2026-06-05
 
 ### Fixed
