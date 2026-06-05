@@ -1174,7 +1174,7 @@
             if (expiry && new Date().getTime() < parseInt(expiry)) {
                 isAuthenticated = true;
             }
-            checkWindowsAuth();
+            loadPortalConfig().then(checkWindowsAuth);
 
             fetch('portal_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('portal_data load failed')))
@@ -1202,20 +1202,26 @@
         });
 
         function loadPortalConfig() {
-            fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            return fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : {})
                 .then(configJson => {
                     portalConfig = configJson || {};
                     const currentOrg = document.getElementById('orgSelect').value;
                     if (currentOrg) renderEnvironments(currentOrg);
+                    return portalConfig;
                 })
                 .catch(() => {
                     portalConfig = {};
+                    return portalConfig;
                 });
         }
 
         function checkWindowsAuth() {
-            fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            const authUrl = portalConfig.domainAuthProxyUrl || 'auth_windows.jsp';
+            const options = authUrl === 'auth_windows.jsp'
+                ? { cache: 'no-store' }
+                : { cache: 'no-store', credentials: 'include' };
+            fetch(authUrl + (authUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime(), options)
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);

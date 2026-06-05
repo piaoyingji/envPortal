@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.5] - 2026-06-05
+
+### Added
+
+- Added optional cross-origin domain-auth lookup so pages opened directly from 20.38 can query the domain proxy for the current Windows user.
+- Added CORS support to the domain proxy for trusted EnvPortal origins.
+
 ## [2.2.4] - 2026-06-05
 
 ### Changed

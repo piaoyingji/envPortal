@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.4`
+当前版本：`2.2.5`
 
 ## 核心能力
 
@@ -112,6 +112,14 @@ EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`
 ## 域认证反向代理
 
 当 EnvPortal 服务器未加入 AD 域、且客户端 IP 可能被 NAT 改写时，可以在一台已加入域的 Windows 主机上运行 `EnvPortal Domain Proxy`。该代理使用 Windows Integrated Authentication 识别访问者，再把认证用户通过 `X-Remote-User` 转发给 20.38 上的 EnvPortal。
+
+如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。20.38 的 `.env` 中配置：
+
+```env
+DOMAIN_AUTH_PROXY_URL=http://192.168.20.218:8998/auth_windows.jsp
+```
+
+域代理会对受信任的 EnvPortal 来源返回 CORS header，默认允许 `http://192.168.20.38:8999` 读取认证结果。
 
 安装代理需要在已入域 Windows 主机上以管理员权限运行：
 

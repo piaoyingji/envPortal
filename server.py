@@ -60,6 +60,7 @@ GUACAMOLE_URL = CONFIG.get("GUACAMOLE_URL", "").rstrip("/")
 GUACAMOLE_PUBLIC_URL = CONFIG.get("GUACAMOLE_PUBLIC_URL", "").rstrip("/")
 GUACAMOLE_USERNAME = CONFIG.get("GUACAMOLE_USERNAME", "")
 GUACAMOLE_PASSWORD = CONFIG.get("GUACAMOLE_PASSWORD", "")
+DOMAIN_AUTH_PROXY_URL = CONFIG.get("DOMAIN_AUTH_PROXY_URL", "").rstrip("/")
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
 GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 GUACAMOLE_DRIVE_RETENTION_HOURS = env_float("GUACAMOLE_DRIVE_RETENTION_HOURS", 24)
@@ -1763,6 +1764,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             guac_status = guacamole_status()
             self.send_bytes(json_bytes({
                 "clientIp": client_ip_from_request(self.headers, self.client_address),
+                "domainAuthProxyUrl": DOMAIN_AUTH_PROXY_URL,
                 "guacamoleEnabled": bool(GUACAMOLE_URL),
                 "guacamoleAvailable": guac_status["available"],
                 "guacamoleStatus": guac_status["message"],

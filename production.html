@@ -534,6 +534,7 @@
         let canEdit = false;
         let canManageUsers = false;
         let editingProductionId = '';
+        let portalConfig = {};
         const orgFilterOpenGroups = new Set();
         let suppressOrgFilterToggle = false;
         const PRODUCTION_FIELDS = ["組織名","構築環境名","使用VPN","VPN IP","VPNユーザー名","VPNパスワード","踏み台IP","踏み台ユーザー名","踏み台パスワード","AP IP","APユーザー名","APパスワード","DB IP","DBユーザー名","DBパスワード"];
@@ -562,7 +563,7 @@
             ]}
         ];
         window.addEventListener('DOMContentLoaded', () => {
-            checkWindowsAuth();
+            loadPortalConfig().then(checkWindowsAuth);
             loadProductionData();
         });
         window.addEventListener('i18n:changed', () => {
@@ -603,7 +604,11 @@
         }
 
         function checkWindowsAuth() {
-            fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            const authUrl = portalConfig.domainAuthProxyUrl || 'auth_windows.jsp';
+            const options = authUrl === 'auth_windows.jsp'
+                ? { cache: 'no-store' }
+                : { cache: 'no-store', credentials: 'include' };
+            fetch(authUrl + (authUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime(), options)
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);
@@ -945,3 +950,15 @@
     </script>
 </body>
 </html>
+        function loadPortalConfig() {
+            return fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : {})
+                .then(config => {
+                    portalConfig = config || {};
+                    return portalConfig;
+                })
+                .catch(() => {
+                    portalConfig = {};
+                    return portalConfig;
+                });
+        }

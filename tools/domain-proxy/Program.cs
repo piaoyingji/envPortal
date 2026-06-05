@@ -66,10 +66,19 @@ sealed class ProxyWorker : BackgroundService
 
     private async Task HandleRequest(HttpListenerContext context, CancellationToken cancellationToken)
     {
+        if (string.Equals(context.Request.HttpMethod, "OPTIONS", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyCorsHeaders(context.Request, context.Response);
+            context.Response.StatusCode = 204;
+            context.Response.OutputStream.Close();
+            return;
+        }
+
         var identity = context.User?.Identity as WindowsIdentity;
         var rawUser = identity?.Name ?? "";
         if (string.IsNullOrWhiteSpace(rawUser) || !IsAllowed(rawUser))
         {
+            ApplyCorsHeaders(context.Request, context.Response);
             context.Response.StatusCode = 403;
             await WriteText(context.Response, "Forbidden", cancellationToken);
             logger.LogWarning("Rejected user {User} from {Remote}", rawUser, context.Request.RemoteEndPoint);
@@ -95,10 +104,12 @@ sealed class ProxyWorker : BackgroundService
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             context.Response.StatusCode = (int)response.StatusCode;
             CopyResponseHeaders(response, context.Response);
+            ApplyCorsHeaders(context.Request, context.Response);
             await response.Content.CopyToAsync(context.Response.OutputStream, cancellationToken);
         }
         catch (Exception ex)
         {
+            ApplyCorsHeaders(context.Request, context.Response);
             context.Response.StatusCode = 502;
             await WriteText(context.Response, "Bad Gateway", cancellationToken);
             logger.LogError(ex, "Proxy request failed for {Target}", target);
@@ -152,6 +163,27 @@ sealed class ProxyWorker : BackgroundService
         request.Headers.TryAddWithoutValidation("X-Forwarded-User", rawUser);
         request.Headers.Remove("X-Forwarded-For");
         request.Headers.TryAddWithoutValidation("X-Forwarded-For", clientIp);
+    }
+
+    private void ApplyCorsHeaders(HttpListenerRequest request, HttpListenerResponse response)
+    {
+        var origin = request.Headers["Origin"] ?? "";
+        if (string.IsNullOrWhiteSpace(origin) || !CorsOriginAllowed(origin))
+        {
+            return;
+        }
+        response.Headers["Access-Control-Allow-Origin"] = origin;
+        response.Headers["Access-Control-Allow-Credentials"] = "true";
+        response.Headers["Vary"] = "Origin";
+        response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
+        response.Headers["Access-Control-Allow-Headers"] = "Content-Type,Accept";
+    }
+
+    private bool CorsOriginAllowed(string origin)
+    {
+        var values = (config["Proxy:CorsAllowedOrigins"] ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return values.Any(item => string.Equals(item, origin, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void CopyRequestHeaders(HttpListenerRequest source, HttpRequestMessage target)
