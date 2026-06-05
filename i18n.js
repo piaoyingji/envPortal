@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.26';
+const APP_VERSION_FALLBACK = '2.2.27';
 
 const I18N_MESSAGES = {
     ja: {
@@ -127,6 +127,10 @@ const I18N_MESSAGES = {
         'label.roleKey': 'ロールID',
         'label.roleLabel': '表示名',
         'label.canEdit': '編集権限',
+        'label.canViewPortal': '環境検索',
+        'label.canEditPortal': '環境編集',
+        'label.canViewProduction': '本番検索',
+        'label.canEditProduction': '本番編集',
         'label.canManageUsers': '管理権限',
         'label.filterTag': '表示制限タグ',
         'label.displayName': '表示名',
@@ -182,7 +186,7 @@ const I18N_MESSAGES = {
         'roleAdmin.description': 'ロールと権限を管理します',
         'roleAdmin.noRoles': 'ロールがありません。',
         'roleAdmin.noPermission': 'ロール管理権限がありません。',
-        'roleAdmin.filterHelp': '空欄の場合は全データを表示します。タグ名を入れると該当タグのデータだけ表示します。',
+        'roleAdmin.filterHelp': '検索権限で表示可否を制御します。表示制限タグが空欄の場合は許可された全データを表示します。タグ名を入れると該当タグのデータだけ表示します。',
         'userAdmin.noPermission': 'アクセス権限がありません。',
         'userAdmin.noUsers': 'ユーザーがありません。',
         'status.checking': '確認中...',
@@ -326,6 +330,10 @@ const I18N_MESSAGES = {
         'label.roleKey': '角色ID',
         'label.roleLabel': '显示名',
         'label.canEdit': '编辑权限',
+        'label.canViewPortal': '环境查询',
+        'label.canEditPortal': '环境编辑',
+        'label.canViewProduction': '生产查询',
+        'label.canEditProduction': '生产编辑',
         'label.canManageUsers': '管理权限',
         'label.filterTag': '显示限制标签',
         'label.displayName': '显示名',
@@ -381,7 +389,7 @@ const I18N_MESSAGES = {
         'roleAdmin.description': '管理角色与权限',
         'roleAdmin.noRoles': '暂无角色。',
         'roleAdmin.noPermission': '没有角色管理权限。',
-        'roleAdmin.filterHelp': '留空时显示全部数据。填写标签名时只显示包含该标签的数据。',
+        'roleAdmin.filterHelp': '查询权限控制是否可查看。显示限制标签留空时显示已授权的全部数据，填写标签名时只显示包含该标签的数据。',
         'userAdmin.noPermission': '没有访问权限。',
         'userAdmin.noUsers': '没有用户。',
         'status.checking': '确认中...',

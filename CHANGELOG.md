@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.27] - 2026-06-05
+
+### Added
+
+- Added configurable role permissions for environment query, environment edit, production query, production edit, and system management in the role management UI.
+- Instantiated role permissions in `roles.json` instead of relying on a single hard-coded edit flag for query behavior.
+
 ## [2.2.26] - 2026-06-05
 
 ### Fixed

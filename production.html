@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.26"></script>
+    <script src="i18n.js?v=2.2.27"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -574,7 +574,7 @@
             portalFetch('production_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => response.ok ? response.json() : Promise.reject(new Error('production_data load failed')))
                 .then(payload => {
-                    canEdit = Boolean(payload && payload.canEdit);
+                    canEdit = Boolean(payload && (payload.canEditProduction || payload.canEdit));
                     canManageUsers = Boolean(payload && payload.canManageUsers);
                     setCurrentUser(payload);
                     setSystemMenuVisible(isSystemAdmin(payload));
@@ -608,7 +608,7 @@
             portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
-                    canEdit = Boolean(result && result.canEdit);
+                    canEdit = Boolean(result && (result.canEditProduction || result.canEdit));
                     canManageUsers = Boolean(result && result.canManageUsers);
                     setCurrentUser(result);
                     setSystemMenuVisible(isSystemAdmin(result));
