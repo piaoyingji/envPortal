@@ -579,11 +579,13 @@ def request_windows_auth(headers):
 
 
 def windows_user_metadata_from_headers(headers):
+    def decode_header(name):
+        return urllib.parse.unquote((headers.get(name) or "").strip())
     return {
-        "displayName": (headers.get("X-Remote-Display-Name") or "").strip(),
-        "email": (headers.get("X-Remote-Mail") or "").strip(),
-        "department": (headers.get("X-Remote-Department") or "").strip(),
-        "title": (headers.get("X-Remote-Title") or "").strip(),
+        "displayName": decode_header("X-Remote-Display-Name"),
+        "email": decode_header("X-Remote-Mail"),
+        "department": decode_header("X-Remote-Department"),
+        "title": decode_header("X-Remote-Title"),
     }
 
 

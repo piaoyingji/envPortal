@@ -246,7 +246,7 @@ sealed class ProxyWorker : BackgroundService
         request.Headers.Remove(name);
         if (!string.IsNullOrWhiteSpace(value))
         {
-            request.Headers.TryAddWithoutValidation(name, value);
+            request.Headers.TryAddWithoutValidation(name, Uri.EscapeDataString(value));
         }
     }
 

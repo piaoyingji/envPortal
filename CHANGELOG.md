@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.7] - 2026-06-05
+
+### Fixed
+
+- Encoded forwarded AD attributes so non-ASCII display names can pass through proxy headers safely.
+
 ## [2.2.6] - 2026-06-05
 
 ### Added
