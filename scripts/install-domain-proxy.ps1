@@ -58,15 +58,21 @@ $settings = @{
         ListenPrefix = $ListenPrefix
         TargetBaseUrl = $TargetBaseUrl
         HeaderName = "X-Remote-User"
-        AllowedUsersFile = "allowed-users.txt"
+        AllowedUsersFile = ""
+        DeniedUsersFile = "denied-users.txt"
         CorsAllowedOrigins = "http://192.168.20.38:8999,http://localhost:8999"
     }
 } | ConvertTo-Json -Depth 4
 $settings | Set-Content -Path (Join-Path $InstallDir "appsettings.json") -Encoding UTF8
 
-$currentUser = whoami /upn
-if (-not $currentUser) { $currentUser = whoami }
-$currentUser | Set-Content -Path (Join-Path $InstallDir "allowed-users.txt") -Encoding UTF8
+$deniedUsersPath = Join-Path $InstallDir "denied-users.txt"
+if (-not (Test-Path $deniedUsersPath)) {
+    @(
+        "# One denied domain user per line.",
+        "# Accepted formats: TOKYO\\user, user, user@example.com",
+        "# Use * to deny everyone."
+    ) | Set-Content -Path $deniedUsersPath -Encoding UTF8
+}
 
 $url = $ListenPrefix
 netsh http delete urlacl url=$url 2>$null | Out-Null
@@ -86,4 +92,4 @@ Start-Service -Name $ServiceName
 Write-Host "Installed $DisplayName"
 Write-Host "Listen: $ListenPrefix"
 Write-Host "Target: $TargetBaseUrl"
-Write-Host "Allowed users file: $(Join-Path $InstallDir "allowed-users.txt")"
+Write-Host "Denied users file: $deniedUsersPath"

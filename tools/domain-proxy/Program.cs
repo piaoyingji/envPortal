@@ -130,16 +130,43 @@ sealed class ProxyWorker : BackgroundService
 
     private bool IsAllowed(string rawUser)
     {
-        var allowedFile = config["Proxy:AllowedUsersFile"] ?? "allowed-users.txt";
-        var baseDir = AppContext.BaseDirectory;
-        var path = Path.IsPathRooted(allowedFile) ? allowedFile : Path.Combine(baseDir, allowedFile);
-        if (!File.Exists(path)) return true;
         var normalized = NormalizeUser(rawUser);
+        var deniedFile = config["Proxy:DeniedUsersFile"] ?? "denied-users.txt";
+        if (UserFileContains(deniedFile, normalized))
+        {
+            return false;
+        }
+
+        var allowedFile = config["Proxy:AllowedUsersFile"] ?? "";
+        if (string.IsNullOrWhiteSpace(allowedFile))
+        {
+            return true;
+        }
+
+        var allowedPath = ResolveLocalPath(allowedFile);
+        if (!File.Exists(allowedPath))
+        {
+            return true;
+        }
+        return UserFileContains(allowedFile, normalized);
+    }
+
+    private static string ResolveLocalPath(string file)
+    {
+        return Path.IsPathRooted(file) ? file : Path.Combine(AppContext.BaseDirectory, file);
+    }
+
+    private static bool UserFileContains(string file, string normalizedUser)
+    {
+        if (string.IsNullOrWhiteSpace(file)) return false;
+        var path = ResolveLocalPath(file);
+        if (!File.Exists(path)) return false;
         foreach (var line in File.ReadLines(path))
         {
             var item = line.Trim();
             if (item.Length == 0 || item.StartsWith("#", StringComparison.Ordinal)) continue;
-            if (NormalizeUser(item) == normalized) return true;
+            if (item == "*") return true;
+            if (NormalizeUser(item) == normalizedUser) return true;
         }
         return false;
     }
