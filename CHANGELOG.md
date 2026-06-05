@@ -2,6 +2,24 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.12] - 2026-06-05
+
+### Fixed
+
+- Forced UTF-8 output for domain proxy PowerShell AD lookups so non-ASCII display names are forwarded without replacement characters.
+
+## [2.2.11] - 2026-06-05
+
+### Fixed
+
+- Changed domain proxy AD attribute lookup to use Windows PowerShell ADSI with short lived caching after .NET directory service APIs were unavailable in the service runtime.
+
+## [2.2.10] - 2026-06-05
+
+### Fixed
+
+- Changed domain proxy AD attribute lookup from ADSI based APIs to LDAP protocol queries so display name, email, department, and title can be read in the .NET Windows service runtime.
+
 ## [2.2.9] - 2026-06-05
 
 ### Changed

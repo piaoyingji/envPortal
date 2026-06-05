@@ -1,6 +1,9 @@
 using System.Net;
-using System.DirectoryServices;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -13,6 +16,7 @@ sealed class ProxyWorker : BackgroundService
     private readonly ILogger<ProxyWorker> logger;
     private readonly IConfiguration config;
     private readonly HttpClient http;
+    private readonly ConcurrentDictionary<string, (DateTimeOffset ExpiresAt, DomainUserInfo Info)> domainUserCache = new();
     private HttpListener? listener;
 
     public ProxyWorker(ILogger<ProxyWorker> logger, IConfiguration config)
@@ -184,54 +188,112 @@ sealed class ProxyWorker : BackgroundService
 
     private DomainUserInfo LookupDomainUser(string rawUser)
     {
+        var accountName = NormalizeUser(rawUser);
+        if (domainUserCache.TryGetValue(accountName, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow)
+        {
+            return cached.Info;
+        }
+
         try
         {
-            var accountName = NormalizeUser(rawUser);
-            using var root = new DirectoryEntry("LDAP://RootDSE");
-            var defaultNamingContext = Convert.ToString(root.Properties["defaultNamingContext"].Value) ?? "";
-            if (string.IsNullOrWhiteSpace(defaultNamingContext))
-            {
-                return new DomainUserInfo();
-            }
-
-            using var entry = new DirectoryEntry($"LDAP://{defaultNamingContext}");
-            using var searcher = new DirectorySearcher(entry)
-            {
-                Filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={EscapeLdapFilterValue(accountName)}))",
-                SearchScope = SearchScope.Subtree,
-                PageSize = 1
-            };
-            searcher.PropertiesToLoad.Add("displayName");
-            searcher.PropertiesToLoad.Add("mail");
-            searcher.PropertiesToLoad.Add("department");
-            searcher.PropertiesToLoad.Add("title");
-
-            var result = searcher.FindOne();
-            if (result is null)
-            {
-                return new DomainUserInfo();
-            }
-
-            return new DomainUserInfo
-            {
-                DisplayName = ReadSearchProperty(result, "displayName"),
-                Email = ReadSearchProperty(result, "mail"),
-                Department = ReadSearchProperty(result, "department"),
-                Title = ReadSearchProperty(result, "title")
-            };
+            var info = LookupDomainUserViaPowerShell(accountName);
+            domainUserCache[accountName] = (DateTimeOffset.UtcNow.AddMinutes(10), info);
+            return info;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to look up AD attributes for {User}", rawUser);
-            return new DomainUserInfo();
+            var empty = new DomainUserInfo();
+            domainUserCache[accountName] = (DateTimeOffset.UtcNow.AddMinutes(2), empty);
+            return empty;
         }
     }
 
-    private static string ReadSearchProperty(SearchResult result, string name)
+    private static DomainUserInfo LookupDomainUserViaPowerShell(string accountName)
     {
-        if (result.Properties.Contains(name) && result.Properties[name].Count > 0)
+        var script = BuildAdLookupScript(accountName);
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+        using var process = new Process
         {
-            return Convert.ToString(result.Properties[name][0]) ?? "";
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                CreateNoWindow = true
+            }
+        };
+
+        process.Start();
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        if (!process.WaitForExit(5000))
+        {
+            process.Kill(true);
+            throw new TimeoutException("PowerShell AD lookup timed out.");
+        }
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"PowerShell AD lookup failed: {error}");
+        }
+
+        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(output) ? "{}" : output);
+        var root = document.RootElement;
+        return new DomainUserInfo
+        {
+            DisplayName = ReadJsonString(root, "displayName"),
+            Email = ReadJsonString(root, "mail"),
+            Department = ReadJsonString(root, "department"),
+            Title = ReadJsonString(root, "title")
+        };
+    }
+
+    private static string BuildAdLookupScript(string accountName)
+    {
+        var accountJson = JsonSerializer.Serialize(EscapeLdapFilterValue(accountName));
+        return """
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$account = ACCOUNT_JSON
+$searcher = New-Object DirectoryServices.DirectorySearcher
+$searcher.Filter = "(&(objectCategory=person)(objectClass=user)(sAMAccountName=$account))"
+$null = $searcher.PropertiesToLoad.Add('displayName')
+$null = $searcher.PropertiesToLoad.Add('mail')
+$null = $searcher.PropertiesToLoad.Add('department')
+$null = $searcher.PropertiesToLoad.Add('title')
+$result = $searcher.FindOne()
+function Get-Prop($name) {
+    if ($null -ne $result -and $result.Properties[$name] -and $result.Properties[$name].Count -gt 0) {
+        return [string]$result.Properties[$name][0]
+    }
+    return ''
+}
+if ($null -eq $result) {
+    @{} | ConvertTo-Json -Compress
+} else {
+    [pscustomobject]@{
+        displayName = Get-Prop 'displayname'
+        mail = Get-Prop 'mail'
+        department = Get-Prop 'department'
+        title = Get-Prop 'title'
+    } | ConvertTo-Json -Compress
+}
+""".Replace("ACCOUNT_JSON", accountJson, StringComparison.Ordinal);
+    }
+
+    private static string ReadJsonString(JsonElement root, string name)
+    {
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty(name, out var value) &&
+            value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString() ?? "";
         }
         return "";
     }
