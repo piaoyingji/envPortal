@@ -1,5 +1,5 @@
 using System.Net;
-using System.DirectoryServices.AccountManagement;
+using System.DirectoryServices;
 using System.Security.Principal;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
@@ -186,20 +186,38 @@ sealed class ProxyWorker : BackgroundService
     {
         try
         {
-            using var context = new PrincipalContext(ContextType.Domain);
-            using var user = UserPrincipal.FindByIdentity(context, rawUser)
-                ?? UserPrincipal.FindByIdentity(context, NormalizeUser(rawUser));
-            if (user is null)
+            var accountName = NormalizeUser(rawUser);
+            using var root = new DirectoryEntry("LDAP://RootDSE");
+            var defaultNamingContext = Convert.ToString(root.Properties["defaultNamingContext"].Value) ?? "";
+            if (string.IsNullOrWhiteSpace(defaultNamingContext))
+            {
+                return new DomainUserInfo();
+            }
+
+            using var entry = new DirectoryEntry($"LDAP://{defaultNamingContext}");
+            using var searcher = new DirectorySearcher(entry)
+            {
+                Filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={EscapeLdapFilterValue(accountName)}))",
+                SearchScope = SearchScope.Subtree,
+                PageSize = 1
+            };
+            searcher.PropertiesToLoad.Add("displayName");
+            searcher.PropertiesToLoad.Add("mail");
+            searcher.PropertiesToLoad.Add("department");
+            searcher.PropertiesToLoad.Add("title");
+
+            var result = searcher.FindOne();
+            if (result is null)
             {
                 return new DomainUserInfo();
             }
 
             return new DomainUserInfo
             {
-                DisplayName = user.DisplayName ?? "",
-                Email = user.EmailAddress ?? "",
-                Department = ReadDirectoryProperty(user, "department"),
-                Title = ReadDirectoryProperty(user, "title")
+                DisplayName = ReadSearchProperty(result, "displayName"),
+                Email = ReadSearchProperty(result, "mail"),
+                Department = ReadSearchProperty(result, "department"),
+                Title = ReadSearchProperty(result, "title")
             };
         }
         catch (Exception ex)
@@ -209,21 +227,45 @@ sealed class ProxyWorker : BackgroundService
         }
     }
 
-    private static string ReadDirectoryProperty(UserPrincipal user, string name)
+    private static string ReadSearchProperty(SearchResult result, string name)
     {
-        try
+        if (result.Properties.Contains(name) && result.Properties[name].Count > 0)
         {
-            if (user.GetUnderlyingObject() is System.DirectoryServices.DirectoryEntry entry &&
-                entry.Properties.Contains(name) &&
-                entry.Properties[name].Value is not null)
-            {
-                return Convert.ToString(entry.Properties[name].Value) ?? "";
-            }
-        }
-        catch
-        {
+            return Convert.ToString(result.Properties[name][0]) ?? "";
         }
         return "";
+    }
+
+    private static string EscapeLdapFilterValue(string value)
+    {
+        return value
+            .Replace("\\", "\\5c", StringComparison.Ordinal)
+            .Replace("*", "\\2a", StringComparison.Ordinal)
+            .Replace("(", "\\28", StringComparison.Ordinal)
+            .Replace(")", "\\29", StringComparison.Ordinal)
+            .Replace("\0", "\\00", StringComparison.Ordinal);
+    }
+
+    private static string EncodeHeaderValue(string value)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        var builder = new System.Text.StringBuilder(bytes.Length * 3);
+        foreach (var b in bytes)
+        {
+            if ((b >= 'A' && b <= 'Z') ||
+                (b >= 'a' && b <= 'z') ||
+                (b >= '0' && b <= '9') ||
+                b == '-' || b == '_' || b == '.' || b == '~')
+            {
+                builder.Append((char)b);
+            }
+            else
+            {
+                builder.Append('%');
+                builder.Append(b.ToString("X2"));
+            }
+        }
+        return builder.ToString();
     }
 
     private void AddAuthHeaders(HttpRequestMessage request, string rawUser, string clientIp, DomainUserInfo info)
@@ -246,7 +288,7 @@ sealed class ProxyWorker : BackgroundService
         request.Headers.Remove(name);
         if (!string.IsNullOrWhiteSpace(value))
         {
-            request.Headers.TryAddWithoutValidation(name, Uri.EscapeDataString(value));
+            request.Headers.TryAddWithoutValidation(name, EncodeHeaderValue(value));
         }
     }
 

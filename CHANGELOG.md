@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.8] - 2026-06-05
+
+### Fixed
+
+- Replaced the domain proxy AD attribute lookup with LDAP search so display name, email, department, and title can be read on Windows service runtime.
+
 ## [2.2.7] - 2026-06-05
 
 ### Fixed
