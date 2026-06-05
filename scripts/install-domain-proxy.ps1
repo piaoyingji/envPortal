@@ -37,6 +37,19 @@ $publish = Join-Path $repo "tools\domain-proxy\publish"
 
 dotnet publish $project -c Release -r win-x64 --self-contained false -o $publish
 
+$exe = Join-Path $InstallDir "EnvPortal.DomainProxy.exe"
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    $deadline = (Get-Date).AddSeconds(20)
+    do {
+        $svc = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'" -ErrorAction SilentlyContinue
+        if (-not $svc -or $svc.State -eq "Stopped") { break }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+    sc.exe delete $ServiceName | Out-Null
+    Start-Sleep -Seconds 2
+}
+
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $publish "*") -Destination $InstallDir -Recurse -Force
 
@@ -46,6 +59,7 @@ $settings = @{
         TargetBaseUrl = $TargetBaseUrl
         HeaderName = "X-Remote-User"
         AllowedUsersFile = "allowed-users.txt"
+        CorsAllowedOrigins = "http://192.168.20.38:8999,http://localhost:8999"
     }
 } | ConvertTo-Json -Depth 4
 $settings | Set-Content -Path (Join-Path $InstallDir "appsettings.json") -Encoding UTF8
@@ -64,13 +78,6 @@ if ($port -gt 0) {
     if (-not (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)) {
         New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $port | Out-Null
     }
-}
-
-$exe = Join-Path $InstallDir "EnvPortal.DomainProxy.exe"
-if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    sc.exe delete $ServiceName | Out-Null
-    Start-Sleep -Seconds 2
 }
 
 New-Service -Name $ServiceName -DisplayName $DisplayName -BinaryPathName "`"$exe`"" -StartupType Automatic | Out-Null
