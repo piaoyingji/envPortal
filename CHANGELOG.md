@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.13] - 2026-06-05
+
+### Fixed
+
+- Moved the production page portal config loader back inside the script block so JavaScript is not rendered as visible page text and production data can load normally.
+
 ## [2.2.12] - 2026-06-05
 
 ### Fixed
