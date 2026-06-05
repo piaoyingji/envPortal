@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.8`
+当前版本：`2.2.9`
 
 ## 核心能力
 
@@ -117,6 +117,12 @@ EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`
 
 ```env
 DOMAIN_AUTH_PROXY_URL=http://192.168.20.218:8998/auth_windows.jsp
+```
+
+跨域探测默认关闭，避免浏览器在未配置静默 Windows 认证时弹出用户名密码框。确认浏览器策略或 Local Intranet 区域已允许对 20.218 静默发送当前登录凭据后，再设置：
+
+```env
+DOMAIN_AUTH_AUTO_PROBE=true
 ```
 
 域代理会对受信任的 EnvPortal 来源返回 CORS header，默认允许 `http://192.168.20.38:8999` 读取认证结果。

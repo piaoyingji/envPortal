@@ -47,6 +47,13 @@ def env_float(name, default):
         return float(default)
 
 
+def env_bool(name, default=False):
+    value = str(CONFIG.get(name, "")).strip().lower()
+    if not value:
+        return bool(default)
+    return value in {"1", "true", "yes", "on"}
+
+
 PORT = int(CONFIG.get("PORT", "8080"))
 BIND_ADDRESS = CONFIG.get("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
@@ -61,6 +68,7 @@ GUACAMOLE_PUBLIC_URL = CONFIG.get("GUACAMOLE_PUBLIC_URL", "").rstrip("/")
 GUACAMOLE_USERNAME = CONFIG.get("GUACAMOLE_USERNAME", "")
 GUACAMOLE_PASSWORD = CONFIG.get("GUACAMOLE_PASSWORD", "")
 DOMAIN_AUTH_PROXY_URL = CONFIG.get("DOMAIN_AUTH_PROXY_URL", "").rstrip("/")
+DOMAIN_AUTH_AUTO_PROBE = env_bool("DOMAIN_AUTH_AUTO_PROBE", False)
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
 GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 GUACAMOLE_DRIVE_RETENTION_HOURS = env_float("GUACAMOLE_DRIVE_RETENTION_HOURS", 24)
@@ -1786,6 +1794,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({
                 "clientIp": client_ip_from_request(self.headers, self.client_address),
                 "domainAuthProxyUrl": DOMAIN_AUTH_PROXY_URL,
+                "domainAuthAutoProbe": DOMAIN_AUTH_AUTO_PROBE,
                 "guacamoleEnabled": bool(GUACAMOLE_URL),
                 "guacamoleAvailable": guac_status["available"],
                 "guacamoleStatus": guac_status["message"],

@@ -1174,7 +1174,7 @@
             if (expiry && new Date().getTime() < parseInt(expiry)) {
                 isAuthenticated = true;
             }
-            loadPortalConfig().then(checkWindowsAuth);
+            loadPortalConfig().then(() => checkWindowsAuth({ allowProxy: false }));
 
             fetch('portal_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('portal_data load failed')))
@@ -1216,12 +1216,13 @@
                 });
         }
 
-        function checkWindowsAuth() {
-            const authUrl = portalConfig.domainAuthProxyUrl || 'auth_windows.jsp';
-            const options = authUrl === 'auth_windows.jsp'
+        function checkWindowsAuth(options = {}) {
+            const allowProxy = Boolean(options.allowProxy || portalConfig.domainAuthAutoProbe);
+            const authUrl = allowProxy && portalConfig.domainAuthProxyUrl ? portalConfig.domainAuthProxyUrl : 'auth_windows.jsp';
+            const requestOptions = authUrl === 'auth_windows.jsp'
                 ? { cache: 'no-store' }
                 : { cache: 'no-store', credentials: 'include' };
-            fetch(authUrl + (authUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime(), options)
+            fetch(authUrl + (authUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime(), requestOptions)
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);

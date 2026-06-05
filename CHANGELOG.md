@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.9] - 2026-06-05
+
+### Changed
+
+- Disabled automatic cross-origin domain proxy probing by default to prevent browser Windows credential prompts on 20.38 page refresh.
+- Added `DOMAIN_AUTH_AUTO_PROBE=true` as the explicit opt-in for automatic domain proxy probing after browser integrated authentication is configured.
+
 ## [2.2.8] - 2026-06-05
 
 ### Fixed
