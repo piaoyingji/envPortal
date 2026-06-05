@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.19';
+const APP_VERSION_FALLBACK = '2.2.20';
 
 const I18N_MESSAGES = {
     ja: {
@@ -515,19 +515,27 @@ function initI18n() {
             <div class="client-meta">
                 <span id="currentUserLabel" class="client-ip" hidden></span>
                 <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
-                <details id="systemMenu" class="system-menu" hidden>
-                    <summary id="systemMenuLabel">${t('nav.system')}</summary>
-                    <div class="system-menu-panel">
-                        <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
-                        <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
-                    </div>
-                </details>
             </div>
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
         loadCurrentUser();
         loadAppVersion();
+    }
+    const navInner = document.querySelector('.main-nav-inner');
+    if (navInner && !document.getElementById('systemMenu')) {
+        const menu = document.createElement('details');
+        menu.id = 'systemMenu';
+        menu.className = 'system-menu';
+        menu.hidden = true;
+        menu.innerHTML = `
+            <summary id="systemMenuLabel">${t('nav.system')}</summary>
+            <div class="system-menu-panel">
+                <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
+                <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
+            </div>
+        `;
+        navInner.appendChild(menu);
     }
     applyI18n();
 }

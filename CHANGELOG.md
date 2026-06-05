@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.20] - 2026-06-05
+
+### Fixed
+
+- Moved the system management menu into the main navigation bar and raised its stacking layer so the dropdown appears above the page chrome.
+
 ## [2.2.19] - 2026-06-05
 
 ### Changed
