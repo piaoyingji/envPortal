@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.15`
+当前版本：`2.2.16`
 
 ## 核心能力
 
@@ -100,14 +100,14 @@ Windows 下启动器会为 EnvPortal 端口和 Guacamole 端口检查入站防�
 
 ## 用户角色与认证
 
-EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`canEdit`、`canManageUsers`。角色信息保存在本地 `users.json`：
+EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`canEdit`、`canManageUsers`。用户信息保存在本地 `users.json`，角色主数据保存在本地 `roles.json`：
 
 - `admin`：管理员，可查看全部信息、编辑环境/本番环境、维护用户。
 - `staff`：一般职员，可查看环境检索中的非敏感摘要。
 - `import_staff`：导入职员，只能查看带 `OneHR` tag 的环境。
 - `new_employee`：新员工，只能查看带 `社内学習` tag 的环境。
 
-首次访问的域用户会自动登记为 `staff`。既有 Windows/IP 白名单用户首次迁移为 `admin`。写入接口仅 admin 可用。
+首次访问的域用户会自动登记为 `staff`。既有 Windows/IP 白名单用户首次迁移为 `admin`。右上角系统管理菜单仅 `admin` 角色可见，用户管理和角色管理写入接口需要管理权限。
 
 ## 域认证反向代理
 

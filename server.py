@@ -118,16 +118,46 @@ PRODUCTION_CSV_FIELDS = [
     "DBユーザー名",
     "DBパスワード",
 ]
-SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json"}
+SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json"}
 REMOVED_MANAGEMENT_PAGES = {"/admin.html", "/rdp.html", "/production-admin.html"}
 PORTAL_MASK_FIELDS = {"ログインパスワード", "DBパスワード"}
 RDP_MASK_FIELDS = {"RDPユーザー名", "RDPパスワード"}
 PRODUCTION_MASK_FIELDS = {"VPNパスワード", "踏み台パスワード", "APパスワード", "DBパスワード"}
 USERS_PATH = BASE_DIR / "users.json"
-USER_ROLES = {"admin", "staff", "import_staff", "new_employee"}
-ROLE_FILTER_TAGS = {
-    "import_staff": "OneHR",
-    "new_employee": "社内学習",
+ROLES_PATH = BASE_DIR / "roles.json"
+DEFAULT_ROLES = {
+    "admin": {
+        "key": "admin",
+        "label": "管理者",
+        "canEdit": True,
+        "canManageUsers": True,
+        "filterTag": "",
+        "protected": True,
+    },
+    "staff": {
+        "key": "staff",
+        "label": "一般職員",
+        "canEdit": False,
+        "canManageUsers": False,
+        "filterTag": "",
+        "protected": False,
+    },
+    "import_staff": {
+        "key": "import_staff",
+        "label": "導入職員",
+        "canEdit": False,
+        "canManageUsers": False,
+        "filterTag": "OneHR",
+        "protected": False,
+    },
+    "new_employee": {
+        "key": "new_employee",
+        "label": "新入社員",
+        "canEdit": False,
+        "canManageUsers": False,
+        "filterTag": "社内学習",
+        "protected": False,
+    },
 }
 DEFAULT_ORG_READINGS = {
     "標準版": "ひょうじゅんばん",
@@ -193,8 +223,79 @@ def filter_tags_for_rows(tags_json, rows):
     return {key: value for key, value in tags_json.items() if key in keys}
 
 
+def normalize_role_key(value):
+    return re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value or "").strip()).strip("_").lower()
+
+
+def normalize_role_record(key, record):
+    role_key = normalize_role_key(record.get("key") if isinstance(record, dict) else key)
+    if not role_key:
+        return None
+    defaults = DEFAULT_ROLES.get(role_key, {})
+    protected = bool(defaults.get("protected"))
+    role = {
+        "key": role_key,
+        "label": str((record or {}).get("label") or defaults.get("label") or role_key),
+        "canEdit": bool((record or {}).get("canEdit", defaults.get("canEdit", False))),
+        "canManageUsers": bool((record or {}).get("canManageUsers", defaults.get("canManageUsers", False))),
+        "filterTag": str((record or {}).get("filterTag") or defaults.get("filterTag") or "").strip(),
+        "protected": protected,
+    }
+    if role_key == "admin":
+        role["canEdit"] = True
+        role["canManageUsers"] = True
+        role["protected"] = True
+    return role
+
+
+def load_roles():
+    roles = {}
+    raw = {}
+    if ROLES_PATH.exists():
+        try:
+            data = json.loads(ROLES_PATH.read_text(encoding="utf-8-sig") or "{}")
+            if isinstance(data, dict):
+                raw = data
+        except json.JSONDecodeError:
+            raw = {}
+    for key, record in {**DEFAULT_ROLES, **raw}.items():
+        normalized = normalize_role_record(key, record if isinstance(record, dict) else {})
+        if normalized:
+            roles[normalized["key"]] = normalized
+    if "admin" not in roles:
+        roles["admin"] = dict(DEFAULT_ROLES["admin"])
+    return roles
+
+
+def save_roles(roles):
+    cleaned = {}
+    for key, record in roles.items():
+        normalized = normalize_role_record(key, record if isinstance(record, dict) else {})
+        if normalized:
+            cleaned[normalized["key"]] = normalized
+    if "admin" not in cleaned:
+        cleaned["admin"] = dict(DEFAULT_ROLES["admin"])
+    cleaned["admin"]["canEdit"] = True
+    cleaned["admin"]["canManageUsers"] = True
+    cleaned["admin"]["protected"] = True
+    ROLES_PATH.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def role_options():
+    return sorted(load_roles().values(), key=lambda item: item.get("key", ""))
+
+
+def role_keys():
+    return set(load_roles().keys())
+
+
+def role_config(role):
+    roles = load_roles()
+    return roles.get(role) or roles.get("staff") or DEFAULT_ROLES["staff"]
+
+
 def portal_rows_for_role(rows, tags_json, role):
-    tag_name = ROLE_FILTER_TAGS.get(role)
+    tag_name = role_config(role).get("filterTag", "")
     if not tag_name:
         return rows
     return [row for row in rows if tag_name in tags_for_row(row, tags_json)]
@@ -247,7 +348,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         if client_ip:
             record.setdefault("firstIp", record.get("lastIp") or client_ip)
             record["lastIp"] = client_ip
-        if record.get("role") not in USER_ROLES:
+        if record.get("role") not in role_keys():
             record["role"] = "staff"
         for key in ("email", "department", "title"):
             if metadata.get(key):
@@ -255,12 +356,13 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         users[normalized] = record
         save_users(users)
     role = record.get("role", "staff")
+    role_info = role_config(role)
     return {
         "user": normalized,
         "displayName": record.get("displayName", normalized),
         "role": role,
-        "canEdit": role == "admin",
-        "canManageUsers": role == "admin",
+        "canEdit": bool(role_info.get("canEdit")),
+        "canManageUsers": bool(role_info.get("canManageUsers")),
         "lastIp": record.get("lastIp", ""),
         "email": record.get("email", ""),
         "department": record.get("department", ""),
@@ -1546,11 +1648,17 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_tags.jsp",
             "/update_production.jsp",
             "/update_users.jsp",
+            "/update_roles.jsp",
             "/update_portal_bundle.jsp",
         }
         if path in protected_post_paths:
             profile = self.request_profile()
             if not profile.get("canEdit"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+        if path in {"/update_users.jsp", "/update_roles.jsp"}:
+            profile = self.request_profile()
+            if not profile.get("canManageUsers"):
                 self.send_bytes(b"Forbidden", status=403)
                 return
 
@@ -1643,6 +1751,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_tags.jsp": "tags.json",
             "/update_production.jsp": "production.csv",
             "/update_users.jsp": "users.json",
+            "/update_roles.jsp": "roles.json",
         }
         if path in update_map:
             filename = update_map[path]
@@ -1662,7 +1771,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                         if not normalized or not isinstance(record, dict):
                             continue
                         role = record.get("role", "staff")
-                        if role not in USER_ROLES:
+                        if role not in role_keys():
                             role = "staff"
                         old = current.get(normalized, {})
                         cleaned[normalized] = {
@@ -1673,10 +1782,23 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                             "lastSeen": str(record.get("lastSeen") or old.get("lastSeen") or now_text()),
                             "firstIp": str(record.get("firstIp") or old.get("firstIp") or ""),
                             "lastIp": str(record.get("lastIp") or old.get("lastIp") or ""),
+                            "email": str(record.get("email") or old.get("email") or ""),
+                            "department": str(record.get("department") or old.get("department") or ""),
+                            "title": str(record.get("title") or old.get("title") or ""),
                         }
                     body = json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n"
                 except Exception as exc:
                     self.send_bytes(f"Invalid users.json: {exc}".encode("utf-8"), status=400)
+                    return
+            if path == "/update_roles.jsp":
+                try:
+                    incoming = json.loads(body or "{}")
+                    if not isinstance(incoming, dict):
+                        raise ValueError("roles payload must be object")
+                    save_roles(incoming)
+                    body = ROLES_PATH.read_text(encoding="utf-8")
+                except Exception as exc:
+                    self.send_bytes(f"Invalid roles.json: {exc}".encode("utf-8"), status=400)
                     return
             target_path.write_text(body, encoding="utf-8-sig", newline="")
             self.send_bytes(b"success")
@@ -1718,7 +1840,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             tags_json = read_tags_json()
             data_rows = portal_rows_for_role(data_rows, tags_json, role)
             visible_orgs = {str(row.get("組織名", "") or "").strip() for row in data_rows}
-            if role != "admin":
+            if not profile.get("canEdit"):
                 data_rows = masked_records(data_rows, PORTAL_MASK_FIELDS)
                 rdp_rows = [row for row in rdp_rows if str(row.get("組織名", "") or "").strip() in visible_orgs]
                 rdp_rows = masked_records(rdp_rows, RDP_MASK_FIELDS)
@@ -1739,7 +1861,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         if path == "/production_data.jsp":
             profile = self.request_profile()
             rows = read_csv_records("production.csv", PRODUCTION_CSV_FIELDS)
-            if profile.get("role") != "admin":
+            if not profile.get("canEdit"):
                 rows = []
             self.send_bytes(json_bytes({
                 "ok": profile.get("ok", False),
@@ -1763,7 +1885,23 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "role": profile.get("role", "staff"),
                 "canEdit": profile.get("canEdit", False),
                 "canManageUsers": profile.get("canManageUsers", False),
-                "roles": sorted(USER_ROLES),
+                "roles": role_options(),
+                "users": load_users(),
+            }), "application/json; charset=utf-8")
+            return
+
+        if path == "/roles_data.jsp":
+            profile = self.request_profile()
+            if not profile.get("canManageUsers"):
+                self.send_bytes(b"Forbidden", status=403)
+                return
+            self.send_bytes(json_bytes({
+                "ok": True,
+                "user": profile.get("user", ""),
+                "role": profile.get("role", "staff"),
+                "canEdit": profile.get("canEdit", False),
+                "canManageUsers": profile.get("canManageUsers", False),
+                "roles": role_options(),
                 "users": load_users(),
             }), "application/json; charset=utf-8")
             return

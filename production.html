@@ -474,7 +474,6 @@
             <div class="main-nav-inner">
                 <a href="index.html" data-i18n="nav.search">環境検索</a>
                 <a href="production.html" class="active" data-i18n="nav.production">本番環境</a>
-                <a id="userAdminNavLink" href="user-admin.html" data-i18n="nav.users" hidden>ユーザー管理</a>
             </div>
         </nav>
     </header>
@@ -577,6 +576,7 @@
                 .then(payload => {
                     canEdit = Boolean(payload && payload.canEdit);
                     canManageUsers = Boolean(payload && payload.canManageUsers);
+                    setSystemMenuVisible(payload && payload.role === 'admin');
                     productionData = assignRowIds((payload.data || []).filter(hasProductionInfo), 'prod');
                     updateOrgAddButton();
                     applyInitialOrgFromQuery();
@@ -614,12 +614,14 @@
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);
                     canManageUsers = Boolean(result && result.canManageUsers);
+                    setSystemMenuVisible(result && result.role === 'admin');
                     updateOrgAddButton();
                     renderProduction();
                 })
                 .catch(() => {
                     canEdit = false;
                     canManageUsers = false;
+                    setSystemMenuVisible(false);
                     updateOrgAddButton();
                     renderProduction();
                 });
@@ -632,8 +634,6 @@
         function updateOrgAddButton() {
             const orgAddBtn = document.getElementById('orgAddBtn');
             if (orgAddBtn) orgAddBtn.hidden = !canEdit;
-            const userAdminNavLink = document.getElementById('userAdminNavLink');
-            if (userAdminNavLink) userAdminNavLink.hidden = !canManageUsers;
         }
 
         function renderOrgFilterMenu() {

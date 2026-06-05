@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.15';
+const APP_VERSION_FALLBACK = '2.2.16';
 
 const I18N_MESSAGES = {
     ja: {
@@ -22,6 +22,8 @@ const I18N_MESSAGES = {
         'nav.production': '本番環境',
         'nav.productionAdmin': '本番環境データ管理',
         'nav.users': 'ユーザー管理',
+        'nav.roles': 'ロール管理',
+        'nav.system': 'システム管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
         'filter.tags': 'タグで絞り込み',
@@ -117,6 +119,11 @@ const I18N_MESSAGES = {
         'label.action': '操作',
         'label.user': 'ユーザー',
         'label.role': 'ロール',
+        'label.roleKey': 'ロールID',
+        'label.roleLabel': '表示名',
+        'label.canEdit': '編集権限',
+        'label.canManageUsers': '管理権限',
+        'label.filterTag': '表示制限タグ',
         'label.displayName': '表示名',
         'label.firstSeen': '初回アクセス',
         'label.lastSeen': '最終アクセス',
@@ -155,6 +162,10 @@ const I18N_MESSAGES = {
         'modal.envCopy': '環境コピー',
         'modal.productionAdd': '本番環境追加',
         'userAdmin.description': 'ユーザー権限を管理します',
+        'roleAdmin.description': 'ロールと権限を管理します',
+        'roleAdmin.noRoles': 'ロールがありません。',
+        'roleAdmin.noPermission': 'ロール管理権限がありません。',
+        'roleAdmin.filterHelp': '空欄の場合は全データを表示します。タグ名を入れると該当タグのデータだけ表示します。',
         'userAdmin.noPermission': 'アクセス権限がありません。',
         'userAdmin.noUsers': 'ユーザーがありません。',
         'status.checking': '確認中...',
@@ -193,6 +204,8 @@ const I18N_MESSAGES = {
         'nav.production': '本番環境',
         'nav.productionAdmin': '本番環境データ管理',
         'nav.users': '用户管理',
+        'nav.roles': '角色管理',
+        'nav.system': '系统管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
         'filter.tags': '按标签过滤',
@@ -288,6 +301,11 @@ const I18N_MESSAGES = {
         'label.action': '操作',
         'label.user': '用户',
         'label.role': '角色',
+        'label.roleKey': '角色ID',
+        'label.roleLabel': '显示名',
+        'label.canEdit': '编辑权限',
+        'label.canManageUsers': '管理权限',
+        'label.filterTag': '显示限制标签',
         'label.displayName': '显示名',
         'label.firstSeen': '首次访问',
         'label.lastSeen': '最后访问',
@@ -326,6 +344,10 @@ const I18N_MESSAGES = {
         'modal.envCopy': '环境复制',
         'modal.productionAdd': '本番环境追加',
         'userAdmin.description': '管理用户权限',
+        'roleAdmin.description': '管理角色与权限',
+        'roleAdmin.noRoles': '暂无角色。',
+        'roleAdmin.noPermission': '没有角色管理权限。',
+        'roleAdmin.filterHelp': '留空时显示全部数据。填写标签名时只显示包含该标签的数据。',
         'userAdmin.noPermission': '没有访问权限。',
         'userAdmin.noUsers': '没有用户。',
         'status.checking': '确认中...',
@@ -387,6 +409,8 @@ function applyI18n(root = document) {
     if (versionLabel) versionLabel.textContent = t('app.version', { version: versionLabel.dataset.version || APP_VERSION_FALLBACK });
     const clientIpLabel = document.getElementById('clientIpLabel');
     if (clientIpLabel && clientIpLabel.dataset.ip) clientIpLabel.textContent = t('app.clientIp', { ip: clientIpLabel.dataset.ip });
+    const systemMenuLabel = document.getElementById('systemMenuLabel');
+    if (systemMenuLabel) systemMenuLabel.textContent = t('nav.system');
 }
 
 function loadAppVersion() {
@@ -439,6 +463,13 @@ function initI18n() {
                 <span id="clientIpLabel" class="client-ip" hidden></span>
                 <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
             </div>
+            <details id="systemMenu" class="system-menu" hidden>
+                <summary id="systemMenuLabel">${t('nav.system')}</summary>
+                <div class="system-menu-panel">
+                    <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
+                    <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
+                </div>
+            </details>
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
@@ -446,6 +477,18 @@ function initI18n() {
         loadAppVersion();
     }
     applyI18n();
+}
+
+function setSystemMenuVisible(visible) {
+    const menu = document.getElementById('systemMenu');
+    if (!menu) return;
+    menu.hidden = !visible;
+    if (visible) {
+        const current = location.pathname.split('/').pop() || 'index.html';
+        menu.querySelectorAll('[data-system-link]').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === current);
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initI18n);

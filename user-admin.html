@@ -81,7 +81,6 @@
             <div class="main-nav-inner">
                 <a href="index.html" data-i18n="nav.search">環境検索</a>
                 <a href="production.html" data-i18n="nav.production">本番環境</a>
-                <a href="user-admin.html" class="active" data-i18n="nav.users">ユーザー管理</a>
             </div>
         </nav>
     </header>
@@ -110,14 +109,16 @@
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
                 .then(payload => {
                     users = payload.users || {};
-                    roles = payload.roles || ['admin', 'staff', 'import_staff', 'new_employee'];
+                    roles = normalizeRoles(payload.roles || []);
                     currentUser = payload.user || '';
                     canManageUsers = Boolean(payload.canManageUsers);
+                    setSystemMenuVisible(payload.role === 'admin');
                     document.getElementById('saveUsersBtn').hidden = !canManageUsers;
                     renderUsers();
                 })
                 .catch(() => {
                     canManageUsers = false;
+                    setSystemMenuVisible(false);
                     document.getElementById('saveUsersBtn').hidden = true;
                     document.getElementById('userArea').innerHTML = t('userAdmin.noPermission');
                 });
@@ -162,7 +163,7 @@
                     <td><input data-user="${key}" data-field="displayName" value="${escapeHtml(row.displayName || row.user || '')}"></td>
                     <td>
                         <select data-user="${key}" data-field="role">
-                            ${roles.map(role => `<option value="${escapeHtml(role)}" ${role === row.role ? 'selected' : ''}>${roleLabel(role)}</option>`).join('')}
+                            ${roles.map(role => `<option value="${escapeHtml(role.key)}" ${role.key === row.role ? 'selected' : ''}>${escapeHtml(role.label || role.key)}</option>`).join('')}
                         </select>
                     </td>
                     <td class="readonly-cell">${escapeHtml(row.firstSeen || '')}</td>
@@ -175,13 +176,25 @@
         }
 
         function roleLabel(role) {
-            const labels = {
-                admin: '管理者',
-                staff: '一般職員',
-                import_staff: '導入職員',
-                new_employee: '新入社員'
-            };
-            return labels[role] || role;
+            const found = roles.find(item => item.key === role);
+            return (found && found.label) || role;
+        }
+
+        function normalizeRoles(values) {
+            const fallback = [
+                { key: 'admin', label: '管理者' },
+                { key: 'staff', label: '一般職員' },
+                { key: 'import_staff', label: '導入職員' },
+                { key: 'new_employee', label: '新入社員' }
+            ];
+            const source = Array.isArray(values) && values.length ? values : fallback;
+            return source.map(role => {
+                if (typeof role === 'string') return { key: role, label: role };
+                return {
+                    key: String(role.key || '').trim(),
+                    label: String(role.label || role.key || '').trim()
+                };
+            }).filter(role => role.key);
         }
 
         function collectUsers() {

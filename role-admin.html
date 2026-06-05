@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnvPortal - ロール管理</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="i18n.js"></script>
+    <style>
+        .role-admin-container {
+            width: calc(100% - 2rem);
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 0 2rem;
+        }
+        .role-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.85rem;
+        }
+        .role-toolbar h2 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
+        .role-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .role-table-wrap {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: var(--shadow-card);
+            overflow: auto;
+        }
+        .role-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 920px;
+        }
+        .role-table th,
+        .role-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 0.8rem;
+            text-align: left;
+            font-size: 0.88rem;
+            vertical-align: middle;
+        }
+        .role-table th {
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .role-table input[type="text"] {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.45rem 0.5rem;
+            font-size: 0.86rem;
+            background: #fff;
+        }
+        .role-table input[readonly] {
+            color: var(--text-muted);
+            background: #f8fafc;
+        }
+        .role-check {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .role-check input {
+            width: 18px;
+            height: 18px;
+        }
+        .role-help {
+            margin: 0 0 0.85rem;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+        }
+        .page-message {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body data-title-key="nav.roles">
+    <header class="top-header">
+        <div class="logo-area">
+            <h1>Env<span>Portal</span></h1>
+            <p data-i18n="roleAdmin.description">ロールと権限を管理します</p>
+        </div>
+        <nav class="main-nav">
+            <div class="main-nav-inner">
+                <a href="index.html" data-i18n="nav.search">環境検索</a>
+                <a href="production.html" data-i18n="nav.production">本番環境</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="role-admin-container">
+        <div class="role-toolbar">
+            <h2 data-i18n="nav.roles">ロール管理</h2>
+            <div class="role-actions">
+                <button id="addRoleBtn" type="button" class="secondary-btn" onclick="addRole()" hidden>ADD</button>
+                <button id="saveRolesBtn" type="button" class="primary-btn" onclick="saveRoles()" data-i18n="button.save" hidden>保存</button>
+            </div>
+        </div>
+        <p class="role-help" data-i18n="roleAdmin.filterHelp">空欄の場合は全データを表示します。タグ名を入れると該当タグのデータだけ表示します。</p>
+        <div id="roleArea" class="page-message" data-i18n="state.loading">読み込み中...</div>
+    </main>
+
+    <div id="toast" data-i18n="toast.saved">保存成功。</div>
+
+    <script>
+        let roles = [];
+        let canManageUsers = false;
+
+        window.addEventListener('DOMContentLoaded', loadRoles);
+        window.addEventListener('i18n:changed', renderRoles);
+
+        function loadRoles() {
+            fetch('roles_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
+                .then(payload => {
+                    roles = normalizeRoles(payload.roles || []);
+                    canManageUsers = Boolean(payload.canManageUsers);
+                    setSystemMenuVisible(payload.role === 'admin');
+                    document.getElementById('addRoleBtn').hidden = !canManageUsers;
+                    document.getElementById('saveRolesBtn').hidden = !canManageUsers;
+                    renderRoles();
+                })
+                .catch(() => {
+                    canManageUsers = false;
+                    setSystemMenuVisible(false);
+                    document.getElementById('addRoleBtn').hidden = true;
+                    document.getElementById('saveRolesBtn').hidden = true;
+                    document.getElementById('roleArea').innerHTML = t('roleAdmin.noPermission');
+                });
+        }
+
+        function normalizeRoles(values) {
+            return values.map(role => ({
+                key: String(role.key || '').trim(),
+                label: String(role.label || role.key || '').trim(),
+                canEdit: Boolean(role.canEdit),
+                canManageUsers: Boolean(role.canManageUsers),
+                filterTag: String(role.filterTag || '').trim(),
+                protected: Boolean(role.protected || role.key === 'admin')
+            })).filter(role => role.key);
+        }
+
+        function renderRoles() {
+            const area = document.getElementById('roleArea');
+            if (roles.length === 0) {
+                area.className = 'page-message';
+                area.innerHTML = t('roleAdmin.noRoles');
+                return;
+            }
+            area.className = 'role-table-wrap';
+            area.innerHTML = `
+                <table class="role-table">
+                    <thead>
+                        <tr>
+                            <th>${t('label.roleKey')}</th>
+                            <th>${t('label.roleLabel')}</th>
+                            <th>${t('label.canEdit')}</th>
+                            <th>${t('label.canManageUsers')}</th>
+                            <th>${t('label.filterTag')}</th>
+                            <th>${t('label.action')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${roles.map((role, index) => renderRoleRow(role, index)).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderRoleRow(role, index) {
+            const readonly = role.protected ? 'readonly' : '';
+            const disabled = role.protected ? 'disabled' : '';
+            return `
+                <tr>
+                    <td><input type="text" data-index="${index}" data-field="key" value="${escapeHtml(role.key)}" ${readonly}></td>
+                    <td><input type="text" data-index="${index}" data-field="label" value="${escapeHtml(role.label)}"></td>
+                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEdit" ${role.canEdit ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
+                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canManageUsers" ${role.canManageUsers ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
+                    <td><input type="text" data-index="${index}" data-field="filterTag" value="${escapeHtml(role.filterTag)}"></td>
+                    <td>${role.protected ? '' : `<button type="button" class="secondary-btn" onclick="deleteRole(${index})" ${disabled}>DEL</button>`}</td>
+                </tr>
+            `;
+        }
+
+        function syncRoleInputs() {
+            document.querySelectorAll('[data-index][data-field]').forEach(input => {
+                const index = Number(input.dataset.index);
+                const field = input.dataset.field;
+                if (!roles[index]) return;
+                if (input.type === 'checkbox') roles[index][field] = input.checked;
+                else roles[index][field] = input.value;
+            });
+        }
+
+        function addRole() {
+            if (!canManageUsers) return;
+            syncRoleInputs();
+            roles.push({
+                key: `role_${Date.now()}`,
+                label: '',
+                canEdit: false,
+                canManageUsers: false,
+                filterTag: '',
+                protected: false
+            });
+            renderRoles();
+        }
+
+        function deleteRole(index) {
+            if (!canManageUsers || !roles[index] || roles[index].protected) return;
+            if (!confirm(t('confirm.delete'))) return;
+            syncRoleInputs();
+            roles.splice(index, 1);
+            renderRoles();
+        }
+
+        function collectRoles() {
+            syncRoleInputs();
+            const payload = {};
+            roles.forEach(role => {
+                const key = normalizeRoleKey(role.key);
+                if (!key) return;
+                payload[key] = {
+                    key,
+                    label: role.label || key,
+                    canEdit: Boolean(role.canEdit),
+                    canManageUsers: Boolean(role.canManageUsers),
+                    filterTag: role.filterTag || '',
+                    protected: Boolean(role.protected || key === 'admin')
+                };
+            });
+            return payload;
+        }
+
+        function saveRoles() {
+            const payload = collectRoles();
+            fetch('update_roles.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(payload, null, 2)
+            })
+                .then(res => res.ok ? res.text() : Promise.reject(new Error('roles.json save failed')))
+                .then(() => {
+                    showToast(t('toast.saved'));
+                    loadRoles();
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function normalizeRoleKey(value) {
+            return String(value || '').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

@@ -2,6 +2,18 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.16] - 2026-06-05
+
+### Added
+
+- Added role management as a separate CRUD screen backed by `roles.json`.
+- Moved user management and role management into the top-right system management menu, visible only to the `admin` role.
+
+### Changed
+
+- User role selections now use role master data instead of hard-coded frontend options.
+- User and role update endpoints now require user management permission.
+
 ## [2.2.15] - 2026-06-05
 
 ### Fixed
