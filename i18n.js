@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.25';
+const APP_VERSION_FALLBACK = '2.2.26';
 
 const I18N_MESSAGES = {
     ja: {
@@ -55,7 +55,7 @@ const I18N_MESSAGES = {
         'button.deleteEnv': '環境を削除',
         'button.deleteRdp': '接続情報を削除',
         'button.copy': 'コピー',
-        'button.add': 'ADD',
+        'button.add': '追加',
         'button.save': '保存',
         'button.edit': '編集',
         'button.downloadRdp': 'RDPファイルをダウンロード',
@@ -254,7 +254,7 @@ const I18N_MESSAGES = {
         'button.deleteEnv': '删除环境',
         'button.deleteRdp': '删除连接信息',
         'button.copy': '复制',
-        'button.add': 'ADD',
+        'button.add': '新增',
         'button.save': '保存',
         'button.edit': '编辑',
         'button.downloadRdp': '下载RDP文件',

@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.26] - 2026-06-05
+
+### Fixed
+
+- Localized the shared add action text instead of leaving the i18n resource value as `ADD`.
+
 ## [2.2.25] - 2026-06-05
 
 ### Changed

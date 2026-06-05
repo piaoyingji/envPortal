@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.25"></script>
+    <script src="i18n.js?v=2.2.26"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -485,7 +485,7 @@
                     <details id="orgFilterMenu" class="org-filter-menu" open>
                         <summary>
                             <span class="org-filter-summary-title" data-i18n="label.orgSelect">組織選択</span>
-                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" data-i18n="button.add" hidden>ADD</button>
+                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" data-i18n="button.add" hidden>追加</button>
                         </summary>
                         <div class="org-filter-body">
                             <input id="orgFilterSearch" class="org-filter-search" type="search" data-i18n-placeholder="label.orgName" placeholder="" oninput="renderOrgFilterMenu()">
@@ -521,7 +521,7 @@
             </div>
             <div class="add-modal-actions">
                 <button type="button" class="secondary-btn" onclick="closeProductionAddModal()" data-i18n="button.cancel">キャンセル</button>
-                <button type="button" class="primary-btn" onclick="submitProductionAddModal()" data-i18n="button.add">ADD</button>
+                <button type="button" class="primary-btn" onclick="submitProductionAddModal()" data-i18n="button.add">追加</button>
             </div>
         </div>
     </div>
