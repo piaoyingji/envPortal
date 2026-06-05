@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.23] - 2026-06-05
+
+### Fixed
+
+- Improved home page perceived load time by rendering public summary data immediately, then refreshing with full authorized data after the domain token is available.
+
 ## [2.2.22] - 2026-06-05
 
 ### Fixed
