@@ -99,6 +99,8 @@
     <script>
         let users = {};
         let roles = [];
+        let currentUser = '';
+        let canManageUsers = false;
 
         window.addEventListener('DOMContentLoaded', loadUsers);
         window.addEventListener('i18n:changed', renderUsers);
@@ -109,10 +111,13 @@
                 .then(payload => {
                     users = payload.users || {};
                     roles = payload.roles || ['admin', 'staff', 'import_staff', 'new_employee'];
-                    document.getElementById('saveUsersBtn').hidden = !payload.canManageUsers;
+                    currentUser = payload.user || '';
+                    canManageUsers = Boolean(payload.canManageUsers);
+                    document.getElementById('saveUsersBtn').hidden = !canManageUsers;
                     renderUsers();
                 })
                 .catch(() => {
+                    canManageUsers = false;
                     document.getElementById('saveUsersBtn').hidden = true;
                     document.getElementById('userArea').innerHTML = t('userAdmin.noPermission');
                 });
@@ -136,6 +141,7 @@
                             <th>${t('label.role')}</th>
                             <th>${t('label.firstSeen')}</th>
                             <th>${t('label.lastSeen')}</th>
+                            <th>${t('label.action')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -149,6 +155,7 @@
             const key = escapeHtml(row.user || '');
             const userIp = row.lastIp || row.ip || '';
             const userLabel = userIp ? `${row.user || ''}（${userIp}）` : (row.user || '');
+            const canDelete = canManageUsers && row.user && row.user !== currentUser;
             return `
                 <tr>
                     <td class="readonly-cell">${escapeHtml(userLabel)}</td>
@@ -160,6 +167,9 @@
                     </td>
                     <td class="readonly-cell">${escapeHtml(row.firstSeen || '')}</td>
                     <td class="readonly-cell">${escapeHtml(row.lastSeen || '')}</td>
+                    <td class="readonly-cell">
+                        ${canDelete ? `<button type="button" class="secondary-btn" onclick="deleteUser('${key}')">DEL</button>` : ''}
+                    </td>
                 </tr>
             `;
         }
@@ -199,6 +209,14 @@
                     loadUsers();
                 })
                 .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function deleteUser(user) {
+            if (!canManageUsers || !user || user === currentUser) return;
+            if (!confirm(t('confirm.delete'))) return;
+            delete users[user];
+            renderUsers();
+            saveUsers();
         }
 
         function showToast(message) {

@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.14] - 2026-06-05
+
+### Added
+
+- Added deletion for unnecessary users from the user management page.
+
 ## [2.2.13] - 2026-06-05
 
 ### Fixed
