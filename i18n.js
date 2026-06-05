@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.23';
+const APP_VERSION_FALLBACK = '2.2.24';
 
 const I18N_MESSAGES = {
     ja: {
@@ -454,6 +454,14 @@ function storePortalAuth(profile) {
     }
 }
 
+function applyCachedPortalIdentity() {
+    const profile = readStoredPortalAuth();
+    if (!profile) return null;
+    setCurrentUser(profile);
+    setSystemMenuVisible(isSystemAdmin(profile));
+    return profile;
+}
+
 function loadPortalAuth() {
     const stored = readStoredPortalAuth();
     if (stored) {
@@ -611,7 +619,6 @@ function initI18n() {
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
-        loadCurrentUser();
         loadAppVersion();
     }
     const navInner = document.querySelector('.main-nav-inner');
@@ -629,6 +636,8 @@ function initI18n() {
         `;
         navInner.appendChild(menu);
     }
+    applyCachedPortalIdentity();
+    loadCurrentUser();
     applyI18n();
 }
 

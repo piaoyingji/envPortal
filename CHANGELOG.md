@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.24] - 2026-06-05
+
+### Fixed
+
+- Showed the current user and system management menu immediately from a valid cached domain token, while background authentication refreshes the profile.
+
 ## [2.2.23] - 2026-06-05
 
 ### Fixed
