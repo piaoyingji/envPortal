@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.24"></script>
+    <script src="i18n.js?v=2.2.25"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1086,7 +1086,7 @@
                             <span class="org-filter-summary-title" data-i18n="label.orgSelect">組織選択</span>
                         </summary>
                         <div class="org-filter-body">
-                            <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
+                            <input id="orgFilterSearch" class="org-filter-search" type="search" data-i18n-placeholder="label.orgName" placeholder="" oninput="renderOrgFilterMenu()">
                             <div id="orgFilterList" class="org-filter-list"></div>
                         </div>
                     </details>
@@ -1173,11 +1173,11 @@
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         const TAG_FILTER_GROUPS = [
-            { key: 'product', label: '製品' },
-            { key: 'system', label: '環境' },
-            { key: 'software', label: 'ソフト' },
-            { key: 'version', label: '版数' },
-            { key: 'other', label: 'その他' }
+            { key: 'product', labelKey: 'tagGroup.product' },
+            { key: 'system', labelKey: 'tagGroup.system' },
+            { key: 'software', labelKey: 'tagGroup.software' },
+            { key: 'version', labelKey: 'tagGroup.version' },
+            { key: 'other', labelKey: 'tagGroup.other' }
         ];
         const AUTO_TAG_PROVIDERS = [
             autoDbTagsForRow,
@@ -1436,7 +1436,7 @@
                 'や', 'ゆ', 'よ',
                 'ら', 'り', 'る', 'れ', 'ろ',
                 'わ', 'を', 'ん',
-                'その他'
+                t('kana.other')
             ];
             const groups = new Map(order.map(label => [label, []]));
             orgs.forEach(org => {
@@ -1449,12 +1449,12 @@
 
         function kanaGroupForName(name) {
             const text = String(name || '').trim().normalize('NFKC');
-            if (!text) return 'その他';
+            if (!text) return t('kana.other');
             const reading = (window.ORG_READING_OVERRIDES && window.ORG_READING_OVERRIDES[text]) || text;
             const first = toHiragana(String(reading).charAt(0));
             const normalized = normalizeKanaInitial(first);
             if (normalized) return normalized;
-            return 'その他';
+            return t('kana.other');
         }
 
         function normalizeKanaInitial(char) {
@@ -1508,7 +1508,7 @@
                 ['組織コード', ''],
                 ['組織名', '', true],
                 ['環境グループ', 'UHR-V6', false, 'group-input'],
-                ['構築環境名', '新規環境', true],
+                ['構築環境名', t('default.envName'), true],
             ]);
         }
 
@@ -1640,7 +1640,7 @@
                 row.className = 'tag-filter-group';
                 const label = document.createElement('div');
                 label.className = 'tag-filter-group-label';
-                label.textContent = group.label;
+                label.textContent = t(group.labelKey);
                 const items = document.createElement('div');
                 items.className = 'tag-filter-group-items';
                 tags.forEach(tag => {
@@ -1763,17 +1763,17 @@
                 .join('');
             return `
                 <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
-                    <div class="card-edit-section-title">環境情報</div>
+                    <div class="card-edit-section-title">${t('section.envInfo')}</div>
                     <div class="card-edit-grid">
                         ${envFields}
                         <div class="card-edit-field wide">
-                            <label>Tags</label>
-                            <input data-env-tags="true" value="${sanitizeHTML(tagValue)}" placeholder="tag1, tag2">
+                            <label>${t('label.tags')}</label>
+                            <input data-env-tags="true" value="${sanitizeHTML(tagValue)}" placeholder="${t('placeholder.tagsExample')}">
                         </div>
                     </div>
-                    <div class="card-edit-section-title">AP RDP情報</div>
+                    <div class="card-edit-section-title">${t('section.apRdp')}</div>
                     ${apEditors}
-                    <div class="card-edit-section-title">DB RDP情報</div>
+                    <div class="card-edit-section-title">${t('section.dbRdpInfo')}</div>
                     ${dbEditors}
                 </div>
             `;
@@ -1897,7 +1897,7 @@
             if (!canEdit) return;
             openAddModal('group', 'modal.groupAdd', [
                 ['環境グループ', 'UHR-V6', false, 'group-input'],
-                ['構築環境名', '新規環境', true],
+                ['構築環境名', t('default.envName'), true],
             ], { orgKey });
         }
 
@@ -1911,7 +1911,7 @@
             row['組織コード'] = org.code || '';
             row['組織名'] = org.name || '';
             row['環境グループ'] = groupName;
-            row['構築環境名'] = values['構築環境名'] || '新規環境';
+            row['構築環境名'] = values['構築環境名'] || t('default.envName');
             row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             fullData.push(row);
             closeAddModal();
@@ -2020,7 +2020,7 @@
             const org = getOrgOptions().find(item => item.key === orgKey);
             if (!org) return;
             openAddModal('env', 'modal.envAdd', [
-                ['構築環境名', '新規環境', true],
+                ['構築環境名', t('default.envName'), true],
                 ['URL', '', true],
                 ['ログインID', ''],
                 ['ログインパスワード', ''],
@@ -2095,7 +2095,7 @@
             newEnv.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             newEnv['組織コード'] = targetOrg.code || '';
             newEnv['組織名'] = targetOrg.name || '';
-            newEnv['構築環境名'] = `${newEnv['構築環境名'] || '新規環境'} Copy`;
+            newEnv['構築環境名'] = `${newEnv['構築環境名'] || t('default.envName')} ${t('suffix.copy')}`;
             fullData.push(newEnv);
 
             const tags = tagsForRow(env).slice();
@@ -2161,7 +2161,7 @@
                 toolbar.innerHTML = `
                     <div class="org-list-toolbar-title">${t('label.orgList')}</div>
                     <div class="org-level-actions">
-                        <button type="button" class="secondary-btn org-add-btn" onclick="addOrganization(event)">ADD</button>
+                        <button type="button" class="secondary-btn org-add-btn" onclick="addOrganization(event)">${t('button.add')}</button>
                     </div>
                 `;
                 resultsArea.appendChild(toolbar);
@@ -2320,7 +2320,7 @@
                 ${canEdit ? `
                     <div class="org-level-actions">
                         <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                        <button type="button" class="secondary-btn env-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">ADD</button>
+                        <button type="button" class="secondary-btn env-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.add')}</button>
                     </div>
                 ` : ''}
             `;
@@ -2360,7 +2360,7 @@
                     ${canEdit ? `
                         <span class="group-level-actions">
                             <button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">ADD</button>
+                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
                         </span>
                     ` : ''}
                 `;
@@ -2567,8 +2567,8 @@
                     ${isEditingCard
                         ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
                         : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
-                    ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="コピー" aria-label="コピー">COPY</button>` : ''}
-                    ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">DEL</button>` : ''}
+                    ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${t('button.copy')}</button>` : ''}
+                    ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">${t('button.delete')}</button>` : ''}
                 </span>
             ` : '';
             const viewBodyHtml = `

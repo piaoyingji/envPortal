@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ロール管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.2.24"></script>
+    <script src="i18n.js?v=2.2.25"></script>
     <style>
         .role-admin-container {
             width: calc(100% - 2rem);
@@ -109,7 +109,7 @@
         <div class="role-toolbar">
             <h2 data-i18n="nav.roles">ロール管理</h2>
             <div class="role-actions">
-                <button id="addRoleBtn" type="button" class="secondary-btn" onclick="addRole()" hidden>ADD</button>
+                <button id="addRoleBtn" type="button" class="secondary-btn" onclick="addRole()" data-i18n="button.add" hidden>ADD</button>
                 <button id="saveRolesBtn" type="button" class="primary-btn" onclick="saveRoles()" data-i18n="button.save" hidden>保存</button>
             </div>
         </div>
@@ -196,7 +196,7 @@
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEdit" ${role.canEdit ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canManageUsers" ${role.canManageUsers ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
                     <td><input type="text" data-index="${index}" data-field="filterTag" value="${escapeHtml(role.filterTag)}"></td>
-                    <td>${role.protected ? '' : `<button type="button" class="secondary-btn" onclick="deleteRole(${index})" ${disabled}>DEL</button>`}</td>
+                    <td>${role.protected ? '' : `<button type="button" class="secondary-btn" onclick="deleteRole(${index})" ${disabled}>${t('button.delete')}</button>`}</td>
                 </tr>
             `;
         }

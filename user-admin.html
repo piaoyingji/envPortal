@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ユーザー管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.2.24"></script>
+    <script src="i18n.js?v=2.2.25"></script>
     <style>
         .user-admin-container {
             width: calc(100% - 2rem);
@@ -171,7 +171,7 @@
                     <td class="readonly-cell">${escapeHtml(row.firstSeen || '')}</td>
                     <td class="readonly-cell">${escapeHtml(row.lastSeen || '')}</td>
                     <td class="readonly-cell">
-                        ${canDelete ? `<button type="button" class="secondary-btn" onclick="deleteUser('${key}')">DEL</button>` : ''}
+                        ${canDelete ? `<button type="button" class="secondary-btn" onclick="deleteUser('${key}')">${t('button.delete')}</button>` : ''}
                     </td>
                 </tr>
             `;
@@ -184,10 +184,10 @@
 
         function normalizeRoles(values) {
             const fallback = [
-                { key: 'admin', label: '管理者' },
-                { key: 'staff', label: '一般職員' },
-                { key: 'import_staff', label: '導入職員' },
-                { key: 'new_employee', label: '新入社員' }
+                { key: 'admin', label: t('role.admin') },
+                { key: 'staff', label: t('role.staff') },
+                { key: 'import_staff', label: t('role.importStaff') },
+                { key: 'new_employee', label: t('role.newEmployee') }
             ];
             const source = Array.isArray(values) && values.length ? values : fallback;
             return source.map(role => {

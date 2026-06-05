@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.24"></script>
+    <script src="i18n.js?v=2.2.25"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -485,10 +485,10 @@
                     <details id="orgFilterMenu" class="org-filter-menu" open>
                         <summary>
                             <span class="org-filter-summary-title" data-i18n="label.orgSelect">組織選択</span>
-                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" hidden>ADD</button>
+                            <button id="orgAddBtn" type="button" class="secondary-btn org-add-btn" onclick="addProductionOrganization(event)" data-i18n="button.add" hidden>ADD</button>
                         </summary>
                         <div class="org-filter-body">
-                            <input id="orgFilterSearch" class="org-filter-search" type="search" placeholder="組織名" oninput="renderOrgFilterMenu()">
+                            <input id="orgFilterSearch" class="org-filter-search" type="search" data-i18n-placeholder="label.orgName" placeholder="" oninput="renderOrgFilterMenu()">
                             <div id="orgFilterList" class="org-filter-list"></div>
                         </div>
                     </details>
@@ -516,12 +516,12 @@
                 </div>
                 <div class="add-modal-field wide">
                     <label data-i18n="label.envName">構築環境名</label>
-                    <input data-add-field="構築環境名" value="新規本番環境">
+                    <input data-add-field="構築環境名" data-default-key="default.productionEnvName">
                 </div>
             </div>
             <div class="add-modal-actions">
                 <button type="button" class="secondary-btn" onclick="closeProductionAddModal()" data-i18n="button.cancel">キャンセル</button>
-                <button type="button" class="primary-btn" onclick="submitProductionAddModal()">ADD</button>
+                <button type="button" class="primary-btn" onclick="submitProductionAddModal()" data-i18n="button.add">ADD</button>
             </div>
         </div>
     </div>
@@ -720,7 +720,7 @@
                 'や', 'ゆ', 'よ',
                 'ら', 'り', 'る', 'れ', 'ろ',
                 'わ', 'を', 'ん',
-                'その他'
+                t('kana.other')
             ];
             const groups = new Map(order.map(label => [label, []]));
             orgs.forEach(org => {
@@ -733,10 +733,10 @@
 
         function kanaGroupForName(name) {
             const text = String(name || '').trim().normalize('NFKC');
-            if (!text) return 'その他';
+            if (!text) return t('kana.other');
             const reading = (window.ORG_READING_OVERRIDES && window.ORG_READING_OVERRIDES[text]) || text;
             const first = toHiragana(String(reading).charAt(0));
-            return normalizeKanaInitial(first) || 'その他';
+            return normalizeKanaInitial(first) || t('kana.other');
         }
 
         function normalizeKanaInitial(char) {
@@ -776,6 +776,9 @@
                 event.stopPropagation();
             }
             if (!canEdit) return;
+            document.querySelectorAll('#addModalFields [data-default-key]').forEach(input => {
+                input.value = t(input.dataset.defaultKey);
+            });
             document.getElementById('addModal').style.display = 'flex';
             const firstInput = document.querySelector('#addModalFields input');
             if (firstInput) firstInput.focus();
@@ -794,7 +797,7 @@
             if (!values['組織名']) return alert(t('error.orgNameRequired'));
             const row = Object.fromEntries(PRODUCTION_FIELDS.map(field => [field, '']));
             row['組織名'] = values['組織名'];
-            row['構築環境名'] = values['構築環境名'] || '新規本番環境';
+            row['構築環境名'] = values['構築環境名'] || t('default.productionEnvName');
             row.__rowId = `prod_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             productionData.push(row);
             selectedOrg = row['組織名'];

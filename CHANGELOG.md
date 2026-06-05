@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.25] - 2026-06-05
+
+### Changed
+
+- Resourceized remaining visible page literals for buttons, placeholders, tag group labels, editor section titles, default names, and fallback role labels.
+
 ## [2.2.24] - 2026-06-05
 
 ### Fixed
