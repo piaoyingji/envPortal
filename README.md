@@ -116,10 +116,12 @@ EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`
 如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。20.38 的 `.env` 中配置：
 
 ```env
-DOMAIN_AUTH_PROXY_URL=http://192.168.20.218:8998/auth_windows.jsp
+DOMAIN_AUTH_PROXY_URL=http://OHR0067:8998/auth_windows.jsp
 ```
 
-跨域探测默认关闭，避免浏览器在未配置静默 Windows 认证时弹出用户名密码框。确认浏览器策略或 Local Intranet 区域已允许对 20.218 静默发送当前登录凭据后，再设置：
+域代理地址优先使用已入域主机的机器名。用 IP 访问时，浏览器更容易把目标识别为普通 Internet 站点，从而弹出 Windows 用户名密码框。使用机器名仍要求访问端能解析该主机名，且浏览器或系统策略允许对该内网站点静默发送当前 Windows 登录凭据。
+
+跨域探测默认关闭，避免浏览器在未配置静默 Windows 认证时弹出用户名密码框。确认浏览器策略或 Local Intranet 区域已允许对域代理主机名静默发送当前登录凭据后，再设置：
 
 ```env
 DOMAIN_AUTH_AUTO_PROBE=true
