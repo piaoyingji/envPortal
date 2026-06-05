@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ロール管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.2.17"></script>
+    <script src="i18n.js?v=2.2.19"></script>
     <style>
         .role-admin-container {
             width: calc(100% - 2rem);
@@ -127,13 +127,13 @@
         window.addEventListener('i18n:changed', renderRoles);
 
         function loadRoles() {
-            fetch('roles_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            portalFetch('roles_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('Forbidden')))
                 .then(payload => {
                     roles = normalizeRoles(payload.roles || []);
                     canManageUsers = Boolean(payload.canManageUsers);
                     setCurrentUser(payload);
-                    setSystemMenuVisible(payload.role === 'admin');
+                    setSystemMenuVisible(isSystemAdmin(payload));
                     document.getElementById('addRoleBtn').hidden = !canManageUsers;
                     document.getElementById('saveRolesBtn').hidden = !canManageUsers;
                     renderRoles();
@@ -253,7 +253,7 @@
 
         function saveRoles() {
             const payload = collectRoles();
-            fetch('update_roles.jsp', {
+            portalFetch('update_roles.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify(payload, null, 2)

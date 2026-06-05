@@ -2,6 +2,22 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.19] - 2026-06-05
+
+### Changed
+
+- Removed IP whitelist authentication as an identity source because NAT can hide the real client user.
+- Accepted trusted domain proxy Windows users directly and left authorization to user roles in `users.json`.
+- Routed permission-controlled frontend requests through the configured domain proxy when automatic probing is enabled.
+- Kept client IP as audit metadata only, not as an access-control identity.
+
+## [2.2.18] - 2026-06-05
+
+### Fixed
+
+- Placed the system management menu inside the top-right metadata row so admin users can see it reliably.
+- Prevented IP-only profiles from clearing an already detected domain user name in the header.
+
 ## [2.2.17] - 2026-06-05
 
 ### Fixed

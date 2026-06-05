@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.2.17"></script>
+    <script src="i18n.js?v=2.2.19"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1192,13 +1192,13 @@
             }
             loadPortalConfig().then(() => checkWindowsAuth({ allowProxy: false }));
 
-            fetch('portal_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            portalFetch('portal_data.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('portal_data load failed')))
                 .then(payload => {
                     canEdit = Boolean(payload && payload.canEdit);
                     canManageUsers = Boolean(payload && payload.canManageUsers);
                     setCurrentUser(payload);
-                    setSystemMenuVisible(payload && payload.role === 'admin');
+                    setSystemMenuVisible(isSystemAdmin(payload));
                     isAuthenticated = canEdit;
                     tagStore = normalizeTagStore(payload.tags || {});
                     fullData = assignRowIds(payload.data || [], 'env');
@@ -1235,18 +1235,13 @@
         }
 
         function checkWindowsAuth(options = {}) {
-            const allowProxy = Boolean(options.allowProxy || portalConfig.domainAuthAutoProbe);
-            const authUrl = allowProxy && portalConfig.domainAuthProxyUrl ? portalConfig.domainAuthProxyUrl : 'auth_windows.jsp';
-            const requestOptions = authUrl === 'auth_windows.jsp'
-                ? { cache: 'no-store' }
-                : { cache: 'no-store', credentials: 'include' };
-            fetch(authUrl + (authUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime(), requestOptions)
+            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEdit);
                     canManageUsers = Boolean(result && result.canManageUsers);
                     setCurrentUser(result);
-                    setSystemMenuVisible(result && result.role === 'admin');
+                    setSystemMenuVisible(isSystemAdmin(result));
                     updateEditToolbar();
                     if (!result || !result.ok) {
                         isAuthenticated = false;
@@ -1398,7 +1393,7 @@
         }
 
         function syncOrgReadingsAndRefresh() {
-            fetch('org_readings_status.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            portalFetch('org_readings_status.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('org readings load failed')))
                 .then(payload => {
                     const overrides = { ...(window.ORG_READING_OVERRIDES || {}) };
@@ -2050,7 +2045,7 @@
             const dataCsv = Papa.unparse({ fields: DATA_FIELDS, data: fullData }, { quotes: true });
             const rdpCsv = Papa.unparse({ fields: RDP_FIELDS, data: rdpData }, { quotes: true });
             const tagsJson = JSON.stringify(tagStore, null, 2);
-            return fetch('update_portal_bundle.jsp', {
+            return portalFetch('update_portal_bundle.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, changeSummary })
@@ -2752,7 +2747,7 @@
             const startedAt = performance.now();
             const signal = AbortSignal.timeout ? AbortSignal.timeout(1800) : undefined;
             if (badge) badge.style.display = 'flex';
-            return fetch('env_check.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
+            return portalFetch('env_check.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
                 .then(res => res.text())
                 .then(text => {
                     try {
@@ -2786,7 +2781,7 @@
                     }
                 })
                 .catch(() => {
-                    return fetch('ping.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
+                    return portalFetch('ping.jsp?url=' + encodeURIComponent(safeUrl), signal ? { signal } : {})
                         .then(res => res.text())
                         .then(txt => {
                             if (!badge) return;
@@ -2934,7 +2929,7 @@
             params.set('user', user || '');
             params.set('password', password || '');
 
-            fetch('guacamole_connect.jsp', {
+            portalFetch('guacamole_connect.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params.toString()
@@ -2968,7 +2963,7 @@
             params.set('password', password || '');
 
             copyRdpPasswordToClipboard(password)
-                .then(() => fetch('rdp_connect.jsp', {
+                .then(() => portalFetch('rdp_connect.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params.toString()
@@ -3050,7 +3045,7 @@
             params.set('org', orgName || '');
             params.set('env', envName || '');
 
-            return fetch('rdp_file.jsp', {
+            return portalFetch('rdp_file.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params.toString()
@@ -3309,7 +3304,7 @@
             const pwd = document.getElementById('modalPwdInput').value;
             if (!pwd) return;
 
-            fetch('auth.jsp', {
+            portalFetch('auth.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'pwd=' + encodeURIComponent(pwd)

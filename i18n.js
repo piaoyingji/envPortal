@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.2.17';
+const APP_VERSION_FALLBACK = '2.2.19';
 
 const I18N_MESSAGES = {
     ja: {
@@ -369,6 +369,45 @@ const I18N_MESSAGES = {
     }
 };
 
+let PORTAL_RUNTIME_CONFIG_PROMISE = null;
+let PORTAL_RUNTIME_CONFIG = null;
+
+function loadPortalRuntimeConfig() {
+    if (PORTAL_RUNTIME_CONFIG_PROMISE) return PORTAL_RUNTIME_CONFIG_PROMISE;
+    PORTAL_RUNTIME_CONFIG_PROMISE = fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+        .then(res => res.ok ? res.json() : {})
+        .then(config => {
+            PORTAL_RUNTIME_CONFIG = config || {};
+            return PORTAL_RUNTIME_CONFIG;
+        })
+        .catch(() => {
+            PORTAL_RUNTIME_CONFIG = {};
+            return PORTAL_RUNTIME_CONFIG;
+        });
+    return PORTAL_RUNTIME_CONFIG_PROMISE;
+}
+
+function portalProxyEnabled() {
+    return Boolean(PORTAL_RUNTIME_CONFIG && PORTAL_RUNTIME_CONFIG.domainAuthAutoProbe && PORTAL_RUNTIME_CONFIG.domainAuthProxyUrl);
+}
+
+function portalProxyUrl(path) {
+    const authUrl = String(PORTAL_RUNTIME_CONFIG.domainAuthProxyUrl || '').trim();
+    if (!authUrl) return path;
+    const base = authUrl.replace(/auth_windows\.jsp(?:\?.*)?$/i, '');
+    return base + String(path || '').replace(/^\/+/, '');
+}
+
+function portalFetch(path, options = {}) {
+    return loadPortalRuntimeConfig().then(() => {
+        const viaProxy = portalProxyEnabled();
+        const requestOptions = viaProxy
+            ? { ...options, credentials: options.credentials || 'include' }
+            : options;
+        return fetch(viaProxy ? portalProxyUrl(path) : path, requestOptions);
+    });
+}
+
 function getLang() {
     const cached = localStorage.getItem(I18N_STORAGE_KEY);
     return I18N_MESSAGES[cached] ? cached : I18N_DEFAULT_LANG;
@@ -439,6 +478,7 @@ function setCurrentUser(profile) {
     if (!label) return;
     const name = String((profile && (profile.displayName || profile.user)) || '').trim();
     if (!name || isIpLikeUser(name)) {
+        if (label.dataset.name) return;
         label.hidden = true;
         label.dataset.name = '';
         label.textContent = '';
@@ -450,11 +490,11 @@ function setCurrentUser(profile) {
 }
 
 function loadCurrentUser() {
-    fetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+    portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             setCurrentUser(profile);
-            if (profile && profile.role === 'admin') setSystemMenuVisible(true);
+            if (isSystemAdmin(profile)) setSystemMenuVisible(true);
         })
         .catch(() => setCurrentUser(null));
 }
@@ -475,14 +515,14 @@ function initI18n() {
             <div class="client-meta">
                 <span id="currentUserLabel" class="client-ip" hidden></span>
                 <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
+                <details id="systemMenu" class="system-menu" hidden>
+                    <summary id="systemMenuLabel">${t('nav.system')}</summary>
+                    <div class="system-menu-panel">
+                        <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
+                        <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
+                    </div>
+                </details>
             </div>
-            <details id="systemMenu" class="system-menu" hidden>
-                <summary id="systemMenuLabel">${t('nav.system')}</summary>
-                <div class="system-menu-panel">
-                    <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
-                    <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
-                </div>
-            </details>
         `;
         logoArea.appendChild(wrap);
         wrap.querySelector('select').addEventListener('change', e => setLang(e.target.value));
@@ -502,6 +542,10 @@ function setSystemMenuVisible(visible) {
             link.classList.toggle('active', link.getAttribute('href') === current);
         });
     }
+}
+
+function isSystemAdmin(profile) {
+    return Boolean(profile && (profile.role === 'admin' || profile.canManageUsers === true));
 }
 
 document.addEventListener('DOMContentLoaded', initI18n);

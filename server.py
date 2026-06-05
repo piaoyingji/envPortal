@@ -59,7 +59,6 @@ BIND_ADDRESS = CONFIG.get("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
 WINDOWS_AUTH_HEADER = CONFIG.get("WINDOWS_AUTH_HEADER", "X-Remote-User")
 WINDOWS_AUTH_WHITELIST = CONFIG.get("WINDOWS_AUTH_WHITELIST", "")
-IP_AUTH_WHITELIST = CONFIG.get("IP_AUTH_WHITELIST", "")
 TRUSTED_AUTH_PROXY_IPS = CONFIG.get("TRUSTED_AUTH_PROXY_IPS", "")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
@@ -445,27 +444,6 @@ def load_windows_auth_whitelist():
     return users
 
 
-def load_ip_auth_whitelist():
-    entries = []
-    raw_values = []
-    raw_values.extend(IP_AUTH_WHITELIST.split(","))
-    whitelist_path = BASE_DIR / "ip_auth_whitelist.txt"
-    if whitelist_path.exists():
-        raw_values.extend(whitelist_path.read_text(encoding="utf-8").splitlines())
-    for value in raw_values:
-        text = str(value or "").strip()
-        if not text or text.startswith("#"):
-            continue
-        try:
-            if "/" in text:
-                entries.append(ipaddress.ip_network(text, strict=False))
-            else:
-                entries.append(ipaddress.ip_address(text))
-        except ValueError:
-            continue
-    return entries
-
-
 def parse_ip_entries(values):
     entries = []
     for value in values:
@@ -516,21 +494,6 @@ def client_ip_from_request(headers, client_address):
     if real_ip:
         return real_ip.strip()
     return client_address[0] if client_address else ""
-
-
-def request_ip_auth(headers, client_address):
-    ip_text = client_ip_from_request(headers, client_address)
-    try:
-        ip = ipaddress.ip_address(ip_text)
-    except ValueError:
-        return ip_text, False
-    for entry in load_ip_auth_whitelist():
-        if isinstance(entry, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
-            if ip in entry:
-                return str(ip), True
-        elif ip == entry:
-            return str(ip), True
-    return str(ip), False
 
 
 def load_org_reading_overrides():
@@ -685,7 +648,7 @@ def windows_user_from_headers(headers):
 def request_windows_auth(headers):
     raw_user = windows_user_from_headers(headers)
     user = normalize_windows_user(raw_user)
-    return user, bool(user and user in load_windows_auth_whitelist())
+    return user, bool(user)
 
 
 def windows_user_metadata_from_headers(headers):
@@ -1595,31 +1558,13 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         if windows_user_from_headers(self.headers) and trusted_auth_proxy(self.headers, self.client_address):
             user, trusted = request_windows_auth(self.headers)
             return user, trusted, "windows"
-        user, trusted = ("", False)
-        if trusted_auth_proxy(self.headers, self.client_address):
-            user, trusted = request_windows_auth(self.headers)
-        if trusted:
-            return user, True, "windows"
-        client_ip, ip_trusted = request_ip_auth(self.headers, self.client_address)
-        if ip_trusted:
-            return client_ip, True, "ip"
         user, trusted = local_windows_user_fallback(self.client_address)
         return user, trusted, "local" if user else ""
 
     def request_profile(self):
         user, initial_admin, auth_source = self.request_auth()
         client_ip = client_ip_from_request(self.headers, self.client_address)
-        if auth_source == "ip":
-            profile = {
-                "user": user,
-                "displayName": user,
-                "role": "admin",
-                "canEdit": True,
-                "canManageUsers": True,
-                "lastIp": client_ip,
-            }
-        else:
-            profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
+        profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
         profile["ip"] = client_ip
         profile["ok"] = bool(profile.get("user"))
         return profile
@@ -1890,6 +1835,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({
                 "ok": True,
                 "user": profile.get("user", ""),
+                "displayName": profile.get("displayName", ""),
+                "email": profile.get("email", ""),
+                "department": profile.get("department", ""),
+                "title": profile.get("title", ""),
                 "role": profile.get("role", "staff"),
                 "canEdit": profile.get("canEdit", False),
                 "canManageUsers": profile.get("canManageUsers", False),
@@ -1906,6 +1855,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes({
                 "ok": True,
                 "user": profile.get("user", ""),
+                "displayName": profile.get("displayName", ""),
+                "email": profile.get("email", ""),
+                "department": profile.get("department", ""),
+                "title": profile.get("title", ""),
                 "role": profile.get("role", "staff"),
                 "canEdit": profile.get("canEdit", False),
                 "canManageUsers": profile.get("canManageUsers", False),

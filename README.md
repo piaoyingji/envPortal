@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.2.17`
+当前版本：`2.2.19`
 
 ## 核心能力
 
@@ -107,13 +107,13 @@ EnvPortal 通过 `auth_windows.jsp` 判断当前访问者，并返回 `role`、`
 - `import_staff`：导入职员，只能查看带 `OneHR` tag 的环境。
 - `new_employee`：新员工，只能查看带 `社内学習` tag 的环境。
 
-首次访问的域用户会自动登记为 `staff`。既有 Windows/IP 白名单用户首次迁移为 `admin`。右上角系统管理菜单仅 `admin` 角色可见，用户管理和角色管理写入接口需要管理权限。
+首次访问的域用户会自动登记为 `staff`。既有 Windows 白名单用户首次迁移为 `admin`。右上角系统管理菜单仅管理员权限用户可见，用户管理和角色管理写入接口需要管理权限。客户端 IP 仅用于审计和辅助显示，不能作为登录身份或授权依据。
 
 ## 域认证反向代理
 
 当 EnvPortal 服务器未加入 AD 域、且客户端 IP 可能被 NAT 改写时，可以在一台已加入域的 Windows 主机上运行 `EnvPortal Domain Proxy`。该代理使用 Windows Integrated Authentication 识别访问者，再把认证用户通过 `X-Remote-User` 转发给 20.38 上的 EnvPortal。
 
-如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。20.38 的 `.env` 中配置：
+如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。启用跨域探测后，前端会通过域代理访问需要权限的业务接口，使 20.38 按域用户角色判断权限，而不是按客户端 IP 判断权限。20.38 的 `.env` 中配置：
 
 ```env
 DOMAIN_AUTH_PROXY_URL=http://OHR0067:8998/auth_windows.jsp
@@ -127,7 +127,7 @@ DOMAIN_AUTH_PROXY_URL=http://OHR0067:8998/auth_windows.jsp
 DOMAIN_AUTH_AUTO_PROBE=true
 ```
 
-域代理会对受信任的 EnvPortal 来源返回 CORS header，默认允许 `http://192.168.20.38:8999` 读取认证结果。
+域代理会对受信任的 EnvPortal 来源返回 CORS header，默认允许 `http://192.168.20.38:8999` 读取认证结果和访问受权限控制的数据接口。
 
 域代理会尝试从 AD 读取 `displayName`、`mail`、`department`、`title`，并同步到 EnvPortal 本地用户档案。若 AD 中没有这些属性，则至少保留域账号名。
 
@@ -137,13 +137,14 @@ DOMAIN_AUTH_AUTO_PROBE=true
 .\scripts\install-domain-proxy.ps1 -ListenPrefix http://+:8998/ -TargetBaseUrl http://192.168.20.38:8999/
 ```
 
-允许访问的域用户写在代理安装目录的 `allowed-users.txt`，每行一个账号。20.38 侧建议设置 `TRUSTED_AUTH_PROXY_IPS`，只信任该代理主机传来的认证 header。
+代理配置 `AllowedUsersFile` 为空或指向不存在的文件时，已通过 Windows 集成认证的域用户默认都可进入代理。需要禁用个别人时，在代理安装目录的 `denied-users.txt` 中每行写一个账号。20.38 侧建议设置 `TRUSTED_AUTH_PROXY_IPS`，只信任该代理主机传来的认证 header。
 
 ## 文件说明
 
 - `index.html`：环境检索首页，包含组织、环境组、环境、tags、AP/DB RDP 的查看与编辑。
 - `production.html`：本番环境查看与编辑。
-- `user-admin.html`：用户和角色管理。
+- `user-admin.html`：用户管理。
+- `role-admin.html`：角色管理。
 - `i18n.js`：日文/中文多语资源。
 - `server.py`：Python 后端，负责认证、文件保存、健康检查、DB 探测、RDP 生成/签名/连接。
 - `tools/domain-proxy/`：已入域主机使用的 Windows 认证反向代理。
