@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.2.31] - 2026-06-05
+
+### Fixed
+
+- Changed role management layout so data permission TAG selectors render on a second row for each role.
+- Reduced role management table width to avoid horizontal scrolling caused by TAG selectors.
+
 ## [2.2.30] - 2026-06-05
 
 ### Fixed
