@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.14] - 2026-06-06
+
+### Changed
+
+- Applied the active TAG skin color scheme to matching TAG filter buttons.
+
 ## [2.3.13] - 2026-06-06
 
 ### Changed

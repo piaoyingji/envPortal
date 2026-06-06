@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.13"></script>
+    <script src="i18n.js?v=2.3.14"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -630,9 +630,23 @@
         .tag-filter-btn:hover {
             background: #f8fafc;
         }
+        .tag-filter-btn[data-skin="1"] {
+            background: var(--tag-filter-skin-bg);
+            border: 1px solid var(--tag-filter-skin-border);
+            color: var(--tag-filter-skin-accent);
+        }
+        .tag-filter-btn[data-skin="1"]:hover {
+            background: linear-gradient(rgba(255,255,255,0.32), rgba(255,255,255,0.32)), var(--tag-filter-skin-bg);
+            border-color: var(--tag-filter-skin-accent);
+        }
         .tag-filter-btn.active {
             color: #00b050;
             font-weight: 500;
+        }
+        .tag-filter-btn[data-skin="1"].active {
+            color: var(--tag-filter-skin-accent);
+            background: linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0.18)), var(--tag-filter-skin-bg);
+            border-color: var(--tag-filter-skin-accent);
         }
         .tag-filter-check {
             width: 19px;
@@ -647,12 +661,22 @@
             border-color: #00b050;
             background: #fff;
         }
+        .tag-filter-btn[data-skin="1"] .tag-filter-check {
+            border-color: var(--tag-filter-skin-border);
+            background: rgba(255,255,255,0.72);
+        }
+        .tag-filter-btn[data-skin="1"].active .tag-filter-check {
+            border-color: var(--tag-filter-skin-accent);
+        }
         .tag-filter-btn.active .tag-filter-check::after {
             content: "";
             position: absolute;
             inset: 4px;
             border-radius: 1px;
             background: #00b050;
+        }
+        .tag-filter-btn[data-skin="1"].active .tag-filter-check::after {
+            background: var(--tag-filter-skin-accent);
         }
         .tag-filter-name {
             min-width: 0;
@@ -1671,10 +1695,17 @@
                 const items = document.createElement('div');
                 items.className = 'tag-filter-group-items';
                 tags.forEach(tag => {
+                    const skinStyle = tagFilterSkinStyle(tag);
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'tag-filter-btn' + (selectedTags.includes(tag) ? ' active' : '');
                     btn.title = tag;
+                    if (skinStyle) {
+                        btn.dataset.skin = '1';
+                        btn.style.setProperty('--tag-filter-skin-bg', skinStyle.bg);
+                        btn.style.setProperty('--tag-filter-skin-border', skinStyle.border);
+                        btn.style.setProperty('--tag-filter-skin-accent', skinStyle.accent);
+                    }
                     btn.innerHTML = `
                         <span class="tag-filter-check" aria-hidden="true"></span>
                         <span class="tag-filter-name">${sanitizeHTML(tag)}</span>
@@ -3376,6 +3407,14 @@
             if (categoryId === 'other') return other;
             const index = Math.max(0, tagCategoryConfig.categories.findIndex(category => category.id === categoryId));
             return palette[index % palette.length] || other;
+        }
+
+        function tagFilterSkinStyle(tag) {
+            const categoryId = tagCategoryId(tag);
+            const activeCategoryId = tagCategoryConfig.activeSkinCategory || 'other';
+            if (categoryId !== activeCategoryId) return null;
+            const skin = tagCategoryConfig.skins && tagCategoryConfig.skins[activeCategoryId] && tagCategoryConfig.skins[activeCategoryId][tag];
+            return skin || null;
         }
 
         function renderTagChip(tag, isManual = true) {
