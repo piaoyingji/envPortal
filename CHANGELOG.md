@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.2] - 2026-06-06
+
+### Changed
+
+- Changed the organization selector to use top kana tabs instead of nested kana expanders.
+- Changed the organization selector panel to start collapsed to reduce initial screen space usage.
+
 ## [2.3.1] - 2026-06-06
 
 ### Changed
