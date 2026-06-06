@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - タグ表示設定</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.3.3"></script>
+    <script src="i18n.js?v=2.3.4"></script>
     <style>
         .skin-admin-container {
             width: calc(100% - 2rem);
@@ -34,6 +34,25 @@
             display: grid;
             gap: 0.85rem;
         }
+        .skin-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .skin-tab {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-main);
+            border-radius: 6px;
+            padding: 0.48rem 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .skin-tab.active {
+            border-color: var(--text-main);
+            background: var(--text-main);
+            color: #fff;
+        }
         .skin-category {
             background: #fff;
             border: 1px solid var(--border);
@@ -48,7 +67,7 @@
         }
         .skin-row {
             display: grid;
-            grid-template-columns: minmax(120px, 1fr) 82px repeat(3, minmax(96px, 130px)) minmax(140px, 1fr);
+            grid-template-columns: minmax(120px, 1fr) repeat(3, minmax(96px, 130px)) minmax(140px, 1fr);
             gap: 0.7rem;
             align-items: center;
             padding: 0.55rem 0;
@@ -69,19 +88,6 @@
             display: grid;
             gap: 0.25rem;
         }
-        .skin-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            color: var(--text-main);
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
-        .skin-toggle input {
-            width: 16px;
-            height: 16px;
-            accent-color: var(--primary);
-        }
         .skin-field label {
             color: var(--text-muted);
             font-size: 0.74rem;
@@ -92,8 +98,10 @@
             min-height: 34px;
             border: 1px solid var(--border);
             border-radius: 5px;
-            padding: 0.2rem;
+            padding: 0.35rem 0.45rem;
             background: #fff;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.82rem;
         }
         .skin-preview {
             min-height: 42px;
@@ -161,6 +169,7 @@
         let tagCategories = normalizeTagCategories(null);
         let allTags = [];
         let canManageUsers = false;
+        let activeCategoryId = '';
 
         window.addEventListener('DOMContentLoaded', loadSkins);
         window.addEventListener('i18n:changed', renderSkins);
@@ -194,13 +203,33 @@
                 return;
             }
             area.className = 'skin-grid';
-            area.innerHTML = tagCategories.categories.map(category => renderCategory(category)).join('');
+            const categories = tagCategories.categories
+                .map(category => ({ category, tags: allTags.filter(tag => categoryIdForTag(tag) === category.id) }))
+                .filter(item => item.tags.length);
+            if (!categories.some(item => item.category.id === activeCategoryId)) {
+                activeCategoryId = categories[0].category.id;
+            }
+            const activeItem = categories.find(item => item.category.id === activeCategoryId) || categories[0];
+            area.innerHTML = `
+                <div class="skin-tabs">
+                    ${categories.map(item => renderCategoryTab(item.category)).join('')}
+                </div>
+                ${renderCategory(activeItem.category, activeItem.tags)}
+            `;
             refreshPreviews();
         }
 
-        function renderCategory(category) {
-            const tags = allTags.filter(tag => categoryIdForTag(tag) === category.id);
-            if (!tags.length) return '';
+        function renderCategoryTab(category) {
+            const activeClass = category.id === activeCategoryId ? ' active' : '';
+            return `<button type="button" class="skin-tab${activeClass}" onclick="selectSkinCategory('${escapeJs(category.id)}')">${escapeHtml(categoryLabel(category))}</button>`;
+        }
+
+        function selectSkinCategory(categoryId) {
+            activeCategoryId = categoryId;
+            renderSkins();
+        }
+
+        function renderCategory(category, tags) {
             return `
                 <section class="skin-category">
                     <h3>${escapeHtml(categoryLabel(category))}</h3>
@@ -210,18 +239,14 @@
         }
 
         function renderSkinRow(categoryId, tag) {
-            const state = skinStateForTag(categoryId, tag);
+            const skin = skinForTag(categoryId, tag);
             const key = rowKey(categoryId, tag);
             return `
                 <div class="skin-row" data-skin-row="${escapeHtml(key)}">
                     <div class="skin-tag-name">${escapeHtml(tag)}</div>
-                    <label class="skin-toggle">
-                        <input type="checkbox" data-skin-key="${escapeHtml(key)}" data-skin-enabled="1" ${state.enabled ? 'checked' : ''} onchange="refreshPreviews()">
-                        <span data-i18n="label.skinEnabled">${t('label.skinEnabled')}</span>
-                    </label>
-                    ${renderColorField(key, 'bg', t('label.skinBackground'), state.skin.bg)}
-                    ${renderColorField(key, 'border', t('label.skinBorder'), state.skin.border)}
-                    ${renderColorField(key, 'accent', t('label.skinAccent'), state.skin.accent)}
+                    ${renderColorField(key, 'bg', t('label.skinBackground'), skin.bg)}
+                    ${renderColorField(key, 'border', t('label.skinBorder'), skin.border)}
+                    ${renderColorField(key, 'accent', t('label.skinAccent'), skin.accent)}
                     <div class="skin-preview" data-skin-preview="${escapeHtml(key)}">${escapeHtml(tag)}</div>
                 </div>
             `;
@@ -231,7 +256,7 @@
             return `
                 <div class="skin-field">
                     <label>${escapeHtml(label)}</label>
-                    <input type="color" data-skin-key="${escapeHtml(key)}" data-skin-field="${field}" value="${escapeHtml(value)}" oninput="refreshPreviews()">
+                    <input type="text" data-skin-key="${escapeHtml(key)}" data-skin-field="${field}" value="${escapeHtml(value)}" placeholder="#ffffff" oninput="refreshPreviews()">
                 </div>
             `;
         }
@@ -239,38 +264,36 @@
         function refreshPreviews() {
             document.querySelectorAll('[data-skin-preview]').forEach(preview => {
                 const key = preview.dataset.skinPreview;
-                const enabled = isSkinEnabled(key);
-                const skin = enabled ? collectSkinForKey(key) : { bg: '#ffffff', border: '#d9e1e7', accent: '#111111' };
+                const skin = collectSkinForKey(key) || { bg: '#ffffff', border: '#d9e1e7', accent: '#111111' };
                 preview.style.setProperty('--skin-bg', skin.bg);
                 preview.style.setProperty('--skin-border', skin.border);
                 preview.style.setProperty('--skin-accent', skin.accent);
-                preview.style.opacity = enabled ? '1' : '0.58';
+                preview.style.opacity = collectSkinForKey(key) ? '1' : '0.58';
             });
         }
 
         function collectSkinForKey(key) {
-            const result = { bg: '#ffffff', border: '#d9e1e7', accent: '#111111' };
+            const result = { bg: '', border: '', accent: '' };
             document.querySelectorAll(`[data-skin-key="${cssEscape(key)}"]`).forEach(input => {
-                if (input.dataset.skinField) result[input.dataset.skinField] = input.value;
+                if (input.dataset.skinField) result[input.dataset.skinField] = normalizeHex(input.value);
             });
-            return result;
-        }
-
-        function isSkinEnabled(key) {
-            const input = document.querySelector(`[data-skin-key="${cssEscape(key)}"][data-skin-enabled="1"]`);
-            return Boolean(input && input.checked);
+            return result.bg && result.border && result.accent ? result : null;
         }
 
         function saveSkins() {
             if (!canManageUsers) return;
-            const skins = {};
+            const skins = JSON.parse(JSON.stringify(tagCategories.skins || {}));
+            if (activeCategoryId) delete skins[activeCategoryId];
             document.querySelectorAll('[data-skin-row]').forEach(row => {
                 const parsed = parseRowKey(row.dataset.skinRow);
                 if (!parsed) return;
-                if (!isSkinEnabled(row.dataset.skinRow)) return;
                 const skin = collectSkinForKey(row.dataset.skinRow);
+                if (!skin) return;
                 skins[parsed.categoryId] = skins[parsed.categoryId] || {};
                 skins[parsed.categoryId][parsed.tag] = skin;
+            });
+            Object.keys(skins).forEach(categoryId => {
+                if (!skins[categoryId] || !Object.keys(skins[categoryId]).length) delete skins[categoryId];
             });
             tagCategories.skins = skins;
             portalFetch('update_tag_categories.jsp', {
@@ -322,12 +345,9 @@
             return { categories, assignments, skins };
         }
 
-        function skinStateForTag(categoryId, tag) {
+        function skinForTag(categoryId, tag) {
             const configured = tagCategories.skins && tagCategories.skins[categoryId] && tagCategories.skins[categoryId][tag];
-            return {
-                enabled: Boolean(configured),
-                skin: configured || DEFAULT_SKINS[tag] || { bg: '#ffffff', border: '#d9e1e7', accent: '#111111' }
-            };
+            return configured || DEFAULT_SKINS[tag] || { bg: '', border: '', accent: '' };
         }
 
         function normalizeSkin(value) {
@@ -364,6 +384,10 @@
             const index = String(value || '').indexOf('::');
             if (index <= 0) return null;
             return { categoryId: value.slice(0, index), tag: value.slice(index + 2) };
+        }
+
+        function escapeJs(value) {
+            return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
 
         function uniqueTags(values) {

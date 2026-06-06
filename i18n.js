@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.3';
+const APP_VERSION_FALLBACK = '2.3.4';
 
 const I18N_MESSAGES = {
     ja: {
@@ -204,7 +204,6 @@ const I18N_MESSAGES = {
         'label.skinBackground': '背景',
         'label.skinBorder': '枠線',
         'label.skinAccent': '強調色',
-        'label.skinEnabled': '適用',
         'label.categoryName': '分類名',
         'label.assignedTags': '分類内タグ',
         'label.availableTags': 'その他のタグ',
@@ -428,7 +427,6 @@ const I18N_MESSAGES = {
         'label.skinBackground': '背景',
         'label.skinBorder': '边框',
         'label.skinAccent': '强调色',
-        'label.skinEnabled': '启用',
         'label.categoryName': '分类名',
         'label.assignedTags': '分类内TAG',
         'label.availableTags': '其他TAG',

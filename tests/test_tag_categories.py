@@ -97,6 +97,22 @@ class TagStoreCompatibilityTest(unittest.TestCase):
 
 
 class RoleDataPermissionTest(unittest.TestCase):
+    def test_auto_tags_include_environment_group_and_product_system(self):
+        row = {
+            "環境グループ": "UHR-V6",
+            "構築環境名": "U-PDS V7-TS2課-社内",
+            "URL": "http://example.test/login",
+            "DBタイプ": "PostgreSQL",
+            "DBバージョン": "16",
+        }
+
+        tags = server.auto_tags_for_row(row, [])
+
+        self.assertIn("UHR-V6", tags)
+        self.assertIn("UHR", tags)
+        self.assertIn("UPDSV7", tags)
+        self.assertIn("UPDS-V7", tags)
+
     def test_filter_tag_is_migrated_to_data_tags(self):
         role = server.normalize_role_record("legacy", {"dataTags": "", "filterTag": "OneHR"})
 

@@ -388,8 +388,31 @@ def detect_remote_type_record(remote):
     return ""
 
 
+def product_tags_from_text(value):
+    text = str(value or "").strip()
+    upper = text.upper()
+    tags = []
+    if "UHR" in upper:
+        tags.append("UHR")
+    if "PHR" in upper:
+        tags.append("PHR")
+    normalized = re.sub(r"[^A-Z0-9]+", "", upper)
+    is_upds = "UPDS" in normalized or "UPDS" in upper.replace("-", "")
+    if is_upds and "V6" in normalized:
+        tags.extend(["UPDSV6", "UPDS-V6"])
+    if is_upds and "V7" in normalized:
+        tags.extend(["UPDSV7", "UPDS-V7"])
+    return unique_tags(tags)
+
+
 def auto_tags_for_row(row, rdp_rows):
     tags = []
+    env_group = str(row.get("環境グループ") or "").strip()
+    env_name = str(row.get("構築環境名") or "").strip()
+    if env_group:
+        tags.append(env_group)
+    tags.extend(product_tags_from_text(env_group))
+    tags.extend(product_tags_from_text(env_name))
     db_type = str(row.get("DBタイプ") or "").strip()
     db_version = str(row.get("DBバージョン") or "").strip()
     if db_type:

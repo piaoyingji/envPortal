@@ -2,6 +2,15 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.4] - 2026-06-06
+
+### Changed
+
+- Changed TAG display settings to switch by TAG category tabs instead of per-TAG enable switches.
+- Changed TAG skin saving so the current category is updated without clearing other category skin settings.
+- Changed automatic TAG derivation to include environment group and product-system tokens such as UHR, PHR, UPDSV6, and UPDSV7.
+- Strengthened environment card skin rendering with visible light background, border, and accent line.
+
 ## [2.3.3] - 2026-06-06
 
 ### Added
