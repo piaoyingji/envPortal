@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.12"></script>
+    <script src="i18n.js?v=2.3.13"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -117,33 +117,6 @@
         .env-card[data-skin="1"] .info-subcard {
             background: linear-gradient(rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.74)), var(--env-skin-bg) !important;
             border-color: var(--env-skin-border) !important;
-        }
-        .env-skin-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.28rem;
-            margin-left: auto;
-            border: 1px solid var(--env-skin-border, var(--border));
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.76);
-            color: var(--env-skin-accent, var(--text-muted));
-            padding: 0.16rem 0.46rem;
-            font-size: 0.72rem;
-            line-height: 1.2;
-            font-weight: 700;
-            white-space: nowrap;
-            text-decoration: none;
-        }
-        .env-skin-indicator:hover {
-            background: #fff;
-            border-color: var(--env-skin-accent, var(--border));
-        }
-        .env-skin-indicator-dot {
-            width: 0.42rem;
-            height: 0.42rem;
-            border-radius: 999px;
-            background: var(--env-skin-accent, var(--text-muted));
-            flex: 0 0 auto;
         }
         .org-code {
             color: #9bb2bd;
@@ -2339,9 +2312,6 @@
             const skinAttrs = skin
                 ? ` data-skin="1" data-skin-tag="${sanitizeHTML(skin.tag)}" data-skin-category="${sanitizeHTML(skin.categoryId)}" style="--env-skin-bg:${sanitizeHTML(skin.skin.bg)}; --env-skin-border:${sanitizeHTML(skin.skin.border)}; --env-skin-accent:${sanitizeHTML(skin.skin.accent)};"`
                 : '';
-            const skinIndicatorHtml = skin
-                ? `<a class="env-skin-indicator" href="tag-skin-admin.html" title="${sanitizeHTML(t('label.editSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}"><span class="env-skin-indicator-dot"></span>${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}</a>`
-                : '';
             return `
                 <div id="${badgeId}" class="env-badge"${skinAttrs}>
                     <div class="env-summary-main">
@@ -2350,7 +2320,6 @@
                         </div>
                         <div class="env-summary-actions">
                             ${meta ? `<span class="env-summary-meta">${meta}</span>` : ''}
-                            ${skinIndicatorHtml}
                             <button type="button" class="env-expand-btn" onclick="expandInlineEnv('${escapeJs(orgKey)}', ${index})" title="${t('button.expand')}" aria-label="${t('button.expand')}">${expandIcon()}</button>
                         </div>
                     </div>
@@ -2522,9 +2491,6 @@
             const tagHtml = allTagsForRow(env).map(tag => renderTagChip(tag, manualTagSet.has(tag))).join('');
             const dbAutoTagHtml = autoDbTagsForRow(env).map(tag => renderTagChip(tag, false)).join('');
             const skin = tagSkinForRow(env);
-            const skinIndicatorHtml = skin
-                ? `<a class="env-skin-indicator" href="tag-skin-admin.html" title="${sanitizeHTML(t('label.editSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}"><span class="env-skin-indicator-dot"></span>${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}</a>`
-                : '';
             if (skin) {
                 card.dataset.skin = '1';
                 card.dataset.skinTag = skin.tag;
@@ -2699,7 +2665,6 @@
                         ${orgTitleHtml}
                     </span>
                     <div class="env-card-action-area">
-                        ${skinIndicatorHtml}
                         ${editActionsHtml}
                     </div>
                     </div>

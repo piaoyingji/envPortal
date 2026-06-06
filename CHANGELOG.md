@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.13] - 2026-06-06
+
+### Changed
+
+- Removed applied skin labels from environment cards while keeping the color rendering itself.
+
 ## [2.3.12] - 2026-06-06
 
 ### Changed

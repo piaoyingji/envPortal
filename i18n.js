@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.12';
+const APP_VERSION_FALLBACK = '2.3.13';
 
 const I18N_MESSAGES = {
     ja: {
@@ -211,8 +211,6 @@ const I18N_MESSAGES = {
         'label.systemSkinCategory': '現在システムで使用中の配色分類',
         'label.editingSkinCategory': '現在編集中の配色分類',
         'label.switchSkinCategory': '上の分類タブで切り替え',
-        'label.appliedSkin': '配色',
-        'label.editSkin': '配色を編集',
         'label.categoryName': '分類名',
         'label.assignedTags': '分類内タグ',
         'label.availableTags': 'その他のタグ',
@@ -443,8 +441,6 @@ const I18N_MESSAGES = {
         'label.systemSkinCategory': '当前系统正在使用的配色分类',
         'label.editingSkinCategory': '当前正在编辑的配色分类',
         'label.switchSkinCategory': '用上方分类页签切换',
-        'label.appliedSkin': '配色',
-        'label.editSkin': '编辑配色',
         'label.categoryName': '分类名',
         'label.assignedTags': '分类内TAG',
         'label.availableTags': '其他TAG',
