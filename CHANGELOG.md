@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.1] - 2026-06-06
+
+### Changed
+
+- Changed Japanese UI wording to prefer natural katakana or Japanese expressions where established, such as `タグ`, `バージョン`, `プラットフォーム`, and `サーバー`.
+- Kept protocol and technical abbreviations such as URL, DB, RDP, SSH, VPN, AD, HTTP, TTL, and OS where they are customary.
+- Added the Japanese terminology rule to the system design document.
+
 ## [2.3.0] - 2026-06-06
 
 ### Versioning
