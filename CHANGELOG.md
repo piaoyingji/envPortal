@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.5] - 2026-06-06
+
+### Changed
+
+- Added an explicit current TAG skin category marker on the TAG display settings page.
+- Added an applied skin marker on skinned environment cards, showing the active category and TAG.
+
 ## [2.3.4] - 2026-06-06
 
 ### Changed
