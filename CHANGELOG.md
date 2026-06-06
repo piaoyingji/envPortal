@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.16] - 2026-06-06
+
+### Changed
+
+- Rendered the expanded environment card collapse button directly inside the card action toolbar.
+- Removed the legacy post-render collapse button append path so expanded and collapsed cards use the same button row model.
+
 ## [2.3.15] - 2026-06-06
 
 ### Changed
