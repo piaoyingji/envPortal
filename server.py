@@ -403,9 +403,9 @@ def product_tags_from_text(value):
     normalized = re.sub(r"[^A-Z0-9]+", "", upper)
     is_upds = "UPDS" in normalized or "UPDS" in upper.replace("-", "")
     if is_upds and "V6" in normalized:
-        tags.extend(["UPDSV6", "UPDS-V6"])
+        tags.append("UPDS-V6")
     if is_upds and "V7" in normalized:
-        tags.extend(["UPDSV7", "UPDS-V7"])
+        tags.append("UPDS-V7")
     return unique_tags(tags)
 
 

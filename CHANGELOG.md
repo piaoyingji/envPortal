@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.11] - 2026-06-06
+
+### Fixed
+
+- Stopped auto-generating no-hyphen UPDS alias TAGs such as `UPDSV7` when the canonical `UPDS-V7` TAG is already available.
+
 ## [2.3.10] - 2026-06-06
 
 ### Changed

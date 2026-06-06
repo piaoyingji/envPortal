@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.10"></script>
+    <script src="i18n.js?v=2.3.11"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -3319,8 +3319,8 @@
             if (upper.includes('UHR')) tags.push('UHR');
             if (upper.includes('PHR')) tags.push('PHR');
             const isUpds = compact.includes('UPDS');
-            if (isUpds && compact.includes('V6')) tags.push('UPDSV6', 'UPDS-V6');
-            if (isUpds && compact.includes('V7')) tags.push('UPDSV7', 'UPDS-V7');
+            if (isUpds && compact.includes('V6')) tags.push('UPDS-V6');
+            if (isUpds && compact.includes('V7')) tags.push('UPDS-V7');
             return uniqueTags(tags);
         }
 

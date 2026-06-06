@@ -121,8 +121,8 @@ class RoleDataPermissionTest(unittest.TestCase):
 
         self.assertIn("UHR-V6", tags)
         self.assertIn("UHR", tags)
-        self.assertIn("UPDSV7", tags)
         self.assertIn("UPDS-V7", tags)
+        self.assertNotIn("UPDSV7", tags)
 
     def test_filter_tag_is_migrated_to_data_tags(self):
         role = server.normalize_role_record("legacy", {"dataTags": "", "filterTag": "OneHR"})
