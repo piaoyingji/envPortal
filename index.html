@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.2"></script>
+    <script src="i18n.js?v=2.3.3"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -102,6 +102,20 @@
         }
         .org-name-header:hover {
             color: var(--primary-hover);
+        }
+        .env-card[data-skin="1"] {
+            background: var(--env-skin-bg);
+            border-color: var(--env-skin-border);
+        }
+        .env-card[data-skin="1"] .env-card-title-wrap {
+            border-bottom-color: var(--env-skin-border);
+        }
+        .env-card[data-skin="1"] .env-card-title-main {
+            color: var(--env-skin-accent);
+        }
+        .env-card[data-skin="1"] .info-subcard {
+            background: rgba(255, 255, 255, 0.72);
+            border-color: var(--env-skin-border);
         }
         .org-code {
             color: #9bb2bd;
@@ -2449,6 +2463,13 @@
             const manualTagSet = new Set(tagsForRow(env));
             const tagHtml = allTagsForRow(env).map(tag => renderTagChip(tag, manualTagSet.has(tag))).join('');
             const dbAutoTagHtml = autoDbTagsForRow(env).map(tag => renderTagChip(tag, false)).join('');
+            const skin = tagSkinForRow(env);
+            if (skin) {
+                card.dataset.skin = '1';
+                card.style.setProperty('--env-skin-bg', skin.bg);
+                card.style.setProperty('--env-skin-border', skin.border);
+                card.style.setProperty('--env-skin-accent', skin.accent);
+            }
 
             const statusBadgeId = 'status_' + Math.random().toString(36).substr(2, 9);
             const statusMetaId = 'meta_' + Math.random().toString(36).substr(2, 9);
@@ -3143,7 +3164,19 @@
                 const id = normalizeCategoryId(rawAssignments[tag]);
                 assignments[tagName] = validIds.has(id) ? id : 'other';
             });
-            return { categories: cleaned, assignments };
+            const skins = {};
+            const rawSkins = source.skins && typeof source.skins === 'object' ? source.skins : {};
+            Object.keys(rawSkins).forEach(categoryId => {
+                const id = normalizeCategoryId(categoryId);
+                if (!validIds.has(id) || !rawSkins[categoryId] || typeof rawSkins[categoryId] !== 'object') return;
+                skins[id] = {};
+                Object.keys(rawSkins[categoryId]).forEach(tag => {
+                    const tagName = String(tag || '').trim();
+                    const skin = normalizeTagSkin(rawSkins[categoryId][tag]);
+                    if (tagName && skin) skins[id][tagName] = skin;
+                });
+            });
+            return { categories: cleaned, assignments, skins };
         }
 
         function normalizeCategoryId(value) {
@@ -3153,6 +3186,20 @@
         function tagCategoryLabel(category) {
             if (category && category.id === 'other') return t('tagGroup.other');
             return String((category && category.label) || '').trim() || '';
+        }
+
+        function normalizeTagSkin(value) {
+            if (!value || typeof value !== 'object') return null;
+            const bg = normalizeHexColor(value.bg);
+            const border = normalizeHexColor(value.border);
+            const accent = normalizeHexColor(value.accent);
+            if (!bg || !border || !accent) return null;
+            return { bg, border, accent };
+        }
+
+        function normalizeHexColor(value) {
+            const text = String(value || '').trim();
+            return /^#[0-9a-fA-F]{6}$/.test(text) ? text.toLowerCase() : '';
         }
 
         function getRowKey(row) {
@@ -3265,6 +3312,20 @@
             const color = tagColor(tag);
             const className = 'tag-chip' + (isManual ? '' : ' auto-tag');
             return `<span class="${className}" style="background:${color.bg}; color:${color.text}; border:1px solid ${color.border};">${sanitizeHTML(tag)}</span>`;
+        }
+
+        function tagSkinForRow(row) {
+            const tags = allTagsForRow(row);
+            const categoryOrder = new Map((tagCategoryConfig.categories || []).map((category, index) => [category.id, index]));
+            const candidates = tags
+                .map(tag => {
+                    const categoryId = tagCategoryId(tag);
+                    const skin = tagCategoryConfig.skins && tagCategoryConfig.skins[categoryId] && tagCategoryConfig.skins[categoryId][tag];
+                    return skin ? { tag, categoryId, skin } : null;
+                })
+                .filter(Boolean)
+                .sort((a, b) => (categoryOrder.get(a.categoryId) ?? 999) - (categoryOrder.get(b.categoryId) ?? 999));
+            return candidates.length ? candidates[0].skin : null;
         }
 
         function getLegacyRowKey(row) {

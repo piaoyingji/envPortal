@@ -1,6 +1,6 @@
 # EnvPortal 系统需求与设计说明
 
-当前设计版本：`2.3.2`
+当前设计版本：`2.3.3`
 
 ## 1. 系统定位
 
@@ -59,6 +59,15 @@ EnvPortal 是一个面向运维、实施和内部支持人员的轻量级环境�
   * 固定 `other` 分类，删除分类后相关 TAG 自动回到 `other`。
   * 分类配置保存到 `tag_categories.json`。
 
+### 2.6 TAG 显示设定 `tag-skin-admin.html`
+
+* **用途：** 管理指定 TAG 对环境面板的显示皮肤。
+* **主要能力：**
+  * 按 TAG 分类列出当前有效 TAG。
+  * 为启用的 TAG 设置背景色、边框色和强调色。
+  * 配置保存到 `tag_categories.json` 的 `skins[categoryId][tag]`。
+  * 未启用皮肤的 TAG 不改变环境面板显示。
+
 ## 3. 数据文件
 
 | 文件 | 用途 | Git 管理 |
@@ -67,7 +76,7 @@ EnvPortal 是一个面向运维、实施和内部支持人员的轻量级环境�
 | `rdp.csv` | 远程连接档案 | 忽略 |
 | `production.csv` | 本番环境连接数据 | 忽略 |
 | `tags.json` | 环境自由 TAG | 忽略 |
-| `tag_categories.json` | TAG 分类和 TAG 归属 | 忽略 |
+| `tag_categories.json` | TAG 分类、TAG 归属和 TAG 显示设定 | 忽略 |
 | `users.json` | 域用户、显示名、角色和访问审计 | 忽略 |
 | `roles.json` | 角色权限主数据 | 忽略 |
 | `org_readings.js` | 组织读音缓存 | 忽略 |
@@ -133,6 +142,14 @@ EnvPortal 是一个面向运维、实施和内部支持人员的轻量级环境�
 ### 6.3 TAG 分类
 
 TAG 分类保存在 `tag_categories.json`。首页按分类显示 TAG 过滤按钮，未知或未分类 TAG 进入 `other` 分类。`other` 为固定分类，不允许删除。
+
+### 6.4 TAG 显示设定
+
+TAG 显示设定保存在 `tag_categories.json` 的 `skins` 节点中，结构为 `skins[categoryId][tag] = { bg, border, accent }`。该结构按分类隔离同名 TAG 的皮肤定义，避免不同分类体系切换后发生渲染冲突。
+
+首页环境面板渲染时，会先取得环境的全部手工 TAG 和自动 TAG，再按当前 TAG 分类顺序查找第一条已配置的皮肤并应用到环境面板。未配置皮肤的 TAG 不改变面板显示。
+
+系统为常用产品版本提供浅色默认皮肤：UHR 为浅绿，PHR 为浅蓝，UPDS-V6 为浅灰，UPDS-V7 为浅橙。默认皮肤在运行时归入该 TAG 当前所属分类。
 
 ## 7. 加载与渲染策略
 

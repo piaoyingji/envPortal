@@ -131,6 +131,14 @@ ROLES_PATH = BASE_DIR / "roles.json"
 TAG_CATEGORIES_PATH = BASE_DIR / "tag_categories.json"
 OTHER_TAG_CATEGORY_ID = "other"
 OTHER_TAG_CATEGORY_LABEL = "其他"
+DEFAULT_TAG_SKINS = {
+    "UHR": {"bg": "#f0fdf4", "border": "#bbf7d0", "accent": "#16a34a"},
+    "PHR": {"bg": "#eff6ff", "border": "#bfdbfe", "accent": "#2563eb"},
+    "UPDS-V6": {"bg": "#f8fafc", "border": "#cbd5e1", "accent": "#64748b"},
+    "UPDSV6": {"bg": "#f8fafc", "border": "#cbd5e1", "accent": "#64748b"},
+    "UPDS-V7": {"bg": "#fff7ed", "border": "#fed7aa", "accent": "#f97316"},
+    "UPDSV7": {"bg": "#fff7ed", "border": "#fed7aa", "accent": "#f97316"},
+}
 DEFAULT_ROLES = {
     "admin": {
         "key": "admin",
@@ -218,6 +226,17 @@ def normalize_tag_category_id(value):
     return key or ""
 
 
+def normalize_tag_skin(value):
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    for key in ("bg", "border", "accent"):
+        text = str(value.get(key) or "").strip()
+        if re.match(r"^#[0-9a-fA-F]{6}$", text):
+            result[key] = text.lower()
+    return result if len(result) == 3 else {}
+
+
 def normalize_tag_categories_config(raw=None, known_tags=None):
     source = raw if isinstance(raw, dict) else {}
     raw_categories = source.get("categories") if isinstance(source.get("categories"), list) else []
@@ -257,9 +276,33 @@ def normalize_tag_categories_config(raw=None, known_tags=None):
         if tag_name and tag_name not in assignments:
             assignments[tag_name] = OTHER_TAG_CATEGORY_ID
 
+    skins = {}
+    raw_skins = source.get("skins") if isinstance(source.get("skins"), dict) else {}
+    for category_id, tag_skins in raw_skins.items():
+        normalized_id = normalize_tag_category_id(category_id)
+        if normalized_id not in valid_ids or not isinstance(tag_skins, dict):
+            continue
+        skins.setdefault(normalized_id, {})
+        for tag, skin in tag_skins.items():
+            tag_name = str(tag or "").strip()
+            if not tag_name:
+                continue
+            cleaned_skin = normalize_tag_skin(skin)
+            if cleaned_skin:
+                skins[normalized_id][tag_name] = cleaned_skin
+
+    for tag in known_tags or []:
+        tag_name = str(tag or "").strip()
+        if not tag_name or tag_name not in DEFAULT_TAG_SKINS:
+            continue
+        category_id = assignments.get(tag_name, OTHER_TAG_CATEGORY_ID)
+        skins.setdefault(category_id, {})
+        skins[category_id].setdefault(tag_name, DEFAULT_TAG_SKINS[tag_name])
+
     return {
         "categories": categories,
         "assignments": assignments,
+        "skins": skins,
     }
 
 

@@ -2,6 +2,19 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.3] - 2026-06-06
+
+### Added
+
+- Added TAG display settings under the system management menu.
+- Added category-scoped TAG panel skins in `tag_categories.json` through `skins[categoryId][tag]`.
+- Added default light panel skins for UHR, PHR, UPDS-V6, and UPDS-V7 related tags.
+
+### Changed
+
+- Changed environment cards to apply the first matching TAG skin by current TAG category order.
+- Changed TAG skin normalization so incomplete color definitions are ignored.
+
 ## [2.3.2] - 2026-06-06
 
 ### Changed

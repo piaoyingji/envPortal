@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.2';
+const APP_VERSION_FALLBACK = '2.3.3';
 
 const I18N_MESSAGES = {
     ja: {
@@ -24,6 +24,7 @@ const I18N_MESSAGES = {
         'nav.users': 'ユーザー管理',
         'nav.roles': 'ロール管理',
         'nav.tagCategories': 'タグ分類管理',
+        'nav.tagSkins': 'タグ表示設定',
         'nav.system': 'システム管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
@@ -196,6 +197,14 @@ const I18N_MESSAGES = {
         'tagAdmin.noTags': '分類できるタグがありません。',
         'tagAdmin.help': 'タグを選択して分類へ追加します。分類から外したタグはその他へ移動します。',
         'tagAdmin.unassigned': 'その他',
+        'tagSkinAdmin.description': 'タグごとのパネル表示を管理します',
+        'tagSkinAdmin.help': '分類ごとにタグの背景、枠線、強調色を設定します。未設定のタグは通常表示です。',
+        'tagSkinAdmin.noPermission': 'タグ表示設定権限がありません。',
+        'tagSkinAdmin.noTags': '設定できるタグがありません。',
+        'label.skinBackground': '背景',
+        'label.skinBorder': '枠線',
+        'label.skinAccent': '強調色',
+        'label.skinEnabled': '適用',
         'label.categoryName': '分類名',
         'label.assignedTags': '分類内タグ',
         'label.availableTags': 'その他のタグ',
@@ -239,6 +248,7 @@ const I18N_MESSAGES = {
         'nav.users': '用户管理',
         'nav.roles': '角色管理',
         'nav.tagCategories': 'TAG分类管理',
+        'nav.tagSkins': 'TAG显示设定',
         'nav.system': '系统管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
@@ -411,6 +421,14 @@ const I18N_MESSAGES = {
         'tagAdmin.noTags': '没有可分类的TAG。',
         'tagAdmin.help': '选择TAG加入分类。从分类中移出的TAG会进入其他。',
         'tagAdmin.unassigned': '其他',
+        'tagSkinAdmin.description': '管理每个TAG的面板显示效果',
+        'tagSkinAdmin.help': '按分类为TAG设置背景、边框和强调色。未设置的TAG使用默认显示。',
+        'tagSkinAdmin.noPermission': '没有TAG显示设定权限。',
+        'tagSkinAdmin.noTags': '没有可设置的TAG。',
+        'label.skinBackground': '背景',
+        'label.skinBorder': '边框',
+        'label.skinAccent': '强调色',
+        'label.skinEnabled': '启用',
         'label.categoryName': '分类名',
         'label.assignedTags': '分类内TAG',
         'label.availableTags': '其他TAG',
@@ -701,6 +719,7 @@ function initI18n() {
                 <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
                 <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
                 <a href="tag-admin.html" data-system-link="tag-admin.html" data-i18n="nav.tagCategories">${t('nav.tagCategories')}</a>
+                <a href="tag-skin-admin.html" data-system-link="tag-skin-admin.html" data-i18n="nav.tagSkins">${t('nav.tagSkins')}</a>
             </div>
         `;
         navInner.appendChild(menu);

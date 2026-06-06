@@ -13,6 +13,7 @@ class TagCategoryNormalizationTest(unittest.TestCase):
             "protected": True,
         }])
         self.assertEqual(config["assignments"], {"UHR": "other"})
+        self.assertEqual(config["skins"]["other"]["UHR"]["bg"], "#f0fdf4")
 
     def test_other_is_fixed_last_and_protected(self):
         config = server.normalize_tag_categories_config({
@@ -54,6 +55,30 @@ class TagCategoryNormalizationTest(unittest.TestCase):
             "UHR": "other",
             "Oracle": "other",
         })
+
+    def test_skin_is_category_scoped_and_requires_complete_colors(self):
+        config = server.normalize_tag_categories_config({
+            "categories": [{"id": "product", "label": "Product"}],
+            "assignments": {"UHR": "product", "PHR": "product"},
+            "skins": {
+                "product": {
+                    "UHR": {"bg": "#ABCDEF", "border": "#123456", "accent": "#fedcba"},
+                    "PHR": {"bg": "#ffffff"},
+                },
+                "deleted": {
+                    "UPDS-V6": {"bg": "#ffffff", "border": "#eeeeee", "accent": "#111111"},
+                },
+            },
+        }, ["UHR", "PHR", "UPDS-V6"])
+
+        self.assertEqual(config["skins"]["product"]["UHR"], {
+            "bg": "#abcdef",
+            "border": "#123456",
+            "accent": "#fedcba",
+        })
+        self.assertEqual(config["skins"]["product"]["PHR"]["bg"], "#eff6ff")
+        self.assertEqual(config["skins"]["other"]["UPDS-V6"]["bg"], "#f8fafc")
+        self.assertNotIn("deleted", config["skins"])
 
 
 class TagStoreCompatibilityTest(unittest.TestCase):
