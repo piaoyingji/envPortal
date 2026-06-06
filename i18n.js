@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.5';
+const APP_VERSION_FALLBACK = '2.3.6';
 
 const I18N_MESSAGES = {
     ja: {
@@ -198,14 +198,16 @@ const I18N_MESSAGES = {
         'tagAdmin.help': 'タグを選択して分類へ追加します。分類から外したタグはその他へ移動します。',
         'tagAdmin.unassigned': 'その他',
         'tagSkinAdmin.description': 'タグごとのパネル表示を管理します',
-        'tagSkinAdmin.help': '分類ごとにタグの背景、枠線、強調色を設定します。未設定のタグは通常表示です。',
+        'tagSkinAdmin.help': '上の分類タブで編集する配色分類を切り替え、下の表でタグごとの背景、枠線、強調色を変更します。未設定のタグは通常表示です。',
         'tagSkinAdmin.noPermission': 'タグ表示設定権限がありません。',
         'tagSkinAdmin.noTags': '設定できるタグがありません。',
         'label.skinBackground': '背景',
         'label.skinBorder': '枠線',
         'label.skinAccent': '強調色',
-        'label.activeSkinCategory': '現在の配色分類',
+        'label.activeSkinCategory': '現在編集中の配色分類',
+        'label.switchSkinCategory': '上の分類タブで切り替え',
         'label.appliedSkin': '配色',
+        'label.editSkin': '配色を編集',
         'label.categoryName': '分類名',
         'label.assignedTags': '分類内タグ',
         'label.availableTags': 'その他のタグ',
@@ -423,14 +425,16 @@ const I18N_MESSAGES = {
         'tagAdmin.help': '选择TAG加入分类。从分类中移出的TAG会进入其他。',
         'tagAdmin.unassigned': '其他',
         'tagSkinAdmin.description': '管理每个TAG的面板显示效果',
-        'tagSkinAdmin.help': '按分类为TAG设置背景、边框和强调色。未设置的TAG使用默认显示。',
+        'tagSkinAdmin.help': '用上方分类页签切换要编辑的配色分类，在下方表格修改每个TAG的背景、边框和强调色。未设置的TAG使用默认显示。',
         'tagSkinAdmin.noPermission': '没有TAG显示设定权限。',
         'tagSkinAdmin.noTags': '没有可设置的TAG。',
         'label.skinBackground': '背景',
         'label.skinBorder': '边框',
         'label.skinAccent': '强调色',
-        'label.activeSkinCategory': '当前配色分类',
+        'label.activeSkinCategory': '当前正在编辑的配色分类',
+        'label.switchSkinCategory': '用上方分类页签切换',
         'label.appliedSkin': '配色',
+        'label.editSkin': '编辑配色',
         'label.categoryName': '分类名',
         'label.assignedTags': '分类内TAG',
         'label.availableTags': '其他TAG',

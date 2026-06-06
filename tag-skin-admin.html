@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - タグ表示設定</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.3.5"></script>
+    <script src="i18n.js?v=2.3.6"></script>
     <style>
         .skin-admin-container {
             width: calc(100% - 2rem);
@@ -230,7 +230,7 @@
                 <div class="skin-tabs">
                     ${categories.map(item => renderCategoryTab(item.category)).join('')}
                 </div>
-                <div class="skin-active-summary">${t('label.activeSkinCategory')}: <strong>${escapeHtml(categoryLabel(activeItem.category))}</strong></div>
+                <div class="skin-active-summary">${t('label.activeSkinCategory')}: <strong>${escapeHtml(categoryLabel(activeItem.category))}</strong><span>${t('label.switchSkinCategory')}</span></div>
                 ${renderCategory(activeItem.category, activeItem.tags)}
             `;
             refreshPreviews();

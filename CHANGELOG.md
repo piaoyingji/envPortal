@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.6] - 2026-06-06
+
+### Changed
+
+- Clarified the TAG display settings page so the current category marker explains that category tabs switch the editable skin group.
+- Changed the applied skin marker on environment cards into a direct link to TAG display settings.
+
 ## [2.3.5] - 2026-06-06
 
 ### Changed

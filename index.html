@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.5"></script>
+    <script src="i18n.js?v=2.3.6"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -132,6 +132,11 @@
             line-height: 1.2;
             font-weight: 700;
             white-space: nowrap;
+            text-decoration: none;
+        }
+        .env-skin-indicator:hover {
+            background: #fff;
+            border-color: var(--env-skin-accent, var(--border));
         }
         .env-skin-indicator-dot {
             width: 0.42rem;
@@ -2489,7 +2494,7 @@
             const dbAutoTagHtml = autoDbTagsForRow(env).map(tag => renderTagChip(tag, false)).join('');
             const skin = tagSkinForRow(env);
             const skinIndicatorHtml = skin
-                ? `<span class="env-skin-indicator" title="${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}"><span class="env-skin-indicator-dot"></span>${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}</span>`
+                ? `<a class="env-skin-indicator" href="tag-skin-admin.html" title="${sanitizeHTML(t('label.editSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}"><span class="env-skin-indicator-dot"></span>${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}</a>`
                 : '';
             if (skin) {
                 card.dataset.skin = '1';
