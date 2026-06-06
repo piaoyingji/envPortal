@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.16"></script>
+    <script src="i18n.js?v=2.3.17"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -2644,7 +2644,7 @@
                 </span>
             ` : '';
             const collapseActionHtml = inlineContext ? `
-                <button type="button" class="secondary-btn env-collapse-btn" onclick="collapseInlineEnv('${escapeJs(inlineContext.orgKey)}', this.closest('.env-flow-item'))" title="${t('button.collapse')}" aria-label="${t('button.collapse')}">${collapseIcon()}</button>
+                <button type="button" class="secondary-btn env-collapse-btn" data-org-key="${sanitizeHTML(inlineContext.orgKey)}" onclick="collapseInlineEnvFromButton(this)" title="${t('button.collapse')}" aria-label="${t('button.collapse')}">${collapseIcon()}</button>
             ` : '';
             const actionAreaHtml = (editActionsHtml || collapseActionHtml) ? `
                     <div class="env-card-action-area">
@@ -2739,6 +2739,11 @@
             item.classList.add('expanded');
             renderEnvironmentCard(env, false, item, { orgKey });
             startRegisteredStatusChecks();
+        }
+
+        function collapseInlineEnvFromButton(button) {
+            if (!button) return;
+            collapseInlineEnv(button.dataset.orgKey || '', button.closest('.env-flow-item'));
         }
 
         function collapseInlineEnv(orgKey, item) {
@@ -2957,11 +2962,11 @@
         }
 
         function expandIcon() {
-            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 9l6 6 6-6"></path></svg>';
+            return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 9l6 6 6-6"></path></svg>';
         }
 
         function collapseIcon() {
-            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 15l6-6 6 6"></path></svg>';
+            return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 15l6-6 6 6"></path></svg>';
         }
 
         function globeIcon() {

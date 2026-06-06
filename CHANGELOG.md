@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.17] - 2026-06-06
+
+### Fixed
+
+- Fixed the expanded environment card collapse button rendering as a blank button.
+- Stabilized collapse handling by routing toolbar clicks through a dedicated button handler with explicit card context.
+
 ## [2.3.16] - 2026-06-06
 
 ### Changed
