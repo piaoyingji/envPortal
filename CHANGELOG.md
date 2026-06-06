@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.15] - 2026-06-06
+
+### Changed
+
+- Moved environment card status badges into the title row.
+- Kept the action button group top-aligned so edit, copy, and collapse controls stay on one row.
+
 ## [2.3.14] - 2026-06-06
 
 ### Changed
