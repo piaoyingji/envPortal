@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.7] - 2026-06-06
+
+### Changed
+
+- Added color picker controls to TAG display settings while keeping optional hex text fields for clearing unset skins.
+
 ## [2.3.6] - 2026-06-06
 
 ### Changed

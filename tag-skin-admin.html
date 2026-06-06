@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - タグ表示設定</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.3.6"></script>
+    <script src="i18n.js?v=2.3.7"></script>
     <style>
         .skin-admin-container {
             width: calc(100% - 2rem);
@@ -118,6 +118,19 @@
             background: #fff;
             font-family: Consolas, "Courier New", monospace;
             font-size: 0.82rem;
+        }
+        .skin-color-input {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .skin-color-picker {
+            width: 42px !important;
+            min-height: 34px;
+            padding: 2px !important;
+            cursor: pointer;
+            font-family: inherit !important;
         }
         .skin-preview {
             min-height: 42px;
@@ -270,12 +283,35 @@
         }
 
         function renderColorField(key, field, label, value) {
+            const pickerValue = normalizeHex(value) || defaultColorForField(field);
             return `
                 <div class="skin-field">
                     <label>${escapeHtml(label)}</label>
-                    <input type="text" data-skin-key="${escapeHtml(key)}" data-skin-field="${field}" value="${escapeHtml(value)}" placeholder="#ffffff" oninput="refreshPreviews()">
+                    <div class="skin-color-input">
+                        <input class="skin-color-picker" type="color" data-skin-key="${escapeHtml(key)}" data-skin-picker="${field}" value="${escapeHtml(pickerValue)}" oninput="syncColorText(this)">
+                        <input type="text" data-skin-key="${escapeHtml(key)}" data-skin-field="${field}" value="${escapeHtml(value)}" placeholder="#ffffff" oninput="syncColorPicker(this); refreshPreviews()">
+                    </div>
                 </div>
             `;
+        }
+
+        function syncColorText(picker) {
+            const input = document.querySelector(`[data-skin-key="${cssEscape(picker.dataset.skinKey)}"][data-skin-field="${picker.dataset.skinPicker}"]`);
+            if (input) input.value = picker.value;
+            refreshPreviews();
+        }
+
+        function syncColorPicker(input) {
+            const color = normalizeHex(input.value);
+            if (!color) return;
+            const picker = document.querySelector(`[data-skin-key="${cssEscape(input.dataset.skinKey)}"][data-skin-picker="${input.dataset.skinField}"]`);
+            if (picker) picker.value = color;
+        }
+
+        function defaultColorForField(field) {
+            if (field === 'bg') return '#ffffff';
+            if (field === 'border') return '#d9e1e7';
+            return '#111111';
         }
 
         function refreshPreviews() {
