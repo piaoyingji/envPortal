@@ -2,6 +2,37 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.0] - 2026-06-06
+
+### Versioning
+
+- Reclassified the current application state from the long `2.2.x` patch sequence to `2.3.0`.
+- The `2.2.16` through `2.2.31` entries are kept below as detailed implementation snapshots that led into this minor release.
+- Chose a MINOR release because the changes add compatible system management, authentication, role permission, TAG permission, i18n, and performance capabilities without requiring CSV data migration.
+
+### Added
+
+- Added top-right system management with user management, role management, and TAG category management.
+- Added role functional permissions for environment query, environment edit, production query, production edit, and system management.
+- Added role data permissions through `dataTags`, using current manual and automatic TAGs as the effective data visibility scope.
+- Added managed TAG categories through `tag_categories.json`, including a fixed `other` category and category assignment normalization.
+- Added domain proxy token flow so an EnvPortal server outside the AD domain can authorize users by their Windows domain identity.
+- Added cached domain auth tokens to reduce repeated Windows authentication latency across pages.
+
+### Changed
+
+- Changed client IP from an authorization identity to audit and display metadata only.
+- Changed portal data loading so public summary data renders first, then authorized data refreshes after domain token availability.
+- Changed TAG filtering to use managed category assignments instead of hard-coded frontend grouping.
+- Changed role management layout so each role renders functional permissions on the first row and data permission TAG selectors on a second row.
+- Changed local deployment data handling so `roles.json` and `tag_categories.json` stay outside Git.
+
+### Fixed
+
+- Fixed i18n gaps across visible buttons, modal actions, role management, TAG management, and fallback labels.
+- Fixed management menu display timing and stacking so authorized administrators see it reliably.
+- Fixed production page script placement that previously rendered JavaScript text into the page.
+
 ## [2.2.31] - 2026-06-05
 
 ### Fixed
