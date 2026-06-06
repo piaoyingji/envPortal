@@ -262,6 +262,9 @@ def normalize_tag_categories_config(raw=None, known_tags=None):
         "protected": True,
     })
     valid_ids = {category["id"] for category in categories}
+    active_skin_category = normalize_tag_category_id(source.get("activeSkinCategory"))
+    if active_skin_category not in valid_ids:
+        active_skin_category = OTHER_TAG_CATEGORY_ID
     assignments = {}
     raw_assignments = source.get("assignments") if isinstance(source.get("assignments"), dict) else {}
     for tag, category_id in raw_assignments.items():
@@ -303,6 +306,7 @@ def normalize_tag_categories_config(raw=None, known_tags=None):
         "categories": categories,
         "assignments": assignments,
         "skins": skins,
+        "activeSkinCategory": active_skin_category,
     }
 
 

@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.7';
+const APP_VERSION_FALLBACK = '2.3.8';
 
 const I18N_MESSAGES = {
     ja: {
@@ -68,6 +68,7 @@ const I18N_MESSAGES = {
         'button.confirm': '確認',
         'button.unlock': '解除',
         'button.backList': '≪ 一覧に戻る',
+        'button.useForRendering': 'この分類を表示に使用',
         'modal.unlockTitle': 'ロック解除',
         'modal.unlockDesc': '編集用のパスワードを入力してください',
         'modal.rdpUnlockTitle': 'サーバ接続情報 解除',
@@ -205,6 +206,8 @@ const I18N_MESSAGES = {
         'label.skinBorder': '枠線',
         'label.skinAccent': '強調色',
         'label.activeSkinCategory': '現在編集中の配色分類',
+        'label.systemSkinCategory': '現在システムで使用中の配色分類',
+        'label.editingSkinCategory': '現在編集中の配色分類',
         'label.switchSkinCategory': '上の分類タブで切り替え',
         'label.appliedSkin': '配色',
         'label.editSkin': '配色を編集',
@@ -295,6 +298,7 @@ const I18N_MESSAGES = {
         'button.confirm': '确认',
         'button.unlock': '解锁',
         'button.backList': '≪ 返回列表',
+        'button.useForRendering': '将此分类用于显示',
         'modal.unlockTitle': '解除锁定',
         'modal.unlockDesc': '请输入编辑密码',
         'modal.rdpUnlockTitle': '解除远程连接信息',
@@ -432,6 +436,8 @@ const I18N_MESSAGES = {
         'label.skinBorder': '边框',
         'label.skinAccent': '强调色',
         'label.activeSkinCategory': '当前正在编辑的配色分类',
+        'label.systemSkinCategory': '当前系统正在使用的配色分类',
+        'label.editingSkinCategory': '当前正在编辑的配色分类',
         'label.switchSkinCategory': '用上方分类页签切换',
         'label.appliedSkin': '配色',
         'label.editSkin': '编辑配色',

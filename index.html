@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.7"></script>
+    <script src="i18n.js?v=2.3.8"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -3211,7 +3211,10 @@
                     if (tagName && skin) skins[id][tagName] = skin;
                 });
             });
-            return { categories: cleaned, assignments, skins };
+            const activeSkinCategory = validIds.has(normalizeCategoryId(source.activeSkinCategory))
+                ? normalizeCategoryId(source.activeSkinCategory)
+                : 'other';
+            return { categories: cleaned, assignments, skins, activeSkinCategory };
         }
 
         function normalizeCategoryId(value) {
@@ -3373,17 +3376,17 @@
 
         function tagSkinForRow(row) {
             const tags = allTagsForRow(row);
-            const categoryOrder = new Map((tagCategoryConfig.categories || []).map((category, index) => [category.id, index]));
             const categoryLabels = new Map((tagCategoryConfig.categories || []).map(category => [category.id, tagCategoryLabel(category)]));
-            const candidates = tags
-                .map(tag => {
-                    const categoryId = tagCategoryId(tag);
-                    const skin = tagCategoryConfig.skins && tagCategoryConfig.skins[categoryId] && tagCategoryConfig.skins[categoryId][tag];
-                    return skin ? { tag, categoryId, categoryLabel: categoryLabels.get(categoryId) || categoryId, skin } : null;
-                })
-                .filter(Boolean)
-                .sort((a, b) => (categoryOrder.get(a.categoryId) ?? 999) - (categoryOrder.get(b.categoryId) ?? 999));
-            return candidates.length ? candidates[0] : null;
+            const categoryId = tagCategoryConfig.activeSkinCategory || 'other';
+            const categorySkins = tagCategoryConfig.skins && tagCategoryConfig.skins[categoryId] ? tagCategoryConfig.skins[categoryId] : {};
+            const tag = tags.find(item => categorySkins[item]);
+            if (!tag) return null;
+            return {
+                tag,
+                categoryId,
+                categoryLabel: categoryLabels.get(categoryId) || categoryId,
+                skin: categorySkins[tag]
+            };
         }
 
         function getLegacyRowKey(row) {

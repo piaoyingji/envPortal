@@ -2,6 +2,18 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.8] - 2026-06-06
+
+### Added
+
+- Added `activeSkinCategory` to TAG category settings so the system has one explicit TAG category used for card skin rendering.
+- Added a TAG display settings control to set the current category as the system rendering category.
+
+### Changed
+
+- Changed environment card skin rendering to use only the configured system rendering category instead of scanning all categories by order.
+- Clarified TAG display settings by showing both the system rendering category and the category currently being edited.
+
 ## [2.3.7] - 2026-06-06
 
 ### Changed
