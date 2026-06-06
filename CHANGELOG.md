@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.10] - 2026-06-06
+
+### Changed
+
+- Consolidated environment card actions into a single icon button group.
+- Moved card status badges into a separate status row so they no longer share a row with action buttons.
+- Changed copy, delete, expand, and collapse actions to icon-only buttons for a consistent card toolbar.
+
 ## [2.3.9] - 2026-06-06
 
 ### Changed

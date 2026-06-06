@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.9';
+const APP_VERSION_FALLBACK = '2.3.10';
 
 const I18N_MESSAGES = {
     ja: {
@@ -69,6 +69,8 @@ const I18N_MESSAGES = {
         'button.unlock': '解除',
         'button.backList': '≪ 一覧に戻る',
         'button.useForRendering': 'この分類を表示に使用',
+        'button.expand': '展開',
+        'button.collapse': '折りたたみ',
         'modal.unlockTitle': 'ロック解除',
         'modal.unlockDesc': '編集用のパスワードを入力してください',
         'modal.rdpUnlockTitle': 'サーバ接続情報 解除',
@@ -299,6 +301,8 @@ const I18N_MESSAGES = {
         'button.unlock': '解锁',
         'button.backList': '≪ 返回列表',
         'button.useForRendering': '将此分类用于显示',
+        'button.expand': '展开',
+        'button.collapse': '收缩',
         'modal.unlockTitle': '解除锁定',
         'modal.unlockDesc': '请输入编辑密码',
         'modal.rdpUnlockTitle': '解除远程连接信息',
