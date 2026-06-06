@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.9] - 2026-06-06
+
+### Changed
+
+- Applied TAG skin rendering to collapsed environment summary cards so color coding supports quick scanning before expansion.
+- Added the applied skin marker to collapsed environment summary cards.
+
 ## [2.3.8] - 2026-06-06
 
 ### Added

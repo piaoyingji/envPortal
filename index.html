@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.8"></script>
+    <script src="i18n.js?v=2.3.9"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -876,6 +876,18 @@
             border-color: #b8b8be !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
             transform: none !important;
+        }
+        .env-badge[data-skin="1"] {
+            background: var(--env-skin-bg) !important;
+            border-color: var(--env-skin-border) !important;
+            box-shadow: inset 3px 0 0 var(--env-skin-accent), var(--shadow-card) !important;
+        }
+        .env-badge[data-skin="1"]:hover {
+            border-color: var(--env-skin-accent) !important;
+            box-shadow: inset 3px 0 0 var(--env-skin-accent), 0 2px 8px rgba(0,0,0,0.05) !important;
+        }
+        .env-badge[data-skin="1"] .env-summary-name {
+            color: var(--env-skin-accent) !important;
         }
         .org-name-header,
         .active-org-name {
@@ -2314,14 +2326,22 @@
             const dbVersion = String(env['DBバージョン'] || '').trim();
             const meta = dbType ? `${sanitizeHTML(dbType)}${dbVersion ? ' ' + sanitizeHTML(dbVersion) : ''}` : (host || '');
             const badgeId = `env_badge_${sanitizeId(orgKey)}_${index}`;
+            const skin = tagSkinForRow(env);
+            const skinAttrs = skin
+                ? ` data-skin="1" data-skin-tag="${sanitizeHTML(skin.tag)}" data-skin-category="${sanitizeHTML(skin.categoryId)}" style="--env-skin-bg:${sanitizeHTML(skin.skin.bg)}; --env-skin-border:${sanitizeHTML(skin.skin.border)}; --env-skin-accent:${sanitizeHTML(skin.skin.accent)};"`
+                : '';
+            const skinIndicatorHtml = skin
+                ? `<a class="env-skin-indicator" href="tag-skin-admin.html" title="${sanitizeHTML(t('label.editSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}"><span class="env-skin-indicator-dot"></span>${sanitizeHTML(t('label.appliedSkin'))}: ${sanitizeHTML(skin.categoryLabel)} / ${sanitizeHTML(skin.tag)}</a>`
+                : '';
             return `
-                <div id="${badgeId}" class="env-badge">
+                <div id="${badgeId}" class="env-badge"${skinAttrs}>
                     <div class="env-summary-main">
                         <div class="env-summary-title">
                             <span class="env-summary-name">◆ ${envName}</span>
                         </div>
                         <div class="env-summary-actions">
                             ${meta ? `<span class="env-summary-meta">${meta}</span>` : ''}
+                            ${skinIndicatorHtml}
                             <button type="button" class="env-expand-btn" onclick="expandInlineEnv('${escapeJs(orgKey)}', ${index})" title="Expand" aria-label="Expand">⌄</button>
                         </div>
                     </div>
