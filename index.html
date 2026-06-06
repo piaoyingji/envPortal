@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.17"></script>
+    <script src="i18n.js?v=2.3.18"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -969,7 +969,7 @@
         }
         .card-edit-actions .secondary-btn,
         .card-edit-actions .primary-btn,
-        .env-collapse-btn {
+        button.env-collapse-btn {
             width: 30px;
             height: 30px;
             min-height: 30px;
@@ -980,10 +980,11 @@
             justify-content: center;
         }
         .card-edit-actions svg,
-        .env-collapse-btn svg {
+        button.env-collapse-btn svg {
             width: 17px;
             height: 17px;
             stroke: currentColor;
+            display: block;
         }
         .card-edit-actions .delete-btn,
         .card-edit-actions .copy-btn {
@@ -2634,22 +2635,22 @@
                 rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }
 
-            const editActionsHtml = canEdit ? `
-                <span class="card-edit-actions">
+            const editActionButtonsHtml = canEdit ? `
                     ${isEditingCard
                         ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
                         : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
                     ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>` : ''}
                     ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
-                </span>
             ` : '';
             const collapseActionHtml = inlineContext ? `
                 <button type="button" class="secondary-btn env-collapse-btn" data-org-key="${sanitizeHTML(inlineContext.orgKey)}" onclick="collapseInlineEnvFromButton(this)" title="${t('button.collapse')}" aria-label="${t('button.collapse')}">${collapseIcon()}</button>
             ` : '';
-            const actionAreaHtml = (editActionsHtml || collapseActionHtml) ? `
+            const actionAreaHtml = (editActionButtonsHtml || collapseActionHtml) ? `
                     <div class="env-card-action-area">
-                        ${editActionsHtml}
-                        ${collapseActionHtml}
+                        <span class="card-edit-actions">
+                            ${editActionButtonsHtml}
+                            ${collapseActionHtml}
+                        </span>
                     </div>
             ` : '';
             const viewBodyHtml = `
@@ -2962,11 +2963,11 @@
         }
 
         function expandIcon() {
-            return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 9l6 6 6-6"></path></svg>';
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>';
         }
 
         function collapseIcon() {
-            return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 15l6-6 6 6"></path></svg>';
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>';
         }
 
         function globeIcon() {

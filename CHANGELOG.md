@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.18] - 2026-06-06
+
+### Fixed
+
+- Fixed the expanded-card collapse button size by placing it inside the same action button group as edit and copy.
+- Added a higher-priority collapse button size rule and standard SVG attributes for consistent icon rendering.
+
 ## [2.3.17] - 2026-06-06
 
 ### Fixed
