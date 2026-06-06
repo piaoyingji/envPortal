@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.19] - 2026-06-06
+
+### Fixed
+
+- Added a cancel icon button to the environment card edit toolbar.
+- Preserved expanded-card context while refreshing cards for edit, cancel, and save flows.
+
 ## [2.3.18] - 2026-06-06
 
 ### Fixed
