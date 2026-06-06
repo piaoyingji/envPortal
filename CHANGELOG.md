@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.12] - 2026-06-06
+
+### Changed
+
+- Changed the organization selector panel to start expanded on page load.
+
 ## [2.3.11] - 2026-06-06
 
 ### Fixed
