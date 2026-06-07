@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.24] - 2026-06-07
+
+### Changed
+
+- Displayed each environment's group as a compact chip on collapsed environment summary cards so read-only users can see group context without expanding.
+
 ## [2.3.23] - 2026-06-07
 
 ### Changed

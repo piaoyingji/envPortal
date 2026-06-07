@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.23"></script>
+    <script src="i18n.js?v=2.3.24"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -250,6 +250,20 @@
             margin: 0;
             font-size: 0.68rem;
             padding: 0.08rem 0.38rem;
+        }
+        .env-summary-group {
+            flex: 0 0 auto;
+            max-width: 9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.08rem 0.42rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.72);
+            font-size: 0.68rem;
+            font-weight: 700;
         }
         .env-summary-url {
             margin-top: 0.35rem;
@@ -2557,6 +2571,7 @@
             const envName = sanitizeHTML(env['構築環境名']);
             const host = sanitizeHTML(getHost(env['URL']));
             const url = sanitizeHTML(env['URL']);
+            const groupName = sanitizeHTML(envGroupValue(env));
             const tags = allTagsForRow(env);
             const visibleTags = tags.slice(0, 5).map(tag => renderTagChip(tag, tagsForRow(env).includes(tag))).join('');
             const overflow = tags.length > 5 ? `<span class="tag-chip auto-tag" style="background:#f5fbfc; color:#627987; border:1px solid #d7e6ee;">+${tags.length - 5}</span>` : '';
@@ -2573,6 +2588,7 @@
                     <div class="env-summary-main">
                         <div class="env-summary-title">
                             <span class="env-summary-name">◆ ${envName}</span>
+                            <span class="env-summary-group" title="${groupName}">${groupName}</span>
                         </div>
                         <div class="env-summary-actions">
                             ${meta ? `<span class="env-summary-meta">${meta}</span>` : ''}
