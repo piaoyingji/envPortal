@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.3] - 2026-06-07
+
+### Fixed
+
+- Aligned the first row of organization summary group containers by removing sibling top margin from grid items.
+
 ## [2.4.2] - 2026-06-07
 
 ### Changed
