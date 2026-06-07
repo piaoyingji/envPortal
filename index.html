@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.22"></script>
+    <script src="i18n.js?v=2.3.23"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1647,7 +1647,8 @@
             fullData.forEach(row => {
                 if (getOrgGroup(row).key === orgKey) groups.push(envGroupValue(row));
             });
-            return uniqueTags([DEFAULT_ENV_GROUP].concat(groups.map(normalizeGroupName)));
+            const normalizedGroups = uniqueTags(groups.map(normalizeGroupName));
+            return normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP];
         }
 
         function addGroupNameToOrg(orgKey, groupName) {
@@ -1664,10 +1665,19 @@
             if (!record) return;
             const from = normalizeGroupName(beforeGroup);
             const to = normalizeGroupName(afterGroup);
-            record.groups = uniqueTags([DEFAULT_ENV_GROUP].concat((record.groups || []).map(group => {
+            const normalizedGroups = uniqueTags((record.groups || []).map(group => {
                 const normalized = normalizeGroupName(group);
                 return normalized === from ? to : normalized;
-            })));
+            }));
+            record.groups = normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP];
+        }
+
+        function removeGroupNameFromOrg(orgKey, groupName) {
+            const record = envGroupStore.records[orgKey];
+            if (!record) return;
+            const target = normalizeGroupName(groupName);
+            const nextGroups = uniqueTags((record.groups || []).map(normalizeGroupName).filter(group => group !== target));
+            record.groups = nextGroups.length ? nextGroups : [DEFAULT_ENV_GROUP];
         }
 
         function modalFieldLabel(field) {
@@ -2157,7 +2167,6 @@
             if (!canEdit) return;
             const nextGroup = String(values['環境グループ'] || '').trim();
             if (!nextGroup) return alert(t('error.groupRequired'));
-            if (normalizeGroupName(groupValue) === DEFAULT_ENV_GROUP) return alert(t('error.defaultGroupProtected'));
             const beforeGroup = normalizeGroupName(groupValue);
             const normalizedNextGroup = normalizeGroupName(nextGroup);
             const rows = fullData.filter(row => getOrgGroup(row).key === orgKey && envGroupValue(row) === beforeGroup);
@@ -2178,6 +2187,36 @@
             };
             closeAddModal();
             savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    renderTagFilters();
+                    renderEnvironments(orgKey);
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function deleteGroupFromOrg(orgKey, groupValue, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canEdit) return;
+            const groupName = normalizeGroupName(groupValue);
+            const groups = getEnvGroupsForOrg(orgKey);
+            if (groups.length <= 1) return alert(t('error.lastGroupProtected'));
+            const rows = fullData.filter(row => getOrgGroup(row).key === orgKey && envGroupValue(row) === groupName);
+            if (rows.length > 0) return alert(t('error.groupNotEmpty'));
+            if (!confirm(t('confirm.deleteGroup'))) return;
+            const beforeGroups = groups.slice();
+            removeGroupNameFromOrg(orgKey, groupName);
+            resetPortalDerivedCaches();
+            savePortalFiles({
+                action: 'delete-group',
+                level: 'group',
+                org: getOrgOptions().find(item => item.key === orgKey),
+                before: { group: groupName, groups: beforeGroups },
+                after: { groups: getEnvGroupsForOrg(orgKey) },
+            })
                 .then(() => {
                     showToast(t('toast.savedDetail'));
                     renderTagFilters();
@@ -2603,6 +2642,8 @@
                 groups.get(key).rows.push(env);
             });
             Array.from(groups.values()).forEach(group => {
+                const actionOrgKey = orgKey || (group.rows[0] ? getOrgGroup(group.rows[0]).key : '');
+                const canDeleteGroup = canEdit && actionOrgKey && group.rows.length === 0 && getEnvGroupsForOrg(actionOrgKey).length > 1;
                 const groupBlock = document.createElement('div');
                 groupBlock.className = 'env-group-card';
                 const title = document.createElement('div');
@@ -2611,8 +2652,9 @@
                     <span>${sanitizeHTML(group.title || t('unset.name'))}</span>
                     ${canEdit ? `
                         <span class="group-level-actions">
-                            ${normalizeGroupName(group.groupValue) === DEFAULT_ENV_GROUP ? '' : `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(orgKey || getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
-                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(orgKey || getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
+                            ${normalizeGroupName(group.groupValue) === DEFAULT_ENV_GROUP ? '' : `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
+                            ${canDeleteGroup ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteGroupFromOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
+                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
                         </span>
                     ` : ''}
                 `;
@@ -3446,11 +3488,12 @@
                     groups = Array.isArray(value.groups) ? value.groups : [];
                     orgKey = orgKeyFromParts(code, name) !== '__unset__' ? orgKeyFromParts(code, name) : orgKey;
                 }
+                const normalizedGroups = uniqueTags(groups.map(normalizeGroupName));
                 records[orgKey] = {
                     key: orgKey,
                     code,
                     name,
-                    groups: uniqueTags([DEFAULT_ENV_GROUP].concat(groups.map(normalizeGroupName)))
+                    groups: normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP]
                 };
             });
             return { records };
@@ -3469,7 +3512,8 @@
             } else {
                 envGroupStore.records[key].code = org.code || envGroupStore.records[key].code || '';
                 envGroupStore.records[key].name = org.name || envGroupStore.records[key].name || '';
-                envGroupStore.records[key].groups = uniqueTags([DEFAULT_ENV_GROUP].concat((envGroupStore.records[key].groups || []).map(normalizeGroupName)));
+                const normalizedGroups = uniqueTags((envGroupStore.records[key].groups || []).map(normalizeGroupName));
+                envGroupStore.records[key].groups = normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP];
             }
             return envGroupStore.records[key];
         }
@@ -3486,7 +3530,8 @@
 
         function envGroupsJsonForSave() {
             Object.values(envGroupStore.records || {}).forEach(record => {
-                record.groups = uniqueTags([DEFAULT_ENV_GROUP].concat((record.groups || []).map(normalizeGroupName)));
+                const normalizedGroups = uniqueTags((record.groups || []).map(normalizeGroupName));
+                record.groups = normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP];
             });
             return JSON.stringify(envGroupStore, null, 2);
         }

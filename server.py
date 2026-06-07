@@ -256,7 +256,9 @@ def normalize_env_groups_config(raw=None):
             org_key = org_key_for_values(code, name) if code or name else org_key
         else:
             continue
-        groups = unique_tags([DEFAULT_ENV_GROUP] + (raw_groups if isinstance(raw_groups, list) else []))
+        groups = unique_tags(raw_groups if isinstance(raw_groups, list) else [])
+        if not groups:
+            groups = [DEFAULT_ENV_GROUP]
         records[org_key] = {
             "key": org_key,
             "code": code,

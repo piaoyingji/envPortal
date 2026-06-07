@@ -171,15 +171,22 @@ class RoleDataPermissionTest(unittest.TestCase):
 
 
 class EnvironmentGroupConfigTest(unittest.TestCase):
-    def test_env_group_config_always_adds_default_group(self):
+    def test_env_group_config_preserves_explicit_groups_without_forcing_default(self):
         config = server.normalize_env_groups_config({
             "0408": ["UHR-V6", "", "PHR-V7", "UHR-V6"],
         })
 
         record = config["records"]["0408"]
 
-        self.assertEqual(record["groups"], ["デフォルト", "UHR-V6", "PHR-V7"])
+        self.assertEqual(record["groups"], ["UHR-V6", "PHR-V7"])
         self.assertEqual(record["code"], "0408")
+
+    def test_env_group_config_adds_default_when_group_list_is_empty(self):
+        config = server.normalize_env_groups_config({
+            "0408": [],
+        })
+
+        self.assertEqual(config["records"]["0408"]["groups"], ["デフォルト"])
 
     def test_env_group_config_accepts_record_shape(self):
         config = server.normalize_env_groups_config({
@@ -194,7 +201,7 @@ class EnvironmentGroupConfigTest(unittest.TestCase):
 
         record = config["records"]["name:OneHR"]
 
-        self.assertEqual(record["groups"], ["デフォルト", "UPDS-V7"])
+        self.assertEqual(record["groups"], ["UPDS-V7"])
         self.assertEqual(record["name"], "OneHR")
 
     def test_filter_env_groups_keeps_visible_organizations_only(self):

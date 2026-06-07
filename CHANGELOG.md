@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.23] - 2026-06-07
+
+### Changed
+
+- Clarified that environments with an empty `環境グループ` appear in `デフォルト`, while explicit empty groups are maintained in `env_groups.json`.
+- Allowed administrators to delete empty environment groups as long as the organization still has at least one group.
+- Stopped forcing `デフォルト` back into `env_groups.json` when it has no environments and has been removed from an organization with other groups.
+
 ## [2.3.22] - 2026-06-07
 
 ### Added
@@ -15,6 +23,10 @@ All notable changes to EnvPortal are documented here.
 - Changed organization-level add action to create an empty environment group instead of creating an environment row.
 - Changed group rendering so empty groups remain visible and can receive new environments.
 - Changed portal bundle saves to include `env_groups.json` and protect it from direct static access.
+
+### Fixed
+
+- Fixed `read_tags_json()` returning `None` when `tags.json` existed after the environment group helper insertion.
 
 ## [2.3.21] - 2026-06-07
 
