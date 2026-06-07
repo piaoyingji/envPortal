@@ -219,6 +219,10 @@ def read_tags_json():
     path = BASE_DIR / "tags.json"
     if not path.exists():
         return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+    except json.JSONDecodeError:
+        return {}
 
 
 def org_key_for_values(code, name):
@@ -276,10 +280,6 @@ def filter_env_groups_for_rows(config, rows):
     records = (config or {}).get("records", {})
     visible = {org_key_for_row(row) for row in rows if org_key_for_row(row) != "__unset__"}
     return {"records": {key: value for key, value in records.items() if key in visible}}
-    try:
-        return json.loads(path.read_text(encoding="utf-8-sig") or "{}")
-    except json.JSONDecodeError:
-        return {}
 
 
 def normalize_tag_category_id(value):

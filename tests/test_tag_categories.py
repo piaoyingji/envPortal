@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+from pathlib import Path
+from unittest import mock
 
 import server
 
@@ -93,6 +96,15 @@ class TagCategoryNormalizationTest(unittest.TestCase):
 
 
 class TagStoreCompatibilityTest(unittest.TestCase):
+    def test_read_tags_json_returns_dict_when_file_exists(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tags_path = Path(temp_dir) / "tags.json"
+            tags_path.write_text('{"row": ["UHR"]}', encoding="utf-8")
+            with mock.patch.object(server, "BASE_DIR", Path(temp_dir)):
+                tags = server.read_tags_json()
+
+        self.assertEqual(tags, {"row": ["UHR"]})
+
     def test_tags_for_row_accepts_legacy_array_and_record_object(self):
         row = {
             "組織コード": "TOK",
