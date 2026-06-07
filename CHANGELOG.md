@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.21] - 2026-06-07
+
+### Changed
+
+- Changed the production page organization selector to use the same kana tab interaction as the environment search page.
+- Removed the production page's older collapsible kana group selector state.
+
 ## [2.3.20] - 2026-06-07
 
 ### Changed

@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.20"></script>
+    <script src="i18n.js?v=2.3.21"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -170,39 +170,34 @@
             min-height: 0;
             max-height: 32vh;
         }
-        .org-filter-group-label {
+        .org-filter-tabs {
+            display: flex;
+            gap: 0.25rem;
+            overflow-x: auto;
+            padding: 0 0.35rem 0.25rem;
+            scrollbar-width: thin;
+        }
+        .org-filter-tab {
+            min-width: 34px;
+            min-height: 28px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
             color: #64748b;
-            font-size: 0.72rem;
-            font-weight: 700;
-            margin: 0.65rem 0 0.25rem;
-        }
-        .org-filter-group {
-            margin: 0.1rem 0;
-        }
-        .org-filter-group summary {
-            list-style: none;
             cursor: pointer;
-            color: #1f3b57;
             font-size: 0.82rem;
             font-weight: 700;
-            padding: 0.35rem 0.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            padding: 0.25rem 0.5rem;
+            white-space: nowrap;
         }
-        .org-filter-group summary::-webkit-details-marker {
-            display: none;
+        .org-filter-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
         }
-        .org-filter-group summary::after {
-            content: "";
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 5px solid #94a3b8;
-        }
-        .org-filter-group:not([open]) summary::after {
-            transform: rotate(180deg);
+        .org-filter-tab.active {
+            background: #111;
+            border-color: #111;
+            color: #fff;
         }
         .org-filter-group-items {
             display: flex;
@@ -534,8 +529,7 @@
         let canManageUsers = false;
         let editingProductionId = '';
         let portalConfig = {};
-        const orgFilterOpenGroups = new Set();
-        let suppressOrgFilterToggle = false;
+        let selectedOrgKanaTab = '';
         const PRODUCTION_FIELDS = ["組織名","構築環境名","使用VPN","VPN IP","VPNユーザー名","VPNパスワード","踏み台IP","踏み台ユーザー名","踏み台パスワード","AP IP","APユーザー名","APパスワード","DB IP","DBユーザー名","DBパスワード"];
 
         const FIELD_GROUPS = [
@@ -644,49 +638,50 @@
                 return org.toLowerCase().includes(keyword);
             });
 
-            list.querySelectorAll('.org-filter-group[open] summary').forEach(summary => {
-                orgFilterOpenGroups.add(summary.textContent || '');
-            });
-            suppressOrgFilterToggle = true;
             list.innerHTML = '';
             if (orgs.length === 0) {
                 list.innerHTML = `<div class="production-placeholder">${t('state.noMatchedOrg')}</div>`;
-                setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
                 return;
             }
 
-            groupOrgsByKana(orgs).forEach(group => {
-                const groupEl = document.createElement('details');
-                groupEl.className = 'org-filter-group';
-                groupEl.open = orgFilterOpenGroups.has(group.label);
-                groupEl.addEventListener('toggle', () => {
-                    if (suppressOrgFilterToggle) return;
-                    if (groupEl.open) orgFilterOpenGroups.add(group.label);
-                    else orgFilterOpenGroups.delete(group.label);
-                });
-                const label = document.createElement('summary');
-                label.textContent = group.label;
-                groupEl.appendChild(label);
+            const grouped = groupOrgsByKana(orgs);
+            const currentOrgKana = selectedOrg ? kanaGroupForName(selectedOrg) : '';
+            const availableLabels = new Set(grouped.map(group => group.label));
+            if (currentOrgKana && availableLabels.has(currentOrgKana)) selectedOrgKanaTab = currentOrgKana;
+            if (!selectedOrgKanaTab || !availableLabels.has(selectedOrgKanaTab)) selectedOrgKanaTab = grouped[0].label;
 
-                const items = document.createElement('div');
-                items.className = 'org-filter-group-items';
-
-                group.items.forEach(org => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'org-filter-btn' + (selectedOrg === org ? ' active' : '');
-                    btn.title = org;
-                    btn.innerHTML = `
-                        <span class="org-filter-check" aria-hidden="true"></span>
-                        <span class="org-filter-name">${escapeHtml(org)}</span>
-                    `;
-                    btn.onclick = () => selectOrgFromMenu(org);
-                    items.appendChild(btn);
-                });
-                groupEl.appendChild(items);
-                list.appendChild(groupEl);
+            const tabs = document.createElement('div');
+            tabs.className = 'org-filter-tabs';
+            grouped.forEach(group => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'org-filter-tab' + (group.label === selectedOrgKanaTab ? ' active' : '');
+                tab.textContent = group.label;
+                tab.title = group.label;
+                tab.onclick = () => {
+                    selectedOrgKanaTab = group.label;
+                    renderOrgFilterMenu();
+                };
+                tabs.appendChild(tab);
             });
-            setTimeout(() => { suppressOrgFilterToggle = false; }, 0);
+            list.appendChild(tabs);
+
+            const activeGroup = grouped.find(group => group.label === selectedOrgKanaTab) || grouped[0];
+            const items = document.createElement('div');
+            items.className = 'org-filter-group-items';
+            activeGroup.items.forEach(org => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'org-filter-btn' + (selectedOrg === org ? ' active' : '');
+                btn.title = org;
+                btn.innerHTML = `
+                    <span class="org-filter-check" aria-hidden="true"></span>
+                    <span class="org-filter-name">${escapeHtml(org)}</span>
+                `;
+                btn.onclick = () => selectOrgFromMenu(org);
+                items.appendChild(btn);
+            });
+            list.appendChild(items);
         }
 
         function getOrgOptions() {
