@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.2] - 2026-06-07
+
+### Changed
+
+- Limited expanded environment cards inside a group to two columns on desktop and one column on narrow screens.
+- Moved environment group reassignment from the edit form into a dedicated group-move icon button and modal.
+
 ## [2.4.1] - 2026-06-07
 
 ### Changed

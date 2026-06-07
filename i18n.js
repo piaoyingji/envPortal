@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.1';
+const APP_VERSION_FALLBACK = '2.4.2';
 
 const I18N_MESSAGES = {
     ja: {
@@ -60,6 +60,7 @@ const I18N_MESSAGES = {
         'button.copy': 'コピー',
         'button.add': '追加',
         'button.addGroup': 'グループ追加',
+        'button.moveGroup': 'グループ移動',
         'button.save': '保存',
         'button.edit': '編集',
         'button.downloadRdp': 'RDPファイルをダウンロード',
@@ -192,6 +193,7 @@ const I18N_MESSAGES = {
         'modal.orgEdit': '組織編集',
         'modal.groupAdd': 'グループ追加',
         'modal.groupEdit': 'グループ編集',
+        'modal.groupMove': 'グループ移動',
         'modal.envAdd': '環境追加',
         'modal.envCopy': '環境コピー',
         'modal.productionAdd': '本番環境追加',
@@ -297,6 +299,7 @@ const I18N_MESSAGES = {
         'button.copy': '复制',
         'button.add': '新增',
         'button.addGroup': '新增分组',
+        'button.moveGroup': '移动分组',
         'button.save': '保存',
         'button.edit': '编辑',
         'button.downloadRdp': '下载RDP文件',
@@ -429,6 +432,7 @@ const I18N_MESSAGES = {
         'modal.orgEdit': '机构编辑',
         'modal.groupAdd': '环境组追加',
         'modal.groupEdit': '环境组编辑',
+        'modal.groupMove': '移动环境分组',
         'modal.envAdd': '环境追加',
         'modal.envCopy': '环境复制',
         'modal.productionAdd': '本番环境追加',

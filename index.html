@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.1"></script>
+    <script src="i18n.js?v=2.4.2"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1079,7 +1079,7 @@
         }
         .env-group-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 1rem;
         }
         .pagination button {
@@ -1087,6 +1087,9 @@
             font-weight: 560 !important;
         }
         @media (max-width: 900px) {
+            .env-group-list {
+                grid-template-columns: 1fr;
+            }
             .card-edit-field {
                 grid-column: span 12;
             }
@@ -1729,7 +1732,7 @@
             addModalContext = { type, fields, extra };
             document.getElementById('addModalTitle').textContent = t(titleKey);
             const submitBtn = document.getElementById('addModalSubmitBtn');
-            if (submitBtn) submitBtn.textContent = type.startsWith('edit-') ? t('button.save') : t('button.add');
+            if (submitBtn) submitBtn.textContent = type === 'move-group' ? t('button.confirm') : (type.startsWith('edit-') ? t('button.save') : t('button.add'));
             document.getElementById('addModalFields').innerHTML = fields.map(([field, value, wide, kind, options], index) => `
                 <div class="add-modal-field${wide ? ' wide' : ''}">
                     <label>${sanitizeHTML(modalFieldLabel(field))}</label>
@@ -1800,6 +1803,10 @@
             }
             if (addModalContext.type === 'edit-group') {
                 updateGroup(addModalContext.extra.orgKey, addModalContext.extra.groupValue, values);
+                return;
+            }
+            if (addModalContext.type === 'move-group') {
+                moveEnvironmentToGroup(addModalContext.extra.rowId, values['環境グループ']);
                 return;
             }
             if (addModalContext.type === 'env') {
@@ -1992,7 +1999,6 @@
                 ['DBユーザー名', env['DBユーザー名'] || '', false],
                 ['DBパスワード', env['DBパスワード'] || '', false],
             ].map(([field, value, wide]) => renderCardEditField(field, value, wide)).join('');
-            const groupField = renderCardSelectField('環境グループ', envGroupValue(env), getEnvGroupsForOrg(getOrgGroup(env).key), false);
             const tagValue = tagsForRow(env).join(', ');
             const apEditors = (matchedRdps.length ? matchedRdps : [null])
                 .map(remote => renderCardRdpEditor('ap', remote, getEndpoint(env['URL']).host ? `${getEndpoint(env['URL']).host}${getEndpoint(env['URL']).port ? ':' + getEndpoint(env['URL']).port : ''}` : ''))
@@ -2004,7 +2010,6 @@
                 <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
                     <div class="card-edit-section-title">${t('section.envInfo')}</div>
                     <div class="card-edit-grid">
-                        ${groupField}
                         ${envFields}
                         <div class="card-edit-field wide">
                             <label>${t('label.tags')}</label>
@@ -2374,6 +2379,54 @@
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, envGroupsJson, changeSummary })
             }).then(res => res.ok ? res.text() : Promise.reject(new Error('portal bundle save failed')));
+        }
+
+        function openMoveGroupModal(rowId) {
+            if (!canEdit) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!env) return;
+            const org = getOrgGroup(env);
+            openAddModal('move-group', 'modal.groupMove', [
+                ['環境グループ', envGroupValue(env), true, 'group-select', getEnvGroupsForOrg(org.key)],
+            ], { rowId });
+        }
+
+        function moveEnvironmentToGroup(rowId, nextGroupValue) {
+            if (!canEdit) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!env) return;
+            const nextGroup = normalizeGroupName(nextGroupValue);
+            const beforeGroup = envGroupValue(env);
+            const org = getOrgGroup(env);
+            if (nextGroup === beforeGroup) {
+                closeAddModal();
+                return;
+            }
+            const beforeEnv = cloneForLog(env);
+            const beforeTags = cloneForLog(tagsForRow(env));
+            const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
+            env['環境グループ'] = nextGroup;
+            addGroupNameToOrg(org.key, nextGroup);
+            moveTagsForRow(beforeEnv, env);
+            resetPortalDerivedCaches();
+            const summary = changeSummaryFor('move-env-group', beforeEnv, env, {
+                beforeRdp,
+                afterRdp: relatedRdpRowsForEnv(env),
+                beforeTags,
+                afterTags: tagsForRow(env),
+                note: `${beforeGroup} -> ${nextGroup}`,
+            });
+            closeAddModal();
+            savePortalFiles(summary)
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    editingEnvId = '';
+                    renderTagFilters();
+                    document.getElementById('orgSelect').value = org.key;
+                    syncProductionNavLink();
+                    renderEnvironments(org.key);
+                })
+                .catch(err => alert(t('error.save') + err.message));
         }
 
         function copyEnvironmentCard(rowId) {
@@ -2926,6 +2979,7 @@
                     ${isEditingCard
                         ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
                         : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
+                    ${!isEditingCard ? `<button type="button" class="secondary-btn" onclick="openMoveGroupModal('${escapeJs(env.__rowId)}')" title="${t('button.moveGroup')}" aria-label="${t('button.moveGroup')}">${moveGroupIcon()}</button>` : ''}
                     ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>` : ''}
                     ${isEditingCard ? `<button type="button" class="secondary-btn cancel-btn" onclick="cancelEnvironmentCardEdit()" title="${t('button.cancel')}" aria-label="${t('button.cancel')}">${cancelActionIcon()}</button>` : ''}
                     ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
@@ -3252,6 +3306,10 @@
 
         function trashIcon() {
             return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M6 7l1 15h10l1-15"></path><path d="M9 7V4h6v3"></path></svg>';
+        }
+
+        function moveGroupIcon() {
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10"></path><path d="M14 4l3 3-3 3"></path><path d="M17 17H7"></path><path d="M10 14l-3 3 3 3"></path></svg>';
         }
 
         function expandIcon() {
