@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.21"></script>
+    <script src="i18n.js?v=2.3.22"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1206,6 +1206,7 @@
         let fullData = [];
         let rdpData = []; // RDP情報を保持
         let tagStore = {};
+        let envGroupStore = { records: {} };
         let tagCategoryConfig = normalizeTagCategories(null);
         let portalConfig = {};
         let selectedTags = [];
@@ -1234,7 +1235,8 @@
         const STATUS_REFRESH_MS = 60000;
         const STATUS_CHECK_CONCURRENCY = 1;
         const RENDER_BATCH_SIZE = 12;
-        const ENV_GROUP_OPTIONS = ['', 'UHR-V6', 'PHR-V7'];
+        const DEFAULT_ENV_GROUP = 'デフォルト';
+        const ENV_GROUP_OPTIONS = [DEFAULT_ENV_GROUP, 'UHR-V6', 'PHR-V7', 'UPDS-V6', 'UPDS-V7'];
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         const AUTO_TAG_PROVIDERS = [
@@ -1313,9 +1315,11 @@
             setSystemMenuVisible(isSystemAdmin(payload));
             isAuthenticated = canEdit;
             tagStore = normalizeTagStore(payload.tags || {});
+            envGroupStore = normalizeEnvGroupStore(payload.envGroups || {});
             tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
             fullData = assignRowIds(payload.data || [], 'env');
             rdpData = assignRowIds(payload.rdp || [], 'rdp');
+            syncEnvGroupsFromData();
             resetPortalDerivedCaches();
             updateEditToolbar();
 
@@ -1427,16 +1431,10 @@
 
         function initDropdown() {
             const orgSelect = document.getElementById('orgSelect');
-            
-            const orgMap = new Map();
-            fullData.forEach(item => {
-                const group = getOrgGroup(item);
-                if (!group.isUnset && !orgMap.has(group.key)) orgMap.set(group.key, group);
-            });
 
             orgSelect.innerHTML = `<option value="">${t('select.allOrgSummary')}</option>`;
             
-            const sortedOrgs = Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+            const sortedOrgs = getOrgOptions();
             
             sortedOrgs.forEach(org => {
                 const opt = document.createElement('option');
@@ -1517,7 +1515,26 @@
                 const group = getOrgGroup(item);
                 if (!group.isUnset && !orgMap.has(group.key)) orgMap.set(group.key, group);
             });
+            Object.values(envGroupStore.records || {}).forEach(record => {
+                const org = orgInfoFromGroupRecord(record);
+                if (!org.isUnset && !orgMap.has(org.key)) orgMap.set(org.key, org);
+            });
             return Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+        }
+
+        function orgInfoFromGroupRecord(record) {
+            const code = String(record && record.code || '').trim();
+            const name = String(record && record.name || '').trim();
+            const key = String(record && record.key || orgKeyFromParts(code, name)).trim();
+            const displayName = name || (key.startsWith('name:') ? key.slice(5) : key);
+            const isUnset = key === '__unset__' || (!code && !displayName);
+            return {
+                key: isUnset ? '__unset__' : key,
+                code,
+                name: isUnset ? t('unset.org') : displayName,
+                label: isUnset ? t('unset.org') : (code ? `${code} ${displayName}` : displayName),
+                isUnset
+            };
         }
 
         function syncOrgReadingsAndRefresh() {
@@ -1617,13 +1634,40 @@
             openAddModal('org', 'modal.orgAdd', [
                 ['組織コード', ''],
                 ['組織名', '', true],
-                ['環境グループ', 'UHR-V6', false, 'group-input'],
-                ['構築環境名', t('default.envName'), true],
             ]);
         }
 
-        function groupNameOptions() {
-            return uniqueTags(ENV_GROUP_OPTIONS.concat(fullData.map(row => envGroupValue(row))).filter(Boolean));
+        function groupNameOptions(orgKey = '') {
+            return uniqueTags(ENV_GROUP_OPTIONS.concat(orgKey ? getEnvGroupsForOrg(orgKey) : fullData.map(row => envGroupValue(row))).filter(Boolean));
+        }
+
+        function getEnvGroupsForOrg(orgKey) {
+            const record = envGroupStore.records[orgKey];
+            const groups = record && Array.isArray(record.groups) ? record.groups.slice() : [];
+            fullData.forEach(row => {
+                if (getOrgGroup(row).key === orgKey) groups.push(envGroupValue(row));
+            });
+            return uniqueTags([DEFAULT_ENV_GROUP].concat(groups.map(normalizeGroupName)));
+        }
+
+        function addGroupNameToOrg(orgKey, groupName) {
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            if (!org) return null;
+            const record = ensureEnvGroupRecord(org);
+            const normalized = normalizeGroupName(groupName);
+            if (!record.groups.includes(normalized)) record.groups.push(normalized);
+            return normalized;
+        }
+
+        function renameEnvGroupInStore(orgKey, beforeGroup, afterGroup) {
+            const record = envGroupStore.records[orgKey];
+            if (!record) return;
+            const from = normalizeGroupName(beforeGroup);
+            const to = normalizeGroupName(afterGroup);
+            record.groups = uniqueTags([DEFAULT_ENV_GROUP].concat((record.groups || []).map(group => {
+                const normalized = normalizeGroupName(group);
+                return normalized === from ? to : normalized;
+            })));
         }
 
         function modalFieldLabel(field) {
@@ -1650,8 +1694,10 @@
                     <label>${sanitizeHTML(modalFieldLabel(field))}</label>
                     ${kind === 'select'
                         ? `<select data-add-field="${sanitizeHTML(field)}">${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}</select>`
+                        : kind === 'group-select'
+                            ? `<select data-add-field="${sanitizeHTML(field)}">${(options || groupNameOptions()).map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${sanitizeHTML(option)}</option>`).join('')}</select>`
                         : kind === 'group-input'
-                            ? `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}" list="groupOptions_${index}"><datalist id="groupOptions_${index}">${groupNameOptions().map(option => `<option value="${sanitizeHTML(option)}"></option>`).join('')}</datalist>`
+                            ? `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}" list="groupOptions_${index}"><datalist id="groupOptions_${index}">${groupNameOptions(addModalContext && addModalContext.extra && addModalContext.extra.orgKey).map(option => `<option value="${sanitizeHTML(option)}"></option>`).join('')}</datalist>`
                         : kind === 'org-select'
                             ? `<select data-add-field="${sanitizeHTML(field)}">${(options || getOrgOptions()).map(org => `<option value="${sanitizeHTML(org.key)}" ${org.key === value ? 'selected' : ''}>${sanitizeHTML(org.label)}</option>`).join('')}</select>`
                         : `<input data-add-field="${sanitizeHTML(field)}" value="${sanitizeHTML(value || '')}">`}
@@ -1681,19 +1727,26 @@
             const values = addModalValues();
             if (addModalContext.type === 'org') {
                 if (!values['組織名']) return alert(t('error.orgNameRequired'));
-                const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
-                DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
-                row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                fullData.push(row);
+                const org = {
+                    key: orgKeyFromParts(values['組織コード'], values['組織名']),
+                    code: values['組織コード'] || '',
+                    name: values['組織名'] || '',
+                    label: values['組織コード'] ? `${values['組織コード']} ${values['組織名']}` : values['組織名'],
+                    isUnset: false
+                };
+                ensureEnvGroupRecord(org);
                 resetPortalDerivedCaches();
                 closeAddModal();
-                initDropdown();
-                renderOrgFilterMenu();
-                const group = getOrgGroup(row);
-                document.getElementById('orgSelect').value = group.key;
-                syncProductionNavLink();
-                renderEnvironments(group.key);
-                editEnvironmentCard(row.__rowId);
+                savePortalFiles({ action: 'add-org', level: 'org', after: { org, groups: getEnvGroupsForOrg(org.key) } })
+                    .then(() => {
+                        showToast(t('toast.savedDetail'));
+                        initDropdown();
+                        renderOrgFilterMenu();
+                        document.getElementById('orgSelect').value = org.key;
+                        syncProductionNavLink();
+                        renderEnvironments(org.key);
+                    })
+                    .catch(err => alert(t('error.save') + err.message));
                 return;
             }
             if (addModalContext.type === 'edit-org') {
@@ -1714,8 +1767,10 @@
                 const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
                 row['組織コード'] = org.code || '';
                 row['組織名'] = org.name || '';
-                row['環境グループ'] = addModalContext.extra.groupName || '';
+                row['環境グループ'] = normalizeGroupName(values['環境グループ'] || addModalContext.extra.groupName);
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
+                row['環境グループ'] = normalizeGroupName(row['環境グループ']);
+                addGroupNameToOrg(org.key, row['環境グループ']);
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 fullData.push(row);
                 resetPortalDerivedCaches();
@@ -1857,8 +1912,19 @@
             `;
         }
 
+        function renderCardSelectField(field, value, options, wide = false) {
+            return `
+                <div class="card-edit-field${wide ? ' wide' : ''}">
+                    <label>${sanitizeHTML(field)}</label>
+                    <select data-env-field="${sanitizeHTML(field)}">
+                        ${options.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${sanitizeHTML(option)}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
         function envGroupValue(row) {
-            return String(row['環境グループ'] || '').trim();
+            return normalizeGroupName(row['環境グループ']);
         }
 
         function renderCardRdpEditor(kind, row, fallbackTarget) {
@@ -1885,6 +1951,7 @@
                 ['DBユーザー名', env['DBユーザー名'] || '', false],
                 ['DBパスワード', env['DBパスワード'] || '', false],
             ].map(([field, value, wide]) => renderCardEditField(field, value, wide)).join('');
+            const groupField = renderCardSelectField('環境グループ', envGroupValue(env), getEnvGroupsForOrg(getOrgGroup(env).key), false);
             const tagValue = tagsForRow(env).join(', ');
             const apEditors = (matchedRdps.length ? matchedRdps : [null])
                 .map(remote => renderCardRdpEditor('ap', remote, getEndpoint(env['URL']).host ? `${getEndpoint(env['URL']).host}${getEndpoint(env['URL']).port ? ':' + getEndpoint(env['URL']).port : ''}` : ''))
@@ -1896,6 +1963,7 @@
                 <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
                     <div class="card-edit-section-title">${t('section.envInfo')}</div>
                     <div class="card-edit-grid">
+                        ${groupField}
                         ${envFields}
                         <div class="card-edit-field wide">
                             <label>${t('label.tags')}</label>
@@ -1985,22 +2053,40 @@
             const nextName = String(values['組織名'] || '').trim();
             if (!nextName) return alert(t('error.orgNameRequired'));
             const rows = fullData.filter(row => getOrgGroup(row).key === orgKey);
-            if (rows.length === 0) return;
+            const existingOrg = getOrgOptions().find(item => item.key === orgKey);
+            if (!existingOrg) return;
             const beforeRows = rows.map(row => cloneForLog(row));
-            const beforeOrg = getOrgGroup(rows[0]);
+            const beforeOrg = rows.length ? getOrgGroup(rows[0]) : existingOrg;
+            const afterOrg = {
+                key: orgKeyFromParts(nextCode, nextName),
+                code: nextCode,
+                name: nextName,
+                label: nextCode ? `${nextCode} ${nextName}` : nextName,
+                isUnset: false
+            };
             rows.forEach((row, index) => {
                 const beforeRow = cloneForLog(row);
                 row['組織コード'] = nextCode;
                 row['組織名'] = nextName;
                 moveTagsForRow(beforeRow, row);
             });
+            if (envGroupStore.records[orgKey]) {
+                const record = envGroupStore.records[orgKey];
+                delete envGroupStore.records[orgKey];
+                record.key = afterOrg.key;
+                record.code = afterOrg.code;
+                record.name = afterOrg.name;
+                record.groups = uniqueTags([DEFAULT_ENV_GROUP].concat((record.groups || []).map(normalizeGroupName)));
+                envGroupStore.records[afterOrg.key] = record;
+            } else {
+                ensureEnvGroupRecord(afterOrg);
+            }
             rdpData.forEach(remote => {
                 if ((remote['組織名'] || '').trim() === beforeOrg.name) {
                     remote['組織名'] = nextName;
                 }
             });
             resetPortalDerivedCaches();
-            const afterOrg = getOrgGroup(rows[0]);
             const summary = {
                 action: 'edit-org',
                 level: 'org',
@@ -2028,8 +2114,7 @@
             }
             if (!canEdit) return;
             openAddModal('group', 'modal.groupAdd', [
-                ['環境グループ', 'UHR-V6', false, 'group-input'],
-                ['構築環境名', t('default.envName'), true],
+                ['環境グループ', '', true, 'group-input'],
             ], { orgKey });
         }
 
@@ -2039,17 +2124,21 @@
             if (!org) return;
             const groupName = String(values['環境グループ'] || '').trim();
             if (!groupName) return alert(t('error.groupRequired'));
-            const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
-            row['組織コード'] = org.code || '';
-            row['組織名'] = org.name || '';
-            row['環境グループ'] = groupName;
-            row['構築環境名'] = values['構築環境名'] || t('default.envName');
-            row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-            fullData.push(row);
+            const normalizedGroup = addGroupNameToOrg(orgKey, groupName);
             resetPortalDerivedCaches();
             closeAddModal();
-            renderEnvironments(org.key);
-            editEnvironmentCard(row.__rowId);
+            savePortalFiles({
+                action: 'add-group',
+                level: 'group',
+                org,
+                after: { group: normalizedGroup, rows: [] },
+            })
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    renderEnvironments(org.key);
+                    renderTagFilters();
+                })
+                .catch(err => alert(t('error.save') + err.message));
         }
 
         function openGroupEdit(orgKey, groupValue, event) {
@@ -2058,8 +2147,9 @@
                 event.stopPropagation();
             }
             if (!canEdit) return;
+            if (normalizeGroupName(groupValue) === DEFAULT_ENV_GROUP) return alert(t('error.defaultGroupProtected'));
             openAddModal('edit-group', 'modal.groupEdit', [
-                ['環境グループ', groupValue || '', true, 'group-input'],
+                ['環境グループ', normalizeGroupName(groupValue), true, 'group-input'],
             ], { orgKey, groupValue });
         }
 
@@ -2067,21 +2157,24 @@
             if (!canEdit) return;
             const nextGroup = String(values['環境グループ'] || '').trim();
             if (!nextGroup) return alert(t('error.groupRequired'));
-            const rows = fullData.filter(row => getOrgGroup(row).key === orgKey && envGroupValue(row) === groupValue);
-            if (rows.length === 0) return;
+            if (normalizeGroupName(groupValue) === DEFAULT_ENV_GROUP) return alert(t('error.defaultGroupProtected'));
+            const beforeGroup = normalizeGroupName(groupValue);
+            const normalizedNextGroup = normalizeGroupName(nextGroup);
+            const rows = fullData.filter(row => getOrgGroup(row).key === orgKey && envGroupValue(row) === beforeGroup);
             const beforeRows = rows.map(row => cloneForLog(row));
             rows.forEach(row => {
                 const beforeRow = cloneForLog(row);
-                row['環境グループ'] = nextGroup;
+                row['環境グループ'] = normalizedNextGroup;
                 moveTagsForRow(beforeRow, row);
             });
+            renameEnvGroupInStore(orgKey, beforeGroup, normalizedNextGroup);
             resetPortalDerivedCaches();
             const summary = {
                 action: 'edit-group',
                 level: 'group',
-                org: getOrgGroup(rows[0]),
-                before: { group: groupValue, rows: beforeRows },
-                after: { group: nextGroup, rows: rows.map(row => cloneForLog(row)) },
+                org: getOrgOptions().find(item => item.key === orgKey),
+                before: { group: beforeGroup, rows: beforeRows },
+                after: { group: normalizedNextGroup, rows: rows.map(row => cloneForLog(row)) },
             };
             closeAddModal();
             savePortalFiles(summary)
@@ -2102,11 +2195,13 @@
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
             const beforeTags = cloneForLog(tagsForRow(env));
             const originalKey = editor.dataset.originalKey || getRowKey(env);
-            editor.querySelectorAll('[data-env-field]').forEach(input => {
-                if (DATA_FIELDS.includes(input.dataset.envField)) {
-                    env[input.dataset.envField] = input.value.trim();
+            editor.querySelectorAll('[data-env-field]').forEach(control => {
+                if (DATA_FIELDS.includes(control.dataset.envField)) {
+                    env[control.dataset.envField] = control.value.trim();
                 }
             });
+            env['環境グループ'] = normalizeGroupName(env['環境グループ']);
+            addGroupNameToOrg(getOrgGroup(env).key, env['環境グループ']);
             delete tagStore[originalKey];
             const tagsInput = editor.querySelector('input[data-env-tags]');
             const tags = String(tagsInput ? tagsInput.value : '')
@@ -2154,7 +2249,9 @@
             if (!canEdit) return;
             const org = getOrgOptions().find(item => item.key === orgKey);
             if (!org) return;
+            const selectedGroup = normalizeGroupName(groupName);
             openAddModal('env', 'modal.envAdd', [
+                ['環境グループ', selectedGroup, false, 'group-select', getEnvGroupsForOrg(org.key)],
                 ['構築環境名', t('default.envName'), true],
                 ['URL', '', true],
                 ['ログインID', ''],
@@ -2196,13 +2293,16 @@
         }
 
         function savePortalFiles(changeSummary = {}) {
-            const dataCsv = Papa.unparse({ fields: DATA_FIELDS, data: fullData }, { quotes: true });
+            syncEnvGroupsFromData();
+            const dataRows = fullData.map(row => ({ ...row, '環境グループ': envGroupValue(row) }));
+            const dataCsv = Papa.unparse({ fields: DATA_FIELDS, data: dataRows }, { quotes: true });
             const rdpCsv = Papa.unparse({ fields: RDP_FIELDS, data: rdpData }, { quotes: true });
             const tagsJson = JSON.stringify(tagStore, null, 2);
+            const envGroupsJson = envGroupsJsonForSave();
             return portalFetch('update_portal_bundle.jsp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, changeSummary })
+                body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, envGroupsJson, changeSummary })
             }).then(res => res.ok ? res.text() : Promise.reject(new Error('portal bundle save failed')));
         }
 
@@ -2231,7 +2331,9 @@
             newEnv.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             newEnv['組織コード'] = targetOrg.code || '';
             newEnv['組織名'] = targetOrg.name || '';
+            newEnv['環境グループ'] = envGroupValue(newEnv);
             newEnv['構築環境名'] = `${newEnv['構築環境名'] || t('default.envName')} ${t('suffix.copy')}`;
+            addGroupNameToOrg(targetOrg.key, newEnv['環境グループ']);
             fullData.push(newEnv);
 
             const tags = tagsForRow(env).slice();
@@ -2317,6 +2419,11 @@
                     }
                 }
             });
+            if (selectedTags.length === 0) {
+                getOrgOptions().forEach(org => {
+                    if (!org.isUnset && !orgMap.has(org.key)) orgMap.set(org.key, { ...org, envs: [] });
+                });
+            }
 
             if (orgMap.size === 0) {
                 const empty = document.createElement('div');
@@ -2448,12 +2555,11 @@
                 return getOrgGroup(item).key === selectedOrgKey;
             });
 
-            if (matchedEnvs.length === 0) {
+            const orgInfo = matchedEnvs[0] ? getOrgGroup(matchedEnvs[0]) : getOrgOptions().find(org => org.key === selectedOrgKey);
+            if (!orgInfo) {
                 resultsArea.innerHTML = `<div style="grid-column: 1 / -1;" class="empty-state">${t('state.noOrgEnv')}</div>`;
                 return;
             }
-
-            const orgInfo = getOrgGroup(matchedEnvs[0]);
             const banner = document.createElement('div');
             banner.className = 'active-org-banner';
             banner.innerHTML = `
@@ -2477,17 +2583,22 @@
                     ${t('button.backList')}
                 </button>
             `;
-            renderEnvironmentGroupBlocks(matchedEnvs, resultsArea, selectedTags.length > 0);
+            renderEnvironmentGroupBlocks(matchedEnvs, resultsArea, selectedTags.length > 0, selectedOrgKey, true);
             resultsArea.appendChild(backBtnWrapper);
             startRegisteredStatusChecks();
         }
 
-        function renderEnvironmentGroupBlocks(envs, targetArea, showOrgTitle = false) {
+        function renderEnvironmentGroupBlocks(envs, targetArea, showOrgTitle = false, orgKey = '', includeEmptyGroups = false) {
             const groups = new Map();
+            if (includeEmptyGroups && orgKey) {
+                getEnvGroupsForOrg(orgKey).forEach(groupName => {
+                    groups.set(groupName, { title: groupName, groupValue: groupName, rows: [] });
+                });
+            }
             envs.forEach(env => {
                 const explicitGroup = envGroupValue(env);
-                const key = explicitGroup || `__single_${env.__rowId}`;
-                const title = explicitGroup || (env['構築環境名'] || t('unset.name'));
+                const key = explicitGroup;
+                const title = explicitGroup;
                 if (!groups.has(key)) groups.set(key, { title, groupValue: explicitGroup, rows: [] });
                 groups.get(key).rows.push(env);
             });
@@ -2500,14 +2611,21 @@
                     <span>${sanitizeHTML(group.title || t('unset.name'))}</span>
                     ${canEdit ? `
                         <span class="group-level-actions">
-                            <button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
+                            ${normalizeGroupName(group.groupValue) === DEFAULT_ENV_GROUP ? '' : `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(orgKey || getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
+                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(orgKey || getOrgGroup(group.rows[0]).key)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
                         </span>
                     ` : ''}
                 `;
                 const list = document.createElement('div');
                 list.className = 'env-group-list';
-                group.rows.forEach(env => list.appendChild(createEnvironmentCard(env, showOrgTitle)));
+                if (group.rows.length) {
+                    group.rows.forEach(env => list.appendChild(createEnvironmentCard(env, showOrgTitle)));
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-state env-group-empty';
+                    empty.textContent = t('state.noGroupEnv');
+                    list.appendChild(empty);
+                }
                 groupBlock.appendChild(title);
                 groupBlock.appendChild(list);
                 targetArea.appendChild(groupBlock);
@@ -3296,6 +3414,83 @@
             return tagsJson;
         }
 
+        function orgKeyFromParts(code, name) {
+            const orgCode = String(code || '').trim();
+            const orgName = String(name || '').trim();
+            if (!orgCode && !orgName) return '__unset__';
+            return orgCode || `name:${orgName}`;
+        }
+
+        function normalizeGroupName(value) {
+            return String(value || '').trim() || DEFAULT_ENV_GROUP;
+        }
+
+        function normalizeEnvGroupStore(raw) {
+            const source = raw && typeof raw === 'object' ? raw : {};
+            const rawRecords = source.records && typeof source.records === 'object' ? source.records : source;
+            const records = {};
+            Object.keys(rawRecords || {}).forEach(key => {
+                const value = rawRecords[key];
+                let code = '';
+                let name = '';
+                let groups = [];
+                let orgKey = String(key || '').trim();
+                if (!orgKey || orgKey === '__unset__') return;
+                if (Array.isArray(value)) {
+                    code = orgKey.startsWith('name:') ? '' : orgKey;
+                    name = orgKey.startsWith('name:') ? orgKey.slice(5) : '';
+                    groups = value;
+                } else if (value && typeof value === 'object') {
+                    code = String(value.code || '').trim();
+                    name = String(value.name || '').trim();
+                    groups = Array.isArray(value.groups) ? value.groups : [];
+                    orgKey = orgKeyFromParts(code, name) !== '__unset__' ? orgKeyFromParts(code, name) : orgKey;
+                }
+                records[orgKey] = {
+                    key: orgKey,
+                    code,
+                    name,
+                    groups: uniqueTags([DEFAULT_ENV_GROUP].concat(groups.map(normalizeGroupName)))
+                };
+            });
+            return { records };
+        }
+
+        function ensureEnvGroupRecord(org) {
+            if (!org || org.isUnset) return null;
+            const key = org.key || orgKeyFromParts(org.code, org.name);
+            if (!envGroupStore.records[key]) {
+                envGroupStore.records[key] = {
+                    key,
+                    code: org.code || '',
+                    name: org.name || '',
+                    groups: [DEFAULT_ENV_GROUP]
+                };
+            } else {
+                envGroupStore.records[key].code = org.code || envGroupStore.records[key].code || '';
+                envGroupStore.records[key].name = org.name || envGroupStore.records[key].name || '';
+                envGroupStore.records[key].groups = uniqueTags([DEFAULT_ENV_GROUP].concat((envGroupStore.records[key].groups || []).map(normalizeGroupName)));
+            }
+            return envGroupStore.records[key];
+        }
+
+        function syncEnvGroupsFromData() {
+            fullData.forEach(row => {
+                const org = getOrgGroup(row);
+                const record = ensureEnvGroupRecord(org);
+                if (!record) return;
+                const group = envGroupValue(row);
+                if (!record.groups.includes(group)) record.groups.push(group);
+            });
+        }
+
+        function envGroupsJsonForSave() {
+            Object.values(envGroupStore.records || {}).forEach(record => {
+                record.groups = uniqueTags([DEFAULT_ENV_GROUP].concat((record.groups || []).map(normalizeGroupName)));
+            });
+            return JSON.stringify(envGroupStore, null, 2);
+        }
+
         function normalizeTagCategories(config) {
             const source = config && typeof config === 'object' ? config : {};
             const categories = Array.isArray(source.categories) ? source.categories : [];
@@ -3381,7 +3576,7 @@
         }
 
         function autoEnvTagsForRow(row) {
-            const group = String(row['環境グループ'] || '').trim();
+            const group = envGroupValue(row);
             const name = String(row['構築環境名'] || '').trim();
             return uniqueTags([
                 group,
@@ -3548,7 +3743,7 @@
             const isUnset = code === '' && name === '';
             const displayName = name || t('unset.name');
             const group = {
-                key: isUnset ? '__unset__' : (code || `name:${name}`),
+                key: isUnset ? '__unset__' : orgKeyFromParts(code, name),
                 code,
                 name: isUnset ? t('unset.org') : displayName,
                 label: isUnset ? t('unset.org') : (code ? `${code} ${displayName}` : displayName),

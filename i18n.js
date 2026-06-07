@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.21';
+const APP_VERSION_FALLBACK = '2.3.22';
 
 const I18N_MESSAGES = {
     ja: {
@@ -47,6 +47,7 @@ const I18N_MESSAGES = {
         'state.noTagEnv': 'このタグに関連する環境データはありません。',
         'state.noAdminData': 'データがありません。「新規行を追加」をクリックして開始してください。',
         'state.noMatchedOrg': '条件に一致する組織がありません。',
+        'state.noGroupEnv': 'このグループには環境がありません。',
         'button.addRow': '＋ 新規行を追加',
         'button.saveAll': '保存する (一括更新)',
         'button.search': '検索',
@@ -98,6 +99,7 @@ const I18N_MESSAGES = {
         'error.save': '保存エラー: ',
         'error.orgNameRequired': '組織名を入力してください',
         'error.groupRequired': '環境グループを入力してください',
+        'error.defaultGroupProtected': 'デフォルトグループは変更できません',
         'error.noCopyTargetOrg': 'コピー先組織がありません',
         'confirm.delete': 'このデータを完全に削除してもよろしいですか？（※即座にサーバーから削除されます）',
         'confirm.deleteEnv': 'この環境を削除しますか？',
@@ -277,6 +279,7 @@ const I18N_MESSAGES = {
         'state.noTagEnv': '没有匹配该标签的环境数据。',
         'state.noAdminData': '暂无数据。点击“新增行”开始维护。',
         'state.noMatchedOrg': '没有符合条件的机构。',
+        'state.noGroupEnv': '这个环境组中还没有环境。',
         'button.addRow': '＋ 新增行',
         'button.saveAll': '保存（批量更新）',
         'button.search': '检索',
@@ -328,6 +331,7 @@ const I18N_MESSAGES = {
         'error.save': '保存错误: ',
         'error.orgNameRequired': '请输入机构名称',
         'error.groupRequired': '请输入环境组',
+        'error.defaultGroupProtected': '默认环境组不能修改',
         'error.noCopyTargetOrg': '没有可复制到的目标机构',
         'confirm.delete': '确定要永久删除这条数据吗？（会立即从服务器删除）',
         'confirm.deleteEnv': '确定要删除这个环境吗？',

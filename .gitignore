@@ -9,6 +9,7 @@ users.json
 roles.json
 tags.json
 tag_categories.json
+env_groups.json
 org_readings.js
 ip_auth_whitelist.txt
 windows_auth_whitelist.txt

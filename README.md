@@ -2,11 +2,11 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.3.21`
+当前版本：`2.3.22`
 
 ## 核心能力
 
-- 环境检索按 `组织 → 环境组 → 环境` 三层管理。环境组使用 `data.csv` 的 `環境グループ` 字段，例如 `UHR-V6`、`PHR-V7`。
+- 环境检索按 `组织 → 环境组 → 环境` 三层管理。环境所属组使用 `data.csv` 的 `環境グループ` 字段，空值按 `デフォルト` 处理；空环境组和组顺序保存在 `env_groups.json`。
 - 机构/客户按“编码 + 名称”管理，组织属性可在环境检索画面直接编辑，并批量反映到该组织下的环境。
 - 组属性可在环境检索画面直接编辑，并批量反映到该组织该组下的环境。
 - 环境卡片只维护该环境自身的 URL、登录信息、DB、AP/DB RDP 和 tags，组织/组信息不再混在环境编辑里。
@@ -30,7 +30,7 @@ EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，�
 - 角色权限支持 `admin`、`staff`、`import_staff`、`new_employee` 以及手工新增角色。管理员可编辑全部信息和管理用户，其他角色按功能权限和数据权限查看脱敏或限定数据。用户管理画面用 `域用户（最近访问IP）` 显示访问者，并可删除多余用户。
 - 环境搜索、本番环境和用户管理合并为当前主页面，不再使用独立的旧管理页面。
 - 数据存储使用本地 JSON/CSV 文件，不依赖真实数据库。运行数据文件不进入 Git，避免部署更新覆盖现场数据。
-- 环境检索保存使用统一的 `update_portal_bundle.jsp`，一次保存 `data.csv`、`rdp.csv`、`tags.json`，change log 记录差分摘要而不是整份 CSV。
+- 环境检索保存使用统一的 `update_portal_bundle.jsp`，一次保存 `data.csv`、`rdp.csv`、`tags.json`、`env_groups.json`，change log 记录差分摘要而不是整份 CSV。
 - 后端已切换为 Python，保留 `start.bat`，并提供 `start.sh`，为后续 Linux 部署做准备。
 - Windows 启动时会检查并尝试开放 EnvPortal 与 Guacamole 的入站端口。
 
@@ -160,6 +160,7 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `run.py`：启动入口。
 - `db_versions.json`：数据库类型和版本候选。
 - `data.csv`：环境档案数据，本地运行数据文件，包含 `環境グループ`。
+- `env_groups.json`：组织下环境组主数据，本地运行数据文件，用于保存空组和显式组顺序，缺失时自动补齐 `デフォルト`。
 - `rdp.csv`：远程连接档案数据，本地运行数据文件。
 - `production.csv`：本番环境数据，本地运行数据文件。
 - `tags.json`：自由标签存储，本地运行数据文件。
@@ -169,7 +170,7 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `org_readings.js`：组织名读音映射，本地自动生成文件。
 - `images/sea01.jpg`：旧版顶部主题背景图保留文件，当前默认样式不再使用该背景。
 
-以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`roles.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
+以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`env_groups.json`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`roles.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`。
 
 ## 版本规则
 

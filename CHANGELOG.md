@@ -2,6 +2,20 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.22] - 2026-06-07
+
+### Added
+
+- Added `env_groups.json` as a local runtime file for empty environment groups and explicit organization group order.
+- Added maintainable `組織 → 環境グループ → 環境` hierarchy behavior with automatic `デフォルト` groups.
+- Added group selection when creating or editing environments, with empty historical `環境グループ` values normalized to `デフォルト`.
+
+### Changed
+
+- Changed organization-level add action to create an empty environment group instead of creating an environment row.
+- Changed group rendering so empty groups remain visible and can receive new environments.
+- Changed portal bundle saves to include `env_groups.json` and protect it from direct static access.
+
 ## [2.3.21] - 2026-06-07
 
 ### Changed

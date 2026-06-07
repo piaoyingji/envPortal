@@ -123,7 +123,7 @@ PRODUCTION_CSV_FIELDS = [
     "DBユーザー名",
     "DBパスワード",
 ]
-SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json", "/tag_categories.json"}
+SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json", "/tag_categories.json", "/env_groups.json"}
 REMOVED_MANAGEMENT_PAGES = {"/admin.html", "/rdp.html", "/production-admin.html"}
 PORTAL_MASK_FIELDS = {"ログインパスワード", "DBパスワード"}
 RDP_MASK_FIELDS = {"RDPユーザー名", "RDPパスワード"}
@@ -131,8 +131,10 @@ PRODUCTION_MASK_FIELDS = {"VPNパスワード", "踏み台パスワード", "AP�
 USERS_PATH = BASE_DIR / "users.json"
 ROLES_PATH = BASE_DIR / "roles.json"
 TAG_CATEGORIES_PATH = BASE_DIR / "tag_categories.json"
+ENV_GROUPS_PATH = BASE_DIR / "env_groups.json"
 OTHER_TAG_CATEGORY_ID = "other"
 OTHER_TAG_CATEGORY_LABEL = "其他"
+DEFAULT_ENV_GROUP = "デフォルト"
 DEFAULT_TAG_SKINS = {
     "UHR": {"bg": "#f0fdf4", "border": "#bbf7d0", "accent": "#16a34a"},
     "PHR": {"bg": "#eff6ff", "border": "#bfdbfe", "accent": "#2563eb"},
@@ -217,6 +219,63 @@ def read_tags_json():
     path = BASE_DIR / "tags.json"
     if not path.exists():
         return {}
+
+
+def org_key_for_values(code, name):
+    org_code = str(code or "").strip()
+    org_name = str(name or "").strip()
+    if not org_code and not org_name:
+        return "__unset__"
+    return org_code or f"name:{org_name}"
+
+
+def org_key_for_row(row):
+    return org_key_for_values(row.get("組織コード"), row.get("組織名"))
+
+
+def normalize_env_groups_config(raw=None):
+    source = raw if isinstance(raw, dict) else {}
+    raw_records = source.get("records") if isinstance(source.get("records"), dict) else source
+    records = {}
+    for key, value in raw_records.items():
+        org_key = str(key or "").strip()
+        if not org_key or org_key == "__unset__":
+            continue
+        if isinstance(value, list):
+            code = org_key if not org_key.startswith("name:") else ""
+            name = org_key[5:] if org_key.startswith("name:") else ""
+            raw_groups = value
+        elif isinstance(value, dict):
+            code = str(value.get("code") or "").strip()
+            name = str(value.get("name") or "").strip()
+            raw_groups = value.get("groups", [])
+            org_key = org_key_for_values(code, name) if code or name else org_key
+        else:
+            continue
+        groups = unique_tags([DEFAULT_ENV_GROUP] + (raw_groups if isinstance(raw_groups, list) else []))
+        records[org_key] = {
+            "key": org_key,
+            "code": code,
+            "name": name,
+            "groups": groups,
+        }
+    return {"records": records}
+
+
+def read_env_groups_json():
+    if not ENV_GROUPS_PATH.exists():
+        return normalize_env_groups_config(None)
+    try:
+        raw = json.loads(ENV_GROUPS_PATH.read_text(encoding="utf-8-sig") or "{}")
+    except json.JSONDecodeError:
+        raw = {}
+    return normalize_env_groups_config(raw)
+
+
+def filter_env_groups_for_rows(config, rows):
+    records = (config or {}).get("records", {})
+    visible = {org_key_for_row(row) for row in rows if org_key_for_row(row) != "__unset__"}
+    return {"records": {key: value for key, value in records.items() if key in visible}}
     try:
         return json.loads(path.read_text(encoding="utf-8-sig") or "{}")
     except json.JSONDecodeError:
@@ -413,7 +472,7 @@ def product_tags_from_text(value):
 
 def auto_tags_for_row(row, rdp_rows):
     tags = []
-    env_group = str(row.get("環境グループ") or "").strip()
+    env_group = str(row.get("環境グループ") or "").strip() or DEFAULT_ENV_GROUP
     env_name = str(row.get("構築環境名") or "").strip()
     if env_group:
         tags.append(env_group)
@@ -2059,9 +2118,14 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 data_csv = str(payload.get("dataCsv", ""))
                 rdp_csv = str(payload.get("rdpCsv", ""))
                 tags_json_text = payload.get("tagsJson", "{}")
+                env_groups_json_text = payload.get("envGroupsJson", "{}")
                 if not isinstance(tags_json_text, str):
                     tags_json_text = json.dumps(tags_json_text, ensure_ascii=False, indent=2)
+                if not isinstance(env_groups_json_text, str):
+                    env_groups_json_text = json.dumps(env_groups_json_text, ensure_ascii=False, indent=2)
                 json.loads(tags_json_text or "{}")
+                normalized_env_groups = normalize_env_groups_config(json.loads(env_groups_json_text or "{}"))
+                env_groups_json_text = json.dumps(normalized_env_groups, ensure_ascii=False, indent=2) + "\n"
                 change_summary = payload.get("changeSummary", {})
                 if not isinstance(change_summary, dict):
                     change_summary = {}
@@ -2073,6 +2137,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "data.csv": data_csv,
                 "rdp.csv": rdp_csv,
                 "tags.json": tags_json_text,
+                "env_groups.json": env_groups_json_text,
             }
             for filename, content in files.items():
                 (BASE_DIR / filename).write_text(content, encoding="utf-8-sig", newline="")
@@ -2179,6 +2244,9 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 self.send_bytes(b"Forbidden", status=403)
                 return
 
+        if path == "/env_groups.json":
+            self.send_bytes(b"Forbidden", status=403)
+            return
         if path == "/tag_categories.json":
             profile = self.request_profile()
             if not profile.get("canManageUsers"):
@@ -2200,6 +2268,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
             rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
             tags_json = read_tags_json()
+            env_groups_json = read_env_groups_json()
             all_portal_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             if not profile.get("canViewPortal"):
                 data_rows = []
@@ -2212,6 +2281,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 rdp_rows = masked_records(rdp_rows, RDP_MASK_FIELDS)
             known_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             tag_categories = read_tag_categories_json(known_tags)
+            if not profile.get("canEditPortal"):
+                env_groups_json = filter_env_groups_for_rows(env_groups_json, data_rows)
             self.send_bytes(json_bytes({
                 "ok": profile.get("ok", False),
                 **profile_response_fields({**profile, "role": role}),
@@ -2221,6 +2292,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "rdp": rdp_rows,
                 "tags": filter_tags_for_rows(tags_json, data_rows),
                 "tagCategories": tag_categories,
+                "envGroups": env_groups_json,
             }), "application/json; charset=utf-8")
             return
 

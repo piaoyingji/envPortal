@@ -158,5 +158,51 @@ class RoleDataPermissionTest(unittest.TestCase):
         self.assertIn("PostgreSQL 16", server.all_tags_for_row(row, {key: []}, []))
 
 
+class EnvironmentGroupConfigTest(unittest.TestCase):
+    def test_env_group_config_always_adds_default_group(self):
+        config = server.normalize_env_groups_config({
+            "0408": ["UHR-V6", "", "PHR-V7", "UHR-V6"],
+        })
+
+        record = config["records"]["0408"]
+
+        self.assertEqual(record["groups"], ["デフォルト", "UHR-V6", "PHR-V7"])
+        self.assertEqual(record["code"], "0408")
+
+    def test_env_group_config_accepts_record_shape(self):
+        config = server.normalize_env_groups_config({
+            "records": {
+                "name:OneHR": {
+                    "code": "",
+                    "name": "OneHR",
+                    "groups": ["UPDS-V7"],
+                }
+            }
+        })
+
+        record = config["records"]["name:OneHR"]
+
+        self.assertEqual(record["groups"], ["デフォルト", "UPDS-V7"])
+        self.assertEqual(record["name"], "OneHR")
+
+    def test_filter_env_groups_keeps_visible_organizations_only(self):
+        config = server.normalize_env_groups_config({
+            "0408": ["UHR-V6"],
+            "0528": ["PHR-V7"],
+        })
+        rows = [{"組織コード": "0408", "組織名": "筑波大学"}]
+
+        filtered = server.filter_env_groups_for_rows(config, rows)
+
+        self.assertEqual(list(filtered["records"].keys()), ["0408"])
+
+    def test_empty_environment_group_is_default_auto_tag(self):
+        row = {"環境グループ": "", "構築環境名": "PHR", "URL": ""}
+
+        tags = server.auto_tags_for_row(row, [])
+
+        self.assertIn("デフォルト", tags)
+
+
 if __name__ == "__main__":
     unittest.main()
