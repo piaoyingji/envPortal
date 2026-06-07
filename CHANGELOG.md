@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.1] - 2026-06-07
+
+### Changed
+
+- Added a visible group-add button beside the organization edit button in organization summary and detail headers.
+
 ## [2.4.0] - 2026-06-07
 
 ### Changed

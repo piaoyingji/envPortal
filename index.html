@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.0"></script>
+    <script src="i18n.js?v=2.4.1"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -65,7 +65,7 @@
             line-height: 1.2;
             font-weight: 700;
         }
-        .org-level-actions button:not(.env-add-btn):not(.org-add-btn),
+        .org-level-actions button:not(.env-add-btn):not(.org-add-btn):not(.group-add-btn),
         .group-level-actions button:not(.env-add-btn):not(.org-add-btn) {
             width: 30px;
             height: 30px;
@@ -2531,6 +2531,7 @@
                         ${canEdit ? `
                             <span class="org-level-actions">
                                 <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
+                                <button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(org.key)}', event)">${t('button.addGroup')}</button>
                             </span>
                         ` : ''}
                     </div>
@@ -2655,7 +2656,7 @@
                 ${canEdit ? `
                     <div class="org-level-actions">
                         <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                        <button type="button" class="secondary-btn env-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.add')}</button>
+                        <button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.addGroup')}</button>
                     </div>
                 ` : ''}
             `;
