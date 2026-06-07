@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.19"></script>
+    <script src="i18n.js?v=2.3.20"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1222,6 +1222,14 @@
         let activeStatusChecks = 0;
         let renderToken = 0;
         let portalDataLevel = 0;
+        let portalConfigPromise = null;
+        let portalConfigFollowupTimer = null;
+        let secondaryPanelTimer = null;
+        let rowTagCache = new Map();
+        let rowSkinCache = new Map();
+        let orgGroupCache = new Map();
+        let rdpHostIndex = new Map();
+        let rdpEndpointIndex = new Map();
         const ORGS_PER_PAGE = 6;
         const STATUS_REFRESH_MS = 60000;
         const STATUS_CHECK_CONCURRENCY = 1;
@@ -1245,6 +1253,40 @@
             loadPortalData({ authenticated: false });
             loadPortalConfig().then(() => checkWindowsAuth({ allowProxy: false }));
         });
+
+        function resetPortalDerivedCaches() {
+            rowTagCache = new Map();
+            rowSkinCache = new Map();
+            orgGroupCache = new Map();
+            buildRemoteIndexes();
+        }
+
+        function buildRemoteIndexes() {
+            rdpHostIndex = new Map();
+            rdpEndpointIndex = new Map();
+            rdpData.forEach(remote => {
+                const endpoint = getEndpoint(remote['接続先(IP:Port)']);
+                if (endpoint.host) {
+                    if (!rdpHostIndex.has(endpoint.host)) rdpHostIndex.set(endpoint.host, []);
+                    rdpHostIndex.get(endpoint.host).push(remote);
+                }
+                if (endpoint.host && endpoint.port) {
+                    const key = `${endpoint.host}:${endpoint.port}`;
+                    if (!rdpEndpointIndex.has(key)) rdpEndpointIndex.set(key, []);
+                    rdpEndpointIndex.get(key).push(remote);
+                }
+            });
+        }
+
+        function scheduleSecondaryPanelRender() {
+            if (secondaryPanelTimer) clearTimeout(secondaryPanelTimer);
+            const run = () => {
+                secondaryPanelTimer = null;
+                renderOrgFilterMenu();
+                renderTagFilters();
+            };
+            secondaryPanelTimer = setTimeout(run, 0);
+        }
 
         function loadPortalData(options = {}) {
             const authenticated = Boolean(options.authenticated);
@@ -1274,30 +1316,45 @@
             tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
             fullData = assignRowIds(payload.data || [], 'env');
             rdpData = assignRowIds(payload.rdp || [], 'rdp');
+            resetPortalDerivedCaches();
             updateEditToolbar();
 
             initDropdown();
-            renderOrgFilterMenu();
-            renderTagFilters();
             renderInitialSummary();
+            scheduleSecondaryPanelRender();
             loadPortalConfig();
             syncOrgReadingsAndRefresh();
             return payload;
         }
 
         function loadPortalConfig() {
-            return fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            if (portalConfigPromise) return portalConfigPromise;
+            portalConfigPromise = fetch('portal_config.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : {})
                 .then(configJson => {
                     portalConfig = configJson || {};
                     const currentOrg = document.getElementById('orgSelect').value;
                     if (currentOrg) renderEnvironments(currentOrg);
+                    schedulePortalConfigFollowup();
                     return portalConfig;
                 })
                 .catch(() => {
                     portalConfig = {};
                     return portalConfig;
+                })
+                .finally(() => {
+                    portalConfigPromise = null;
                 });
+            return portalConfigPromise;
+        }
+
+        function schedulePortalConfigFollowup() {
+            if (!portalConfig.guacamoleEnabled || portalConfig.guacamoleStatus !== 'not checked') return;
+            if (portalConfigFollowupTimer) return;
+            portalConfigFollowupTimer = setTimeout(() => {
+                portalConfigFollowupTimer = null;
+                loadPortalConfig();
+            }, 2000);
         }
 
         function checkWindowsAuth(options = {}) {
@@ -1628,6 +1685,7 @@
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 fullData.push(row);
+                resetPortalDerivedCaches();
                 closeAddModal();
                 initDropdown();
                 renderOrgFilterMenu();
@@ -1660,6 +1718,7 @@
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 fullData.push(row);
+                resetPortalDerivedCaches();
                 closeAddModal();
                 renderEnvironments(org.key);
                 editEnvironmentCard(row.__rowId);
@@ -1940,6 +1999,7 @@
                     remote['組織名'] = nextName;
                 }
             });
+            resetPortalDerivedCaches();
             const afterOrg = getOrgGroup(rows[0]);
             const summary = {
                 action: 'edit-org',
@@ -1986,6 +2046,7 @@
             row['構築環境名'] = values['構築環境名'] || t('default.envName');
             row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             fullData.push(row);
+            resetPortalDerivedCaches();
             closeAddModal();
             renderEnvironments(org.key);
             editEnvironmentCard(row.__rowId);
@@ -2014,6 +2075,7 @@
                 row['環境グループ'] = nextGroup;
                 moveTagsForRow(beforeRow, row);
             });
+            resetPortalDerivedCaches();
             const summary = {
                 action: 'edit-group',
                 level: 'group',
@@ -2070,6 +2132,7 @@
                 });
                 if (!existing) rdpData.push(target);
             });
+            resetPortalDerivedCaches();
 
             const summary = changeSummaryFor('save-env', beforeEnv, env, {
                 beforeRdp,
@@ -2118,6 +2181,7 @@
                 });
             }
             fullData = fullData.filter(row => row.__rowId !== rowId);
+            resetPortalDerivedCaches();
             const summary = changeSummaryFor('delete-env', beforeEnv, null, {
                 beforeRdp,
                 beforeTags,
@@ -2185,6 +2249,7 @@
                 rdpData.push(copied);
                 copiedRdpRows.push(copied);
             });
+            resetPortalDerivedCaches();
 
             closeAddModal();
             const summary = changeSummaryFor('copy-env', beforeEnv, newEnv, {
@@ -3376,7 +3441,11 @@
         }
 
         function allTagsForRow(row) {
-            return uniqueTags(tagsForRow(row).concat(autoTagsForRow(row)));
+            const cacheKey = row && row.__rowId ? row.__rowId : getLegacyRowKey(row || {});
+            if (cacheKey && rowTagCache.has(cacheKey)) return rowTagCache.get(cacheKey);
+            const tags = uniqueTags(tagsForRow(row).concat(autoTagsForRow(row)));
+            if (cacheKey) rowTagCache.set(cacheKey, tags);
+            return tags;
         }
 
         function uniqueTags(tags) {
@@ -3441,18 +3510,25 @@
         }
 
         function tagSkinForRow(row) {
+            const cacheKey = row && row.__rowId ? row.__rowId : getLegacyRowKey(row || {});
+            if (cacheKey && rowSkinCache.has(cacheKey)) return rowSkinCache.get(cacheKey);
             const tags = allTagsForRow(row);
             const categoryLabels = new Map((tagCategoryConfig.categories || []).map(category => [category.id, tagCategoryLabel(category)]));
             const categoryId = tagCategoryConfig.activeSkinCategory || 'other';
             const categorySkins = tagCategoryConfig.skins && tagCategoryConfig.skins[categoryId] ? tagCategoryConfig.skins[categoryId] : {};
             const tag = tags.find(item => categorySkins[item]);
-            if (!tag) return null;
-            return {
+            if (!tag) {
+                if (cacheKey) rowSkinCache.set(cacheKey, null);
+                return null;
+            }
+            const skin = {
                 tag,
                 categoryId,
                 categoryLabel: categoryLabels.get(categoryId) || categoryId,
                 skin: categorySkins[tag]
             };
+            if (cacheKey) rowSkinCache.set(cacheKey, skin);
+            return skin;
         }
 
         function getLegacyRowKey(row) {
@@ -3465,17 +3541,21 @@
         }
 
         function getOrgGroup(row) {
+            const cacheKey = row && row.__rowId ? row.__rowId : getLegacyRowKey(row || {});
+            if (cacheKey && orgGroupCache.has(cacheKey)) return orgGroupCache.get(cacheKey);
             const code = (row['組織コード'] || '').trim();
             const name = (row['組織名'] || '').trim();
             const isUnset = code === '' && name === '';
             const displayName = name || t('unset.name');
-            return {
+            const group = {
                 key: isUnset ? '__unset__' : (code || `name:${name}`),
                 code,
                 name: isUnset ? t('unset.org') : displayName,
                 label: isUnset ? t('unset.org') : (code ? `${code} ${displayName}` : displayName),
                 isUnset
             };
+            if (cacheKey) orgGroupCache.set(cacheKey, group);
+            return group;
         }
 
         function escapeJs(str) {
@@ -3514,12 +3594,12 @@
         function findRemotesByHost(host) {
             const normalizedHost = String(host || '').trim();
             if (!normalizedHost) return [];
-            return rdpData.filter(rdp => getHost(rdp['接続先(IP:Port)']) === normalizedHost);
+            return rdpHostIndex.get(normalizedHost) || [];
         }
 
         function findRemotesByEndpoint(endpoint) {
             if (!endpoint || !endpoint.host || !endpoint.port) return [];
-            return rdpData.filter(rdp => sameEndpoint(getEndpoint(rdp['接続先(IP:Port)']), endpoint));
+            return rdpEndpointIndex.get(`${endpoint.host}:${endpoint.port}`) || [];
         }
 
         function openPwdModal() {

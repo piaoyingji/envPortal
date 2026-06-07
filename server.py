@@ -73,6 +73,8 @@ DOMAIN_AUTH_AUTO_PROBE = env_bool("DOMAIN_AUTH_AUTO_PROBE", False)
 AUTH_TOKEN_SECRET = CONFIG.get("AUTH_TOKEN_SECRET", AUTH_PASSWORD)
 AUTH_TOKEN_TTL_SECONDS = int(CONFIG.get("AUTH_TOKEN_TTL_SECONDS", "28800"))
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
+GUACAMOLE_STATUS_REFRESHING = False
+GUACAMOLE_STATUS_LOCK = threading.Lock()
 GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 GUACAMOLE_DRIVE_RETENTION_HOURS = env_float("GUACAMOLE_DRIVE_RETENTION_HOURS", 24)
 GUACAMOLE_DRIVE_CLEANUP_INTERVAL_SECONDS = 3600
@@ -1064,11 +1066,16 @@ def http_json_request(url, method="GET", payload=None, token="", timeout=8):
         return json.loads(body)
 
 
-def guacamole_status(ttl_seconds=10):
+def guacamole_status(ttl_seconds=10, allow_probe=True):
     if not GUACAMOLE_URL:
         return {"available": False, "message": "Guacamole is not configured."}
     now = time.time()
     if now - GUACAMOLE_STATUS_CACHE["checked_at"] < ttl_seconds:
+        return {
+            "available": GUACAMOLE_STATUS_CACHE["available"],
+            "message": GUACAMOLE_STATUS_CACHE["message"],
+        }
+    if not allow_probe:
         return {
             "available": GUACAMOLE_STATUS_CACHE["available"],
             "message": GUACAMOLE_STATUS_CACHE["message"],
@@ -1097,6 +1104,29 @@ def guacamole_status(ttl_seconds=10):
         "message": message,
     })
     return {"available": available, "message": message}
+
+
+def refresh_guacamole_status_async(ttl_seconds=60):
+    global GUACAMOLE_STATUS_REFRESHING
+    if not GUACAMOLE_URL:
+        return
+    now = time.time()
+    if now - GUACAMOLE_STATUS_CACHE["checked_at"] < ttl_seconds:
+        return
+    with GUACAMOLE_STATUS_LOCK:
+        if GUACAMOLE_STATUS_REFRESHING:
+            return
+        GUACAMOLE_STATUS_REFRESHING = True
+
+    def worker():
+        global GUACAMOLE_STATUS_REFRESHING
+        try:
+            guacamole_status(ttl_seconds=0, allow_probe=True)
+        finally:
+            with GUACAMOLE_STATUS_LOCK:
+                GUACAMOLE_STATUS_REFRESHING = False
+
+    threading.Thread(target=worker, name="guacamole-status-refresh", daemon=True).start()
 
 
 def guacamole_token():
@@ -2275,7 +2305,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             return
 
         if path == "/portal_config.jsp":
-            guac_status = guacamole_status()
+            refresh_guacamole_status_async(ttl_seconds=60)
+            guac_status = guacamole_status(ttl_seconds=300, allow_probe=False)
             self.send_bytes(json_bytes({
                 "clientIp": client_ip_from_request(self.headers, self.client_address),
                 "domainAuthProxyUrl": DOMAIN_AUTH_PROXY_URL,

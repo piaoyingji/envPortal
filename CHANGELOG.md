@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.3.20] - 2026-06-07
+
+### Changed
+
+- Made `portal_config.jsp` return immediately by refreshing Guacamole availability in a background thread.
+- Cached derived frontend data for row tags, card skins, organization groups, and RDP endpoint lookups.
+- Deferred organization and TAG filter panel rendering until after the first summary view is rendered.
+
 ## [2.3.19] - 2026-06-06
 
 ### Fixed
