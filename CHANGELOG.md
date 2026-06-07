@@ -2,11 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
-## [2.3.24] - 2026-06-07
+## [2.4.0] - 2026-06-07
 
 ### Changed
 
-- Displayed each environment's group as a compact chip on collapsed environment summary cards so read-only users can see group context without expanding.
+- Rendered environment groups as containers inside collapsed organization summaries so read-only users can see group context without expanding individual environments.
+- Re-evaluated the environment group feature as the `2.4.0` MINOR release because it adds a compatible three-level hierarchy and runtime sidecar data file.
 
 ## [2.3.23] - 2026-06-07
 

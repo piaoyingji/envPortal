@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.3.24"></script>
+    <script src="i18n.js?v=2.4.0"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -251,19 +251,36 @@
             font-size: 0.68rem;
             padding: 0.08rem 0.38rem;
         }
-        .env-summary-group {
-            flex: 0 0 auto;
-            max-width: 9rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        .org-summary-group-section {
             border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(248, 250, 252, 0.56);
+            padding: 0.55rem;
+        }
+        .org-summary-group-section + .org-summary-group-section {
+            margin-top: 0.7rem;
+        }
+        .org-summary-group-title {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: #475569;
+            font-size: 0.76rem;
+            font-weight: 800;
+            margin: 0 0 0.48rem;
+        }
+        .org-summary-group-title::before {
+            content: "";
+            width: 0.45rem;
+            height: 0.45rem;
             border-radius: 999px;
-            padding: 0.08rem 0.42rem;
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.72);
-            font-size: 0.68rem;
-            font-weight: 700;
+            background: #94a3b8;
+            flex: 0 0 auto;
+        }
+        .org-summary-group-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+            gap: 0.75rem;
         }
         .env-summary-url {
             margin-top: 0.35rem;
@@ -2502,7 +2519,7 @@
             
             orgsToShow.forEach(org => {
                 const envs = org.envs;
-                const envHtml = envs.map((env, index) => renderEnvSummaryBadge(org.key, env, index)).join('');
+                const envHtml = renderOrgSummaryGroups(org.key, envs);
                 
                 const card = document.createElement('div');
                 card.className = 'org-summary-card';
@@ -2551,6 +2568,23 @@
             }
         }
 
+        function renderOrgSummaryGroups(orgKey, envs) {
+            const groups = new Map();
+            envs.forEach((env, index) => {
+                const groupName = envGroupValue(env);
+                if (!groups.has(groupName)) groups.set(groupName, []);
+                groups.get(groupName).push({ env, index });
+            });
+            return Array.from(groups.entries()).map(([groupName, items]) => `
+                <div class="org-summary-group-section">
+                    <div class="org-summary-group-title">${sanitizeHTML(t('label.envGroupShort'))}: ${sanitizeHTML(groupName)}</div>
+                    <div class="org-summary-group-items">
+                        ${items.map(item => renderEnvSummaryBadge(orgKey, item.env, item.index)).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function selectOrg(orgKey) {
             document.getElementById('orgSelect').value = orgKey;
             renderOrgFilterMenu();
@@ -2571,8 +2605,8 @@
             const envName = sanitizeHTML(env['構築環境名']);
             const host = sanitizeHTML(getHost(env['URL']));
             const url = sanitizeHTML(env['URL']);
-            const groupName = sanitizeHTML(envGroupValue(env));
-            const tags = allTagsForRow(env);
+            const rawTags = allTagsForRow(env);
+            const tags = rawTags.filter(tag => tag !== envGroupValue(env));
             const visibleTags = tags.slice(0, 5).map(tag => renderTagChip(tag, tagsForRow(env).includes(tag))).join('');
             const overflow = tags.length > 5 ? `<span class="tag-chip auto-tag" style="background:#f5fbfc; color:#627987; border:1px solid #d7e6ee;">+${tags.length - 5}</span>` : '';
             const dbType = String(env['DBタイプ'] || '').trim();
@@ -2588,7 +2622,6 @@
                     <div class="env-summary-main">
                         <div class="env-summary-title">
                             <span class="env-summary-name">◆ ${envName}</span>
-                            <span class="env-summary-group" title="${groupName}">${groupName}</span>
                         </div>
                         <div class="env-summary-actions">
                             ${meta ? `<span class="env-summary-meta">${meta}</span>` : ''}

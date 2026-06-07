@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.3.24';
+const APP_VERSION_FALLBACK = '2.4.0';
 
 const I18N_MESSAGES = {
     ja: {
@@ -117,6 +117,7 @@ const I18N_MESSAGES = {
         'label.orgList': '組織一覧',
         'label.orgSelect': '組織選択',
         'label.envGroup': '環境グループ',
+        'label.envGroupShort': 'グループ',
         'label.copyTargetOrg': 'コピー先組織',
         'label.envName': '構築環境名',
         'label.url': 'URL',
@@ -352,6 +353,7 @@ const I18N_MESSAGES = {
         'label.orgList': '机构列表',
         'label.orgSelect': '机构选择',
         'label.envGroup': '环境组',
+        'label.envGroupShort': '分组',
         'label.copyTargetOrg': '复制目标机构',
         'label.envName': '环境名称',
         'label.url': 'URL',
