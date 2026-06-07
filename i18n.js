@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.3';
+const APP_VERSION_FALLBACK = '2.4.4';
 
 const I18N_MESSAGES = {
     ja: {
@@ -61,6 +61,8 @@ const I18N_MESSAGES = {
         'button.add': '追加',
         'button.addGroup': 'グループ追加',
         'button.moveGroup': 'グループ移動',
+        'button.moveUp': '上へ移動',
+        'button.moveDown': '下へ移動',
         'button.save': '保存',
         'button.edit': '編集',
         'button.downloadRdp': 'RDPファイルをダウンロード',
@@ -300,6 +302,8 @@ const I18N_MESSAGES = {
         'button.add': '新增',
         'button.addGroup': '新增分组',
         'button.moveGroup': '移动分组',
+        'button.moveUp': '上移',
+        'button.moveDown': '下移',
         'button.save': '保存',
         'button.edit': '编辑',
         'button.downloadRdp': '下载RDP文件',

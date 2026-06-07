@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.3"></script>
+    <script src="i18n.js?v=2.4.4"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -260,19 +260,47 @@
         .org-summary-group-title {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.35rem;
             color: #475569;
             font-size: 0.76rem;
             font-weight: 800;
             margin: 0 0 0.48rem;
         }
-        .org-summary-group-title::before {
+        .org-summary-group-name {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+        }
+        .org-summary-group-name::before {
             content: "";
             width: 0.45rem;
             height: 0.45rem;
             border-radius: 999px;
             background: #94a3b8;
             flex: 0 0 auto;
+        }
+        .group-order-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex: 0 0 auto;
+        }
+        .group-order-actions button {
+            width: 24px;
+            height: 24px;
+            min-height: 24px;
+            padding: 0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .group-order-actions svg {
+            width: 14px;
+            height: 14px;
+            display: block;
         }
         .org-summary-group-items {
             display: grid;
@@ -1449,6 +1477,10 @@
             return org ? org.name : '';
         }
 
+        function canManageEnvGroups() {
+            return Boolean(canManageUsers);
+        }
+
         window.addEventListener('i18n:changed', () => {
             const currentOrg = document.getElementById('orgSelect').value;
             initDropdown();
@@ -1709,6 +1741,30 @@
             const target = normalizeGroupName(groupName);
             const nextGroups = uniqueTags((record.groups || []).map(normalizeGroupName).filter(group => group !== target));
             record.groups = nextGroups.length ? nextGroups : [DEFAULT_ENV_GROUP];
+        }
+
+        function setEnvGroupOrder(orgKey, orderedGroups) {
+            const org = getOrgOptions().find(item => item.key === orgKey);
+            if (!org) return null;
+            const record = ensureEnvGroupRecord(org);
+            const known = new Set(orderedGroups.map(normalizeGroupName));
+            const merged = uniqueTags(orderedGroups.map(normalizeGroupName).concat(getEnvGroupsForOrg(orgKey).filter(group => !known.has(group))));
+            record.groups = merged.length ? merged : [DEFAULT_ENV_GROUP];
+            return record.groups;
+        }
+
+        function groupOrderActionsHtml(orgKey, groupValue) {
+            if (!canManageEnvGroups() || !orgKey) return '';
+            const groupName = normalizeGroupName(groupValue);
+            const groups = getEnvGroupsForOrg(orgKey);
+            const index = groups.indexOf(groupName);
+            if (index < 0 || groups.length < 2) return '';
+            return `
+                <span class="group-order-actions">
+                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', -1, event)" title="${t('button.moveUp')}" aria-label="${t('button.moveUp')}" ${index === 0 ? 'disabled' : ''}>${arrowUpIcon()}</button>
+                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', 1, event)" title="${t('button.moveDown')}" aria-label="${t('button.moveDown')}" ${index === groups.length - 1 ? 'disabled' : ''}>${arrowDownIcon()}</button>
+                </span>
+            `;
         }
 
         function modalFieldLabel(field) {
@@ -2155,14 +2211,14 @@
                 event.preventDefault();
                 event.stopPropagation();
             }
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             openAddModal('group', 'modal.groupAdd', [
                 ['環境グループ', '', true, 'group-input'],
             ], { orgKey });
         }
 
         function addGroupToOrg(orgKey, values) {
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             const org = getOrgOptions().find(item => item.key === orgKey);
             if (!org) return;
             const groupName = String(values['環境グループ'] || '').trim();
@@ -2189,7 +2245,7 @@
                 event.preventDefault();
                 event.stopPropagation();
             }
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             if (normalizeGroupName(groupValue) === DEFAULT_ENV_GROUP) return alert(t('error.defaultGroupProtected'));
             openAddModal('edit-group', 'modal.groupEdit', [
                 ['環境グループ', normalizeGroupName(groupValue), true, 'group-input'],
@@ -2197,7 +2253,7 @@
         }
 
         function updateGroup(orgKey, groupValue, values) {
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             const nextGroup = String(values['環境グループ'] || '').trim();
             if (!nextGroup) return alert(t('error.groupRequired'));
             const beforeGroup = normalizeGroupName(groupValue);
@@ -2233,7 +2289,7 @@
                 event.preventDefault();
                 event.stopPropagation();
             }
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             const groupName = normalizeGroupName(groupValue);
             const groups = getEnvGroupsForOrg(orgKey);
             if (groups.length <= 1) return alert(t('error.lastGroupProtected'));
@@ -2254,6 +2310,36 @@
                     showToast(t('toast.savedDetail'));
                     renderTagFilters();
                     renderEnvironments(orgKey);
+                })
+                .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function moveEnvGroupDisplayOrder(orgKey, groupValue, direction, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!canManageEnvGroups()) return;
+            const groupName = normalizeGroupName(groupValue);
+            const groups = getEnvGroupsForOrg(orgKey);
+            const index = groups.indexOf(groupName);
+            const targetIndex = index + direction;
+            if (index < 0 || targetIndex < 0 || targetIndex >= groups.length) return;
+            const beforeGroups = groups.slice();
+            [groups[index], groups[targetIndex]] = [groups[targetIndex], groups[index]];
+            const afterGroups = setEnvGroupOrder(orgKey, groups);
+            if (!afterGroups) return;
+            resetPortalDerivedCaches();
+            savePortalFiles({
+                action: 'reorder-group',
+                level: 'group',
+                org: getOrgOptions().find(item => item.key === orgKey),
+                before: { groups: beforeGroups },
+                after: { groups: afterGroups },
+            })
+                .then(() => {
+                    showToast(t('toast.savedDetail'));
+                    renderActiveView();
                 })
                 .catch(err => alert(t('error.save') + err.message));
         }
@@ -2379,7 +2465,7 @@
         }
 
         function openMoveGroupModal(rowId) {
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             const env = fullData.find(row => row.__rowId === rowId);
             if (!env) return;
             const org = getOrgGroup(env);
@@ -2389,7 +2475,7 @@
         }
 
         function moveEnvironmentToGroup(rowId, nextGroupValue) {
-            if (!canEdit) return;
+            if (!canManageEnvGroups()) return;
             const env = fullData.find(row => row.__rowId === rowId);
             if (!env) return;
             const nextGroup = normalizeGroupName(nextGroupValue);
@@ -2578,10 +2664,10 @@
                         <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
                             <span class="org-name-header-main">${sanitizeHTML(org.label)}</span>
                         </div>
-                        ${canEdit ? `
+                        ${(canEdit || canManageEnvGroups()) ? `
                             <span class="org-level-actions">
-                                <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                                <button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(org.key)}', event)">${t('button.addGroup')}</button>
+                                ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                                ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(org.key)}', event)">${t('button.addGroup')}</button>` : ''}
                             </span>
                         ` : ''}
                     </div>
@@ -2626,14 +2712,21 @@
                 if (!groups.has(groupName)) groups.set(groupName, []);
                 groups.get(groupName).push({ env, index });
             });
-            return Array.from(groups.entries()).map(([groupName, items]) => `
+            const orderedGroupNames = getEnvGroupsForOrg(orgKey).filter(groupName => groups.has(groupName));
+            return orderedGroupNames.map(groupName => {
+                const items = groups.get(groupName) || [];
+                return `
                 <div class="org-summary-group-section">
-                    <div class="org-summary-group-title">${sanitizeHTML(t('label.envGroupShort'))}: ${sanitizeHTML(groupName)}</div>
+                    <div class="org-summary-group-title">
+                        <span class="org-summary-group-name">${sanitizeHTML(t('label.envGroupShort'))}: ${sanitizeHTML(groupName)}</span>
+                        ${groupOrderActionsHtml(orgKey, groupName)}
+                    </div>
                     <div class="org-summary-group-items">
                         ${items.map(item => renderEnvSummaryBadge(orgKey, item.env, item.index)).join('')}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function selectOrg(orgKey) {
@@ -2703,10 +2796,10 @@
             banner.className = 'active-org-banner';
             banner.innerHTML = `
                 <div class="active-org-name">${sanitizeHTML(orgInfo.label)}</div>
-                ${canEdit ? `
+                ${(canEdit || canManageEnvGroups()) ? `
                     <div class="org-level-actions">
-                        <button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>
-                        <button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.addGroup')}</button>
+                        ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                        ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.addGroup')}</button>` : ''}
                     </div>
                 ` : ''}
             `;
@@ -2743,19 +2836,21 @@
             });
             Array.from(groups.values()).forEach(group => {
                 const actionOrgKey = orgKey || (group.rows[0] ? getOrgGroup(group.rows[0]).key : '');
-                const canDeleteGroup = canEdit && actionOrgKey && group.rows.length === 0 && getEnvGroupsForOrg(actionOrgKey).length > 1;
+                const canManageGroup = canManageEnvGroups() && actionOrgKey;
+                const canDeleteGroup = canManageGroup && group.rows.length === 0 && getEnvGroupsForOrg(actionOrgKey).length > 1;
                 const groupBlock = document.createElement('div');
                 groupBlock.className = 'env-group-card';
                 const title = document.createElement('div');
                 title.className = 'env-group-title';
                 title.innerHTML = `
                     <span>${sanitizeHTML(group.title || t('unset.name'))}</span>
-                    ${canEdit ? `
-                        <span class="group-level-actions">
-                            ${normalizeGroupName(group.groupValue) === DEFAULT_ENV_GROUP ? '' : `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
-                            ${canDeleteGroup ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteGroupFromOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
-                            <button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>
-                        </span>
+                    ${(canEdit || canManageGroup) ? `
+                    <span class="group-level-actions">
+                        ${canManageGroup ? groupOrderActionsHtml(actionOrgKey, group.groupValue) : ''}
+                        ${canManageGroup && normalizeGroupName(group.groupValue) !== DEFAULT_ENV_GROUP ? `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                        ${canDeleteGroup ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteGroupFromOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}', event)" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
+                        ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(actionOrgKey)}', '${escapeJs(group.groupValue)}')">${t('button.add')}</button>` : ''}
+                    </span>
                     ` : ''}
                 `;
                 const list = document.createElement('div');
@@ -2976,7 +3071,7 @@
                     ${isEditingCard
                         ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
                         : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
-                    ${!isEditingCard ? `<button type="button" class="secondary-btn" onclick="openMoveGroupModal('${escapeJs(env.__rowId)}')" title="${t('button.moveGroup')}" aria-label="${t('button.moveGroup')}">${moveGroupIcon()}</button>` : ''}
+                    ${!isEditingCard && canManageEnvGroups() ? `<button type="button" class="secondary-btn" onclick="openMoveGroupModal('${escapeJs(env.__rowId)}')" title="${t('button.moveGroup')}" aria-label="${t('button.moveGroup')}">${moveGroupIcon()}</button>` : ''}
                     ${!isEditingCard ? `<button type="button" class="secondary-btn copy-btn" onclick="copyEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.copy')}" aria-label="${t('button.copy')}">${copyIcon()}</button>` : ''}
                     ${isEditingCard ? `<button type="button" class="secondary-btn cancel-btn" onclick="cancelEnvironmentCardEdit()" title="${t('button.cancel')}" aria-label="${t('button.cancel')}">${cancelActionIcon()}</button>` : ''}
                     ${isEditingCard ? `<button type="button" class="secondary-btn delete-btn" onclick="deleteEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>` : ''}
@@ -3307,6 +3402,14 @@
 
         function moveGroupIcon() {
             return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10"></path><path d="M14 4l3 3-3 3"></path><path d="M17 17H7"></path><path d="M10 14l-3 3 3 3"></path></svg>';
+        }
+
+        function arrowUpIcon() {
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg>';
+        }
+
+        function arrowDownIcon() {
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
         }
 
         function expandIcon() {

@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.4] - 2026-06-07
+
+### Changed
+
+- Added up and down controls on environment group containers so administrators can adjust group display order per organization.
+- Restricted environment group add, edit, delete, ordering, and environment group reassignment actions to system management permission.
+
 ## [2.4.3] - 2026-06-07
 
 ### Fixed
