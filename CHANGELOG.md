@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.8] - 2026-06-08
+
+### Changed
+
+- Removed an empty target `デフォルト` group automatically when moving another group into an organization that only had that empty default group.
+- Documented the empty-group deletion rule and first/last group ordering button constraints.
+
 ## [2.4.7] - 2026-06-08
 
 ### Added
