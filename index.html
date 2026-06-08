@@ -2237,8 +2237,9 @@
                 after: { org: afterOrg, rows: rows.map(row => cloneForLog(row)) },
             };
             closeAddModal();
-            savePortalFiles(summary)
-                .then(() => {
+            saveOrganizationBundle(beforeOrg, afterOrg, summary)
+                .then(payload => {
+                    applyOrganizationBundlePayload(payload);
                     showToast(t('toast.savedDetail'));
                     initDropdown();
                     renderOrgFilterMenu();
@@ -2581,6 +2582,23 @@
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({ dataCsv, rdpCsv, tagsJson, envGroupsJson, changeSummary })
             }).then(res => res.ok ? res.text() : Promise.reject(new Error('portal bundle save failed')));
+        }
+
+        function saveOrganizationBundle(beforeOrg, afterOrg, changeSummary = {}) {
+            return portalFetch('update_org_bundle.jsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({ beforeOrg, afterOrg, changeSummary })
+            }).then(res => res.ok ? res.json() : Promise.reject(new Error('organization bundle save failed')));
+        }
+
+        function applyOrganizationBundlePayload(payload) {
+            tagStore = normalizeTagStore(payload.tags || {});
+            envGroupStore = normalizeEnvGroupStore(payload.envGroups || {});
+            fullData = assignRowIds(payload.data || [], 'env');
+            rdpData = assignRowIds(payload.rdp || [], 'rdp');
+            syncEnvGroupsFromData();
+            resetPortalDerivedCaches();
         }
 
         function openMoveGroupModal(rowId) {

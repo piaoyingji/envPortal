@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.11] - 2026-06-08
+
+### Fixed
+
+- Changed organization edits to save only the edited organization block on the server side.
+- Restored Windows whitelist checks so first-time non-whitelisted domain users default to `staff` instead of `admin`.
+
 ## [2.4.10] - 2026-06-08
 
 ### Changed

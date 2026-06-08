@@ -216,6 +216,15 @@ def read_csv_records(filename, fields):
         return rows
 
 
+def write_csv_records(filename, fields, rows):
+    path = BASE_DIR / filename
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in fields})
+
+
 def read_tags_json():
     path = BASE_DIR / "tags.json"
     if not path.exists():
@@ -283,6 +292,73 @@ def filter_env_groups_for_rows(config, rows):
     records = (config or {}).get("records", {})
     visible = {org_key_for_row(row) for row in rows if org_key_for_row(row) != "__unset__"}
     return {"records": {key: value for key, value in records.items() if key in visible}}
+
+
+def org_info_key(info):
+    source = info if isinstance(info, dict) else {}
+    explicit = str(source.get("key") or "").strip()
+    if explicit and explicit != "__unset__":
+        return explicit
+    return org_key_for_values(source.get("code"), source.get("name"))
+
+
+def move_org_tag_records(tags_json, before_row, after_row):
+    old_key = row_key(before_row)
+    old_legacy_key = legacy_row_key(before_row)
+    record = None
+    if old_key in tags_json:
+        record = tags_json.pop(old_key)
+    if old_legacy_key in tags_json:
+        record = tags_json.pop(old_legacy_key)
+    if record and ((isinstance(record, list) and record) or (isinstance(record, dict) and record.get("tags"))):
+        tags_json[row_key(after_row)] = record
+
+
+def update_org_bundle_files(before_org, after_org):
+    before_key = org_info_key(before_org)
+    before_name = str((before_org or {}).get("name") or "").strip()
+    after_code = str((after_org or {}).get("code") or "").strip()
+    after_name = str((after_org or {}).get("name") or "").strip()
+    after_key = org_key_for_values(after_code, after_name)
+    if before_key == "__unset__" or not after_name:
+        raise ValueError("invalid organization payload")
+
+    data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
+    rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
+    tags_json = read_tags_json()
+    env_groups = read_env_groups_json()
+
+    changed_count = 0
+    for row in data_rows:
+        if org_key_for_row(row) != before_key:
+            continue
+        before_row = dict(row)
+        row["組織コード"] = after_code
+        row["組織名"] = after_name
+        move_org_tag_records(tags_json, before_row, row)
+        changed_count += 1
+
+    if before_name:
+        for row in rdp_rows:
+            if str(row.get("組織名", "") or "").strip() == before_name:
+                row["組織名"] = after_name
+
+    records = env_groups.get("records", {})
+    record = records.pop(before_key, None)
+    if record is None:
+        record = {"key": after_key, "code": after_code, "name": after_name, "groups": [DEFAULT_ENV_GROUP]}
+    record["key"] = after_key
+    record["code"] = after_code
+    record["name"] = after_name
+    record["groups"] = unique_tags([DEFAULT_ENV_GROUP] + [str(group or "").strip() for group in record.get("groups", []) if str(group or "").strip()])
+    records[after_key] = record
+    env_groups = normalize_env_groups_config({"records": records})
+
+    write_csv_records("data.csv", PORTAL_CSV_FIELDS, data_rows)
+    write_csv_records("rdp.csv", RDP_CSV_FIELDS, rdp_rows)
+    (BASE_DIR / "tags.json").write_text(json.dumps(tags_json, ensure_ascii=False, indent=2) + "\n", encoding="utf-8-sig")
+    ENV_GROUPS_PATH.write_text(json.dumps(env_groups, ensure_ascii=False, indent=2) + "\n", encoding="utf-8-sig")
+    return data_rows, rdp_rows, tags_json, env_groups, changed_count
 
 
 def normalize_tag_category_id(value):
@@ -1014,7 +1090,7 @@ def windows_user_from_headers(headers):
 def request_windows_auth(headers):
     raw_user = windows_user_from_headers(headers)
     user = normalize_windows_user(raw_user)
-    return user, bool(user)
+    return user, bool(user and user in load_windows_auth_whitelist())
 
 
 def windows_user_metadata_from_headers(headers):
@@ -1991,6 +2067,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             "/update_rdp.jsp",
             "/update_tags.jsp",
             "/update_portal_bundle.jsp",
+            "/update_org_bundle.jsp",
         }
         if path in portal_edit_post_paths:
             profile = self.request_profile()
@@ -2095,6 +2172,42 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 change_summary,
             )
             self.send_bytes(b"success")
+            return
+
+        if path == "/update_org_bundle.jsp":
+            try:
+                payload = json.loads(body or "{}")
+                if not isinstance(payload, dict):
+                    raise ValueError("payload must be object")
+                before_org = payload.get("beforeOrg", {})
+                after_org = payload.get("afterOrg", {})
+                change_summary = payload.get("changeSummary", {})
+                if not isinstance(before_org, dict) or not isinstance(after_org, dict):
+                    raise ValueError("organization payload must be object")
+                if not isinstance(change_summary, dict):
+                    change_summary = {}
+                data_rows, rdp_rows, tags_json, env_groups_json, changed_count = update_org_bundle_files(before_org, after_org)
+            except Exception as exc:
+                self.send_bytes(f"Invalid organization bundle: {exc}".encode("utf-8"), status=400)
+                return
+
+            profile = self.request_profile()
+            summary = dict(change_summary)
+            summary["changedRows"] = changed_count
+            append_change_summary_log(
+                profile.get("user", ""),
+                client_ip_from_request(self.headers, self.client_address),
+                path,
+                ["data.csv", "rdp.csv", "tags.json", "env_groups.json"],
+                summary,
+            )
+            self.send_bytes(json_bytes({
+                "ok": True,
+                "data": data_rows,
+                "rdp": rdp_rows,
+                "tags": tags_json,
+                "envGroups": env_groups_json,
+            }), "application/json; charset=utf-8")
             return
 
         update_map = {
