@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.6] - 2026-06-08
+
+### Fixed
+
+- Fixed expanded environment card edit buttons failing because inline context lookup referenced a removed organization helper.
+
 ## [2.4.5] - 2026-06-08
 
 ### Fixed

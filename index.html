@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.5"></script>
+    <script src="i18n.js?v=2.4.6"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -2000,7 +2000,7 @@
             const match = item.id.slice(prefix.length).match(/^(.*)_\d+$/);
             if (!match) return null;
             const keyPart = match[1];
-            const org = getOrgGroups().find(candidate => sanitizeId(candidate.key) === keyPart);
+            const org = getOrgOptions().find(candidate => sanitizeId(candidate.key) === keyPart);
             return org ? { orgKey: org.key } : null;
         }
 
