@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.4"></script>
+    <script src="i18n.js?v=2.4.5"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -817,13 +817,13 @@
         }
         .tag-org-section {
             grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
-            gap: 1.5rem;
             margin-bottom: 1.5rem;
         }
         .tag-org-section .active-org-banner {
-            margin-bottom: -0.25rem;
+            margin-bottom: 0.9rem;
+        }
+        .tag-org-section .org-badges-wrapper {
+            grid-column: 1 / -1;
         }
         .env-status-meta {
             display: flex;
@@ -2815,7 +2815,25 @@
                     ${t('button.backList')}
                 </button>
             `;
-            renderEnvironmentGroupBlocks(matchedEnvs, resultsArea, selectedTags.length > 0, selectedOrgKey, true);
+            if (selectedTags.length > 0 && matchedEnvs.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.gridColumn = '1 / -1';
+                empty.className = 'empty-state';
+                empty.textContent = t('state.noTagEnv');
+                resultsArea.appendChild(empty);
+                resultsArea.appendChild(backBtnWrapper);
+                return;
+            }
+            if (selectedTags.length > 0) {
+                const summaryWrapper = document.createElement('div');
+                summaryWrapper.className = 'org-badges-wrapper';
+                summaryWrapper.style.gridColumn = '1 / -1';
+                summaryWrapper.innerHTML = renderOrgSummaryGroups(selectedOrgKey, matchedEnvs);
+                resultsArea.appendChild(summaryWrapper);
+                resultsArea.appendChild(backBtnWrapper);
+                return;
+            }
+            renderEnvironmentGroupBlocks(matchedEnvs, resultsArea, false, selectedOrgKey, true);
             resultsArea.appendChild(backBtnWrapper);
             startRegisteredStatusChecks();
         }
@@ -2903,9 +2921,11 @@
                     <div class="active-org-banner">
                         <div class="active-org-name">${sanitizeHTML(org.label)}</div>
                     </div>
+                    <div class="org-badges-wrapper">
+                        ${renderOrgSummaryGroups(org.key, org.envs)}
+                    </div>
                 `;
                 resultsArea.appendChild(section);
-                renderEnvironmentGroupBlocks(org.envs, section, false);
                 renderNextOrg();
             };
             renderNextOrg();

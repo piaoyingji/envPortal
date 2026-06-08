@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.5] - 2026-06-08
+
+### Fixed
+
+- Kept TAG-filtered environment results in collapsed summary mode instead of expanding every matching environment automatically.
+
 ## [2.4.4] - 2026-06-07
 
 ### Changed
