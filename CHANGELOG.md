@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.13] - 2026-06-08
+
+### Changed
+
+- Changed environment search data output so users with environment query permission can view complete visible environment credentials, while role TAG permissions still limit which environments are visible.
+- Removed the stale empty `デフォルト` group automatically when any non-default group is added to an organization that only had that empty default group.
+
 ## [2.4.12] - 2026-06-08
 
 ### Fixed

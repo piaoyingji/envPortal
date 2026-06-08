@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.10"></script>
+    <script src="i18n.js?v=2.4.13"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1717,7 +1717,15 @@
             if (!org) return null;
             const record = ensureEnvGroupRecord(org);
             const normalized = normalizeGroupName(groupName);
+            const groupsBefore = uniqueTags((record.groups || []).map(normalizeGroupName));
+            const hadOnlyEmptyDefault = groupsBefore.length === 1
+                && groupsBefore[0] === DEFAULT_ENV_GROUP
+                && normalized !== DEFAULT_ENV_GROUP
+                && !orgHasRowsInGroup(orgKey, DEFAULT_ENV_GROUP);
             if (!record.groups.includes(normalized)) record.groups.push(normalized);
+            if (hadOnlyEmptyDefault) {
+                removeGroupNameFromOrg(orgKey, DEFAULT_ENV_GROUP);
+            }
             return normalized;
         }
 

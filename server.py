@@ -125,8 +125,6 @@ PRODUCTION_CSV_FIELDS = [
 ]
 SENSITIVE_STATIC_FILES = {"/data.csv", "/rdp.csv", "/production.csv", "/users.json", "/roles.json", "/tag_categories.json", "/env_groups.json"}
 REMOVED_MANAGEMENT_PAGES = {"/admin.html", "/rdp.html", "/production-admin.html"}
-PORTAL_MASK_FIELDS = {"ログインパスワード", "DBパスワード"}
-RDP_MASK_FIELDS = {"RDPユーザー名", "RDPパスワード"}
 PRODUCTION_MASK_FIELDS = {"VPNパスワード", "踏み台パスワード", "APパスワード", "DBパスワード"}
 USERS_PATH = BASE_DIR / "users.json"
 ROLES_PATH = BASE_DIR / "roles.json"
@@ -2334,9 +2332,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             data_rows = portal_rows_for_role(data_rows, tags_json, rdp_rows, role, all_portal_tags)
             visible_orgs = {str(row.get("組織名", "") or "").strip() for row in data_rows}
             if not profile.get("canEditPortal"):
-                data_rows = masked_records(data_rows, PORTAL_MASK_FIELDS)
                 rdp_rows = [row for row in rdp_rows if str(row.get("組織名", "") or "").strip() in visible_orgs]
-                rdp_rows = masked_records(rdp_rows, RDP_MASK_FIELDS)
             known_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             tag_categories = read_tag_categories_json(known_tags)
             if not profile.get("canEditPortal"):
