@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.9] - 2026-06-08
+
+### Changed
+
+- Removed automatic TAG extraction from environment group, environment name, database fields, and remote connection type.
+- Changed TAG filtering, role data permissions, TAG categories, and TAG skins to use only manually maintained TAGs from `tags.json`.
+
 ## [2.4.8] - 2026-06-08
 
 ### Changed

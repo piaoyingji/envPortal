@@ -120,22 +120,6 @@ class TagStoreCompatibilityTest(unittest.TestCase):
 
 
 class RoleDataPermissionTest(unittest.TestCase):
-    def test_auto_tags_include_environment_group_and_product_system(self):
-        row = {
-            "環境グループ": "UHR-V6",
-            "構築環境名": "U-PDS V7-TS2課-社内",
-            "URL": "http://example.test/login",
-            "DBタイプ": "PostgreSQL",
-            "DBバージョン": "16",
-        }
-
-        tags = server.auto_tags_for_row(row, [])
-
-        self.assertIn("UHR-V6", tags)
-        self.assertIn("UHR", tags)
-        self.assertIn("UPDS-V7", tags)
-        self.assertNotIn("UPDSV7", tags)
-
     def test_filter_tag_is_migrated_to_data_tags(self):
         role = server.normalize_role_record("legacy", {"dataTags": "", "filterTag": "OneHR"})
 
@@ -154,7 +138,7 @@ class RoleDataPermissionTest(unittest.TestCase):
 
         self.assertEqual(server.effective_role_data_tags(role, ["OneHR"]), [])
 
-    def test_role_data_permission_matches_manual_and_auto_tags(self):
+    def test_role_data_permission_matches_manual_tags_only(self):
         row = {
             "組織コード": "TOK",
             "組織名": "東京",
@@ -167,7 +151,8 @@ class RoleDataPermissionTest(unittest.TestCase):
         key = server.row_key(row)
 
         self.assertIn("OneHR", server.all_tags_for_row(row, {key: ["OneHR"]}, []))
-        self.assertIn("PostgreSQL 16", server.all_tags_for_row(row, {key: []}, []))
+        self.assertNotIn("PostgreSQL 16", server.all_tags_for_row(row, {key: []}, []))
+        self.assertEqual(server.all_known_tags([row], {key: []}, []), [])
 
 
 class EnvironmentGroupConfigTest(unittest.TestCase):
@@ -214,14 +199,6 @@ class EnvironmentGroupConfigTest(unittest.TestCase):
         filtered = server.filter_env_groups_for_rows(config, rows)
 
         self.assertEqual(list(filtered["records"].keys()), ["0408"])
-
-    def test_empty_environment_group_is_default_auto_tag(self):
-        row = {"環境グループ": "", "構築環境名": "PHR", "URL": ""}
-
-        tags = server.auto_tags_for_row(row, [])
-
-        self.assertIn("デフォルト", tags)
-
 
 if __name__ == "__main__":
     unittest.main()

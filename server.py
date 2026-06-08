@@ -423,86 +423,10 @@ def unique_tags(values):
     return result
 
 
-def endpoint_host(value):
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    try:
-        parsed = urllib.parse.urlparse(text)
-        if parsed.scheme and parsed.hostname:
-            return parsed.hostname
-    except Exception:
-        pass
-    first_part = text.split("/", 1)[0]
-    if first_part.startswith("[") and "]" in first_part:
-        return first_part[1:first_part.index("]")]
-    match = re.match(r"^(.+):(\d+)$", first_part)
-    if match:
-        return match.group(1).strip()
-    return first_part.split(":", 1)[0].strip()
-
-
-def detect_remote_type_record(remote):
-    explicit_type = str(remote.get("接続タイプ") or remote.get("接続種別") or remote.get("タイプ") or "").strip()
-    if explicit_type:
-        return explicit_type.upper()
-    target = str(remote.get("接続先(IP:Port)") or "")
-    match = re.search(r":(\d+)\s*$", target)
-    if match and match.group(1) == "22":
-        return "SSH"
-    if match and match.group(1) == "3389":
-        return "RDP"
-    return ""
-
-
-def product_tags_from_text(value):
-    text = str(value or "").strip()
-    upper = text.upper()
-    tags = []
-    if "UHR" in upper:
-        tags.append("UHR")
-    if "PHR" in upper:
-        tags.append("PHR")
-    normalized = re.sub(r"[^A-Z0-9]+", "", upper)
-    is_upds = "UPDS" in normalized or "UPDS" in upper.replace("-", "")
-    if is_upds and "V6" in normalized:
-        tags.append("UPDS-V6")
-    if is_upds and "V7" in normalized:
-        tags.append("UPDS-V7")
-    return unique_tags(tags)
-
-
-def auto_tags_for_row(row, rdp_rows):
-    tags = []
-    env_group = str(row.get("環境グループ") or "").strip() or DEFAULT_ENV_GROUP
-    env_name = str(row.get("構築環境名") or "").strip()
-    if env_group:
-        tags.append(env_group)
-    tags.extend(product_tags_from_text(env_group))
-    tags.extend(product_tags_from_text(env_name))
-    db_type = str(row.get("DBタイプ") or "").strip()
-    db_version = str(row.get("DBバージョン") or "").strip()
-    if db_type:
-        tags.append(db_type)
-    if db_type and db_version:
-        tags.append(f"{db_type} {db_version}")
-    elif db_version:
-        tags.append(f"DB {db_version}")
-
-    hosts = {endpoint_host(row.get("URL")), endpoint_host(row.get("DB名"))}
-    hosts.discard("")
-    if hosts:
-        for remote in rdp_rows:
-            if endpoint_host(remote.get("接続先(IP:Port)")) in hosts:
-                tags.append(detect_remote_type_record(remote))
-    return unique_tags(tags)
-
-
 def all_known_tags(rows, tags_json, rdp_rows):
     tags = []
     for row in rows:
         tags.extend(tags_for_row(row, tags_json))
-        tags.extend(auto_tags_for_row(row, rdp_rows))
     return sorted(unique_tags(tags))
 
 
@@ -624,7 +548,7 @@ def role_config(role):
 
 
 def all_tags_for_row(row, tags_json, rdp_rows):
-    return unique_tags(tags_for_row(row, tags_json) + auto_tags_for_row(row, rdp_rows))
+    return unique_tags(tags_for_row(row, tags_json))
 
 
 def effective_role_data_tags(role_info, known_tags):

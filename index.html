@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.8"></script>
+    <script src="i18n.js?v=2.4.9"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1304,11 +1304,6 @@
         const ENV_GROUP_OPTIONS = [DEFAULT_ENV_GROUP, 'UHR-V6', 'PHR-V7', 'UPDS-V6', 'UPDS-V7'];
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
-        const AUTO_TAG_PROVIDERS = [
-            autoEnvTagsForRow,
-            autoDbTagsForRow,
-            autoRemoteTagsForRow
-        ];
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
             
@@ -3098,7 +3093,6 @@
             const orgTitleHtml = showOrgTitle ? `<span class="env-org-title">${sanitizeHTML(org.label)}</span>` : '';
             const manualTagSet = new Set(tagsForRow(env));
             const tagHtml = allTagsForRow(env).map(tag => renderTagChip(tag, manualTagSet.has(tag))).join('');
-            const dbAutoTagHtml = autoDbTagsForRow(env).map(tag => renderTagChip(tag, false)).join('');
             const skin = tagSkinForRow(env);
             if (skin) {
                 card.dataset.skin = '1';
@@ -3139,7 +3133,6 @@
             function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix, itemIndex, totalItems, embedded = false) {
                 if (!remote) return '';
                 const currentRemoteType = detectRemoteType(remote);
-                const remoteTagHtml = currentRemoteType ? renderTagChip(currentRemoteType, false) : '';
                 const remoteTarget = sanitizeHTML(remote['接続先(IP:Port)']);
                 const remoteUser = sanitizeHTML(remote['RDPユーザー名']);
                 const sectionTitle = totalItems > 1 ? `${sectionLabel} ${itemIndex + 1}` : sectionLabel;
@@ -3164,7 +3157,6 @@
                         <div class="${wrapperClass}">
                             <div class="db-section-title">
                                 <span>${sectionTitle}</span>
-                                ${remoteTagHtml ? `<span class="db-title-tags">${remoteTagHtml}</span>` : ''}
                             </div>
                             <div class="env-detail">
                                 <div class="env-detail-label" style="color:var(--text-main);">${t('label.remoteUser')}</div>
@@ -3253,7 +3245,6 @@
                     <div class="info-subcard">
                         <div class="db-section-title">
                             <span>${t('section.db')}</span>
-                            ${dbAutoTagHtml ? `<span class="db-title-tags">${dbAutoTagHtml}</span>` : ''}
                         </div>
                         <div class="env-detail">
                             <div class="env-detail-label" style="color:var(--text-main);">DB名</div>
@@ -3972,49 +3963,6 @@
             return [];
         }
 
-        function autoEnvTagsForRow(row) {
-            const group = envGroupValue(row);
-            const name = String(row['構築環境名'] || '').trim();
-            return uniqueTags([
-                group,
-                ...productTagsFromText(group),
-                ...productTagsFromText(name)
-            ].filter(Boolean));
-        }
-
-        function productTagsFromText(value) {
-            const upper = String(value || '').trim().toUpperCase();
-            const compact = upper.replace(/[^A-Z0-9]+/g, '');
-            const tags = [];
-            if (upper.includes('UHR')) tags.push('UHR');
-            if (upper.includes('PHR')) tags.push('PHR');
-            const isUpds = compact.includes('UPDS');
-            if (isUpds && compact.includes('V6')) tags.push('UPDS-V6');
-            if (isUpds && compact.includes('V7')) tags.push('UPDS-V7');
-            return uniqueTags(tags);
-        }
-
-        function autoDbTagsForRow(row) {
-            const type = String(row['DBタイプ'] || '').trim();
-            const version = String(row['DBバージョン'] || '').trim();
-            const tags = [];
-            if (type) tags.push(type);
-            if (type && version) tags.push(`${type} ${version}`);
-            else if (version) tags.push(`DB ${version}`);
-            return tags;
-        }
-
-        function autoRemoteTagsForRow(row) {
-            const envHost = getHost(row['URL']);
-            const dbHost = getHost(row['DB名']);
-            return uniqueTags([envHost, dbHost]
-                .filter(Boolean)
-                .flatMap(host => findRemotesByHost(host))
-                .filter(Boolean)
-                .map(remote => detectRemoteType(remote))
-                .filter(Boolean));
-        }
-
         function detectRemoteType(remote) {
             const explicitType = String(remote['接続タイプ'] || remote['接続種別'] || remote['タイプ'] || '').trim();
             if (explicitType) return explicitType.toUpperCase();
@@ -4026,16 +3974,10 @@
             return '';
         }
 
-        function autoTagsForRow(row) {
-            return AUTO_TAG_PROVIDERS
-                .flatMap(provider => provider(row))
-                .filter(Boolean);
-        }
-
         function allTagsForRow(row) {
             const cacheKey = row && row.__rowId ? row.__rowId : getLegacyRowKey(row || {});
             if (cacheKey && rowTagCache.has(cacheKey)) return rowTagCache.get(cacheKey);
-            const tags = uniqueTags(tagsForRow(row).concat(autoTagsForRow(row)));
+            const tags = uniqueTags(tagsForRow(row));
             if (cacheKey) rowTagCache.set(cacheKey, tags);
             return tags;
         }
