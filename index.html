@@ -1440,11 +1440,7 @@
                     isAuthenticated = true;
                     localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
                     closePwdModal();
-                    if (result.canEdit || result.canManageUsers) {
-                        loadPortalData({ authenticated: true });
-                    } else {
-                        renderActiveView();
-                    }
+                    loadPortalData({ authenticated: true });
                 })
                 .catch(() => {
                     canEdit = false;
@@ -1921,14 +1917,8 @@
 
         function renderTagFilters() {
             const tagPanel = document.getElementById('tagFilterPanel');
-            const tagSet = new Set();
-            const tagCounts = {};
-            fullData.forEach(row => {
-                allTagsForRow(row).forEach(tag => {
-                    tagSet.add(tag);
-                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                });
-            });
+            const { tagSet, tagCounts } = collectVisibleTags();
+            pruneSelectedTags(tagSet);
 
             tagPanel.innerHTML = '';
             if (tagSet.size === 0) {
@@ -4014,6 +4004,24 @@
             });
         }
 
+        function collectVisibleTags() {
+            const tagSet = new Set();
+            const tagCounts = {};
+            fullData.forEach(row => {
+                allTagsForRow(row).forEach(tag => {
+                    tagSet.add(tag);
+                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                });
+            });
+            return { tagSet, tagCounts };
+        }
+
+        function pruneSelectedTags(visibleTags) {
+            const allowedTags = visibleTags || collectVisibleTags().tagSet;
+            selectedTags = selectedTags.filter(tag => allowedTags.has(tag));
+            return selectedTags;
+        }
+
         function displaySortRank(value) {
             const text = String(value || '').trim().toUpperCase();
             const compact = text.replace(/[^A-Z0-9]+/g, '');
@@ -4036,10 +4044,11 @@
         }
 
         function getFilteredData() {
-            if (selectedTags.length === 0) return fullData;
+            const effectiveTags = pruneSelectedTags();
+            if (effectiveTags.length === 0) return fullData;
             return fullData.filter(row => {
                 const rowTags = allTagsForRow(row);
-                return selectedTags.every(tag => rowTags.includes(tag));
+                return effectiveTags.every(tag => rowTags.includes(tag));
             });
         }
 

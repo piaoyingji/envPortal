@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.12] - 2026-06-08
+
+### Fixed
+
+- Forced role data permissions and on-screen TAG filters to stack together: role data TAGs remain the server-side hard limit, and page TAG selection can only narrow the already authorized data set.
+- Reloaded environment data after successful authentication for non-admin roles so custom role data permissions are applied before TAG filtering.
+- Dropped stale selected TAGs that are not present in the authorized data set.
+
 ## [2.4.11] - 2026-06-08
 
 ### Fixed
