@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.9"></script>
+    <script src="i18n.js?v=2.4.10"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1302,6 +1302,7 @@
         const RENDER_BATCH_SIZE = 12;
         const DEFAULT_ENV_GROUP = 'デフォルト';
         const ENV_GROUP_OPTIONS = [DEFAULT_ENV_GROUP, 'UHR-V6', 'PHR-V7', 'UPDS-V6', 'UPDS-V7'];
+        const DISPLAY_SORT_ORDER = ['UPDS-V6', 'UHR', 'UPDS-V7', 'PHR'];
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         window.addEventListener('DOMContentLoaded', () => {
@@ -1702,7 +1703,7 @@
         }
 
         function groupNameOptions(orgKey = '') {
-            return uniqueTags(ENV_GROUP_OPTIONS.concat(orgKey ? getEnvGroupsForOrg(orgKey) : fullData.map(row => envGroupValue(row))).filter(Boolean));
+            return sortByDisplayOrder(uniqueTags(ENV_GROUP_OPTIONS.concat(orgKey ? getEnvGroupsForOrg(orgKey) : fullData.map(row => envGroupValue(row))).filter(Boolean)));
         }
 
         function getEnvGroupsForOrg(orgKey) {
@@ -1712,7 +1713,7 @@
                 if (getOrgGroup(row).key === orgKey) groups.push(envGroupValue(row));
             });
             const normalizedGroups = uniqueTags(groups.map(normalizeGroupName));
-            return normalizedGroups.length ? normalizedGroups : [DEFAULT_ENV_GROUP];
+            return normalizedGroups.length ? sortByDisplayOrder(normalizedGroups) : [DEFAULT_ENV_GROUP];
         }
 
         function addGroupNameToOrg(orgKey, groupName) {
@@ -1776,10 +1777,12 @@
             const groups = getEnvGroupsForOrg(orgKey);
             const index = groups.indexOf(groupName);
             if (index < 0 || groups.length < 2) return '';
+            const canMoveUp = index > 0 && displaySortRank(groups[index - 1]) === displaySortRank(groupName);
+            const canMoveDown = index < groups.length - 1 && displaySortRank(groups[index + 1]) === displaySortRank(groupName);
             return `
                 <span class="group-order-actions">
-                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', -1, event)" title="${t('button.moveUp')}" aria-label="${t('button.moveUp')}" ${index === 0 ? 'disabled' : ''}>${arrowUpIcon()}</button>
-                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', 1, event)" title="${t('button.moveDown')}" aria-label="${t('button.moveDown')}" ${index === groups.length - 1 ? 'disabled' : ''}>${arrowDownIcon()}</button>
+                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', -1, event)" title="${t('button.moveUp')}" aria-label="${t('button.moveUp')}" ${canMoveUp ? '' : 'disabled'}>${arrowUpIcon()}</button>
+                    <button type="button" class="secondary-btn" onclick="moveEnvGroupDisplayOrder('${escapeJs(orgKey)}', '${escapeJs(groupName)}', 1, event)" title="${t('button.moveDown')}" aria-label="${t('button.moveDown')}" ${canMoveDown ? '' : 'disabled'}>${arrowDownIcon()}</button>
                 </span>
             `;
         }
@@ -1932,7 +1935,7 @@
                 tagPanel.innerHTML = `<span class="tag-empty">${t('filter.noTags')}</span>`;
                 return;
             }
-            const groups = groupTags(Array.from(tagSet).sort());
+            const groups = groupTags(sortByDisplayOrder(Array.from(tagSet)));
             tagCategoryConfig.categories.forEach(group => {
                 const tags = groups[group.id] || [];
                 if (tags.length === 0) return;
@@ -2440,6 +2443,7 @@
             const index = groups.indexOf(groupName);
             const targetIndex = index + direction;
             if (index < 0 || targetIndex < 0 || targetIndex >= groups.length) return;
+            if (displaySortRank(groups[targetIndex]) !== displaySortRank(groupName)) return;
             const beforeGroups = groups.slice();
             [groups[index], groups[targetIndex]] = [groups[targetIndex], groups[index]];
             const afterGroups = setEnvGroupOrder(orgKey, groups);
@@ -3990,6 +3994,27 @@
                 seen.add(key);
                 return true;
             });
+        }
+
+        function displaySortRank(value) {
+            const text = String(value || '').trim().toUpperCase();
+            const compact = text.replace(/[^A-Z0-9]+/g, '');
+            if (compact.includes('UPDSV6')) return 0;
+            if (text.includes('UHR')) return 1;
+            if (compact.includes('UPDSV7')) return 2;
+            if (text.includes('PHR')) return 3;
+            return DISPLAY_SORT_ORDER.length;
+        }
+
+        function compareDisplayOrder(a, b) {
+            const rankA = displaySortRank(a);
+            const rankB = displaySortRank(b);
+            if (rankA !== rankB) return rankA - rankB;
+            return String(a || '').localeCompare(String(b || ''), 'ja', { numeric: true });
+        }
+
+        function sortByDisplayOrder(values) {
+            return values.slice().sort(compareDisplayOrder);
         }
 
         function getFilteredData() {

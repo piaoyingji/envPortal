@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - タグ分類管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.4.9"></script>
+    <script src="i18n.js?v=2.4.10"></script>
     <style>
         .tag-admin-container {
             width: calc(100% - 2rem);
@@ -341,7 +341,24 @@
                 if (!value || seen.has(value)) return false;
                 seen.add(value);
                 return true;
-            }).sort();
+            }).sort(compareDisplayOrder);
+        }
+
+        function displaySortRank(value) {
+            const text = String(value || '').trim().toUpperCase();
+            const compact = text.replace(/[^A-Z0-9]+/g, '');
+            if (compact.includes('UPDSV6')) return 0;
+            if (text.includes('UHR')) return 1;
+            if (compact.includes('UPDSV7')) return 2;
+            if (text.includes('PHR')) return 3;
+            return 4;
+        }
+
+        function compareDisplayOrder(a, b) {
+            const rankA = displaySortRank(a);
+            const rankB = displaySortRank(b);
+            if (rankA !== rankB) return rankA - rankB;
+            return String(a || '').localeCompare(String(b || ''), 'ja', { numeric: true });
         }
 
         function showToast(message) {

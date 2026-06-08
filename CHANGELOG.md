@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.10] - 2026-06-08
+
+### Changed
+
+- Applied the fixed product display order `UPDS-V6 < UHR < UPDS-V7 < PHR` to environment groups and TAG lists.
+- Prevented group move-up and move-down controls from crossing fixed product display-order boundaries.
+
 ## [2.4.9] - 2026-06-08
 
 ### Changed

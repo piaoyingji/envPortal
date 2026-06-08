@@ -154,6 +154,22 @@ class RoleDataPermissionTest(unittest.TestCase):
         self.assertNotIn("PostgreSQL 16", server.all_tags_for_row(row, {key: []}, []))
         self.assertEqual(server.all_known_tags([row], {key: []}, []), [])
 
+    def test_known_tags_use_product_display_order(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A", "URL": "http://a", "ログインID": "a"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B", "URL": "http://b", "ログインID": "b"},
+            {"組織コード": "3", "組織名": "C", "構築環境名": "C", "URL": "http://c", "ログインID": "c"},
+            {"組織コード": "4", "組織名": "D", "構築環境名": "D", "URL": "http://d", "ログインID": "d"},
+        ]
+        tags_json = {
+            server.row_key(rows[0]): ["PHR"],
+            server.row_key(rows[1]): ["UPDS-V7"],
+            server.row_key(rows[2]): ["UHR"],
+            server.row_key(rows[3]): ["UPDS-V6"],
+        }
+
+        self.assertEqual(server.all_known_tags(rows, tags_json, []), ["UPDS-V6", "UHR", "UPDS-V7", "PHR"])
+
 
 class EnvironmentGroupConfigTest(unittest.TestCase):
     def test_env_group_config_preserves_explicit_groups_without_forcing_default(self):

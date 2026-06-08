@@ -135,6 +135,7 @@ ENV_GROUPS_PATH = BASE_DIR / "env_groups.json"
 OTHER_TAG_CATEGORY_ID = "other"
 OTHER_TAG_CATEGORY_LABEL = "其他"
 DEFAULT_ENV_GROUP = "デフォルト"
+DISPLAY_SORT_ORDER = ["UPDS-V6", "UHR", "UPDS-V7", "PHR"]
 DEFAULT_TAG_SKINS = {
     "UHR": {"bg": "#f0fdf4", "border": "#bbf7d0", "accent": "#16a34a"},
     "PHR": {"bg": "#eff6ff", "border": "#bfdbfe", "accent": "#2563eb"},
@@ -423,11 +424,29 @@ def unique_tags(values):
     return result
 
 
+def display_sort_rank(value):
+    text = str(value or "").strip().upper()
+    compact = re.sub(r"[^A-Z0-9]+", "", text)
+    if "UPDSV6" in compact:
+        return 0
+    if "UHR" in text:
+        return 1
+    if "UPDSV7" in compact:
+        return 2
+    if "PHR" in text:
+        return 3
+    return len(DISPLAY_SORT_ORDER)
+
+
+def display_sort_key(value):
+    return (display_sort_rank(value), str(value or ""))
+
+
 def all_known_tags(rows, tags_json, rdp_rows):
     tags = []
     for row in rows:
         tags.extend(tags_for_row(row, tags_json))
-    return sorted(unique_tags(tags))
+    return sorted(unique_tags(tags), key=display_sort_key)
 
 
 def filter_tags_for_rows(tags_json, rows):
