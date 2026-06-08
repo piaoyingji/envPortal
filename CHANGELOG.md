@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.14] - 2026-06-08
+
+### Fixed
+
+- Preserved TAG display settings when saving TAG category assignments by merging omitted `skins` and `activeSkinCategory` from the existing runtime config.
+- Refreshed open home pages after TAG category or TAG display setting saves so card skin rendering updates without a manual reload.
+
 ## [2.4.13] - 2026-06-08
 
 ### Changed

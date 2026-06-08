@@ -1,6 +1,6 @@
 # EnvPortal 系统需求与设计说明
 
-当前设计版本：`2.4.13`
+当前设计版本：`2.4.14`
 
 ## 1. 系统定位
 
@@ -71,6 +71,8 @@ EnvPortal 是一个面向运维、实施和内部支持人员的轻量级环境�
   * 将当前有效 TAG 分配到分类。
   * 固定 `other` 分类，删除分类后相关 TAG 自动回到 `other`。
   * 分类配置保存到 `tag_categories.json`。
+  * 保存分类时保留既有 TAG 显示设定，避免覆盖 `skins` 和 `activeSkinCategory`。
+  * 保存成功后通知已打开的首页重新加载 TAG 分类和配色配置，并刷新当前渲染。
 
 ### 2.6 TAG 显示设定 `tag-skin-admin.html`
 

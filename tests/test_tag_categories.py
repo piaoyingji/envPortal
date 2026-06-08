@@ -94,6 +94,31 @@ class TagCategoryNormalizationTest(unittest.TestCase):
 
         self.assertEqual(config["activeSkinCategory"], "other")
 
+    def test_category_payload_without_skins_preserves_existing_skins(self):
+        incoming = {
+            "categories": [{"id": "product", "label": "Product"}],
+            "assignments": {"UHR": "product"},
+        }
+        existing = {
+            "categories": [{"id": "product", "label": "Product"}],
+            "activeSkinCategory": "product",
+            "skins": {
+                "product": {
+                    "UHR": {"bg": "#abcdef", "border": "#123456", "accent": "#fedcba"},
+                },
+            },
+        }
+
+        merged = server.merge_tag_categories_payload(incoming, existing)
+        config = server.normalize_tag_categories_config(merged, ["UHR"])
+
+        self.assertEqual(config["activeSkinCategory"], "product")
+        self.assertEqual(config["skins"]["product"]["UHR"], {
+            "bg": "#abcdef",
+            "border": "#123456",
+            "accent": "#fedcba",
+        })
+
 
 class TagStoreCompatibilityTest(unittest.TestCase):
     def test_read_tags_json_returns_dict_when_file_exists(self):

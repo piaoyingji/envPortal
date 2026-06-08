@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.13"></script>
+    <script src="i18n.js?v=2.4.14"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1303,6 +1303,7 @@
         const DEFAULT_ENV_GROUP = 'デフォルト';
         const ENV_GROUP_OPTIONS = [DEFAULT_ENV_GROUP, 'UHR-V6', 'PHR-V7', 'UPDS-V6', 'UPDS-V7'];
         const DISPLAY_SORT_ORDER = ['UPDS-V6', 'UHR', 'UPDS-V7', 'PHR'];
+        const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         window.addEventListener('DOMContentLoaded', () => {
@@ -1316,6 +1317,17 @@
             loadPortalData({ authenticated: false });
             loadPortalConfig().then(() => checkWindowsAuth({ allowProxy: false }));
         });
+        window.addEventListener('storage', event => {
+            if (event.key === TAG_CATEGORY_CHANGE_KEY && event.newValue) {
+                refreshPortalAfterTagCategoryChange();
+            }
+        });
+        window.refreshPortalAfterTagCategoryChange = refreshPortalAfterTagCategoryChange;
+
+        function refreshPortalAfterTagCategoryChange() {
+            const authenticated = typeof readStoredPortalAuth === 'function' ? Boolean(readStoredPortalAuth()) : isAuthenticated;
+            return loadPortalData({ authenticated });
+        }
 
         function resetPortalDerivedCaches() {
             rowTagCache = new Map();

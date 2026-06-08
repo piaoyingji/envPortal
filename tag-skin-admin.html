@@ -204,6 +204,7 @@
         let allTags = [];
         let canManageUsers = false;
         let activeCategoryId = '';
+        const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
 
         window.addEventListener('DOMContentLoaded', loadSkins);
         window.addEventListener('i18n:changed', renderSkins);
@@ -375,9 +376,23 @@
                 .then(res => res.ok ? res.text() : Promise.reject(new Error('tag_categories.json save failed')))
                 .then(() => {
                     showToast(t('toast.saved'));
+                    notifyTagCategoryChanged();
                     loadSkins();
                 })
                 .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function notifyTagCategoryChanged() {
+            try {
+                localStorage.setItem(TAG_CATEGORY_CHANGE_KEY, String(Date.now()));
+            } catch (e) {
+            }
+            try {
+                if (window.opener && !window.opener.closed && typeof window.opener.refreshPortalAfterTagCategoryChange === 'function') {
+                    window.opener.refreshPortalAfterTagCategoryChange();
+                }
+            } catch (e) {
+            }
         }
 
         function normalizeTagCategories(config) {

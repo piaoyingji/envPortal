@@ -156,6 +156,7 @@
         let allTags = [];
         let selectedTag = '';
         let canManageUsers = false;
+        const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
 
         window.addEventListener('DOMContentLoaded', loadTagCategories);
         window.addEventListener('i18n:changed', renderTagCategories);
@@ -282,9 +283,23 @@
                 .then(res => res.ok ? res.text() : Promise.reject(new Error('tag_categories.json save failed')))
                 .then(() => {
                     showToast(t('toast.saved'));
+                    notifyTagCategoryChanged();
                     loadTagCategories();
                 })
                 .catch(err => alert(t('error.save') + err.message));
+        }
+
+        function notifyTagCategoryChanged() {
+            try {
+                localStorage.setItem(TAG_CATEGORY_CHANGE_KEY, String(Date.now()));
+            } catch (e) {
+            }
+            try {
+                if (window.opener && !window.opener.closed && typeof window.opener.refreshPortalAfterTagCategoryChange === 'function') {
+                    window.opener.refreshPortalAfterTagCategoryChange();
+                }
+            } catch (e) {
+            }
         }
 
         function normalizeTagCategories(config) {
@@ -308,7 +323,14 @@
                 const id = normalizeCategoryId(rawAssignments[tag]);
                 assignments[tagName] = validIds.has(id) ? id : 'other';
             });
-            return { categories, assignments };
+            const skins = source.skins && typeof source.skins === 'object' ? JSON.parse(JSON.stringify(source.skins)) : {};
+            const activeSkinCategory = normalizeCategoryId(source.activeSkinCategory);
+            return {
+                categories,
+                assignments,
+                skins,
+                activeSkinCategory: validIds.has(activeSkinCategory) ? activeSkinCategory : 'other'
+            };
         }
 
         function categoryIdForTag(tag) {

@@ -448,6 +448,16 @@ def normalize_tag_categories_config(raw=None, known_tags=None):
     }
 
 
+def merge_tag_categories_payload(incoming, existing):
+    payload = dict(incoming) if isinstance(incoming, dict) else {}
+    source = existing if isinstance(existing, dict) else {}
+    if "skins" not in payload and isinstance(source.get("skins"), dict):
+        payload["skins"] = source["skins"]
+    if "activeSkinCategory" not in payload and source.get("activeSkinCategory") is not None:
+        payload["activeSkinCategory"] = source.get("activeSkinCategory")
+    return payload
+
+
 def read_tag_categories_json(known_tags=None):
     if not TAG_CATEGORIES_PATH.exists():
         return normalize_tag_categories_config(None, known_tags)
@@ -2269,6 +2279,13 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                     incoming = json.loads(body or "{}")
                     if not isinstance(incoming, dict):
                         raise ValueError("tag categories payload must be object")
+                    existing = {}
+                    if TAG_CATEGORIES_PATH.exists():
+                        try:
+                            existing = json.loads(TAG_CATEGORIES_PATH.read_text(encoding="utf-8-sig") or "{}")
+                        except json.JSONDecodeError:
+                            existing = {}
+                    incoming = merge_tag_categories_payload(incoming, existing)
                     data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
                     rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
                     tags_json = read_tags_json()
