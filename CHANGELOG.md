@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.15] - 2026-06-08
+
+### Fixed
+
+- Applied the fixed product display order `UPDS-V6 < UHR < UPDS-V7 < PHR` to environment cards inside the same environment group.
+- Kept inline expand and collapse lookups aligned with the sorted environment card order.
+
 ## [2.4.14] - 2026-06-08
 
 ### Fixed

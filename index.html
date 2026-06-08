@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.14"></script>
+    <script src="i18n.js?v=2.4.15"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -2854,7 +2854,7 @@
 
         function renderOrgSummaryGroups(orgKey, envs) {
             const groups = new Map();
-            envs.forEach((env, index) => {
+            sortEnvironmentsByDisplayOrder(envs).forEach((env, index) => {
                 const groupName = envGroupValue(env);
                 if (!groups.has(groupName)) groups.set(groupName, []);
                 groups.get(groupName).push({ env, index });
@@ -2995,7 +2995,7 @@
                     groups.set(groupName, { title: groupName, groupValue: groupName, rows: [] });
                 });
             }
-            envs.forEach(env => {
+            sortEnvironmentsByDisplayOrder(envs).forEach(env => {
                 const explicitGroup = envGroupValue(env);
                 const key = explicitGroup;
                 const title = explicitGroup;
@@ -3084,16 +3084,17 @@
 
         function renderEnvironmentCardsBatched(envs, showOrgTitle, targetArea, onDone, existingToken) {
             const token = existingToken || ++renderToken;
+            const orderedEnvs = sortEnvironmentsByDisplayOrder(envs);
             let index = 0;
             const renderBatch = () => {
                 if (token !== renderToken) return;
                 const fragment = document.createDocumentFragment();
-                const end = Math.min(index + RENDER_BATCH_SIZE, envs.length);
+                const end = Math.min(index + RENDER_BATCH_SIZE, orderedEnvs.length);
                 for (; index < end; index++) {
-                    fragment.appendChild(createEnvironmentCard(envs[index], showOrgTitle));
+                    fragment.appendChild(createEnvironmentCard(orderedEnvs[index], showOrgTitle));
                 }
                 targetArea.appendChild(fragment);
-                if (index < envs.length) {
+                if (index < orderedEnvs.length) {
                     requestAnimationFrame(renderBatch);
                 } else if (onDone) {
                     onDone();
@@ -3334,7 +3335,7 @@
         function expandInlineEnv(orgKey, envIndex) {
             const item = document.getElementById(`env_item_${sanitizeId(orgKey)}_${envIndex}`);
             if (!item || item.classList.contains('expanded')) return;
-            const envs = getFilteredData().filter(item => getOrgGroup(item).key === orgKey);
+            const envs = sortEnvironmentsByDisplayOrder(getFilteredData().filter(item => getOrgGroup(item).key === orgKey));
             const env = envs[envIndex];
             if (!env) return;
             item.innerHTML = '';
@@ -3353,7 +3354,7 @@
             const match = item.id.match(/_(\d+)$/);
             const envIndex = match ? Number(match[1]) : -1;
             if (envIndex < 0) return;
-            const envs = getFilteredData().filter(row => getOrgGroup(row).key === orgKey);
+            const envs = sortEnvironmentsByDisplayOrder(getFilteredData().filter(row => getOrgGroup(row).key === orgKey));
             const env = envs[envIndex];
             if (!env) return;
             item.classList.remove('expanded');
@@ -4061,6 +4062,32 @@
 
         function sortByDisplayOrder(values) {
             return values.slice().sort(compareDisplayOrder);
+        }
+
+        function environmentDisplayRank(row) {
+            const candidates = [
+                row && row['構築環境名'],
+                row && row['環境グループ'],
+                ...allTagsForRow(row || {})
+            ];
+            return candidates.reduce((rank, value) => Math.min(rank, displaySortRank(value)), DISPLAY_SORT_ORDER.length);
+        }
+
+        function environmentDisplayName(row) {
+            return String(row && row['構築環境名'] || '').trim();
+        }
+
+        function compareEnvironmentDisplayOrder(a, b) {
+            const rankA = environmentDisplayRank(a);
+            const rankB = environmentDisplayRank(b);
+            if (rankA !== rankB) return rankA - rankB;
+            const nameCompare = environmentDisplayName(a).localeCompare(environmentDisplayName(b), 'ja', { numeric: true });
+            if (nameCompare !== 0) return nameCompare;
+            return String(a && a.__rowId || '').localeCompare(String(b && b.__rowId || ''), 'ja', { numeric: true });
+        }
+
+        function sortEnvironmentsByDisplayOrder(envs) {
+            return (envs || []).slice().sort(compareEnvironmentDisplayOrder);
         }
 
         function getFilteredData() {
