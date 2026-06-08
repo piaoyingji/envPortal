@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.7] - 2026-06-08
+
+### Added
+
+- Added an administrator-only action to move an entire environment group to another organization, including its environments and matching remote connection organization names.
+
 ## [2.4.6] - 2026-06-08
 
 ### Fixed

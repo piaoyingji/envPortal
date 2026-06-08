@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.6';
+const APP_VERSION_FALLBACK = '2.4.7';
 
 const I18N_MESSAGES = {
     ja: {
@@ -61,6 +61,7 @@ const I18N_MESSAGES = {
         'button.add': '追加',
         'button.addGroup': 'グループ追加',
         'button.moveGroup': 'グループ移動',
+        'button.moveGroupOrg': 'グループを別組織へ移動',
         'button.moveUp': '上へ移動',
         'button.moveDown': '下へ移動',
         'button.save': '保存',
@@ -107,6 +108,7 @@ const I18N_MESSAGES = {
         'error.groupNotEmpty': '環境があるグループは削除できません。先に環境を別グループへ移動してください。',
         'error.lastGroupProtected': '組織の最後のグループは削除できません。',
         'error.noCopyTargetOrg': 'コピー先組織がありません',
+        'error.noMoveTargetOrg': '移動先組織がありません',
         'confirm.delete': 'このデータを完全に削除してもよろしいですか？（※即座にサーバーから削除されます）',
         'confirm.deleteEnv': 'この環境を削除しますか？',
         'confirm.deleteGroup': 'この空グループを削除しますか？',
@@ -123,6 +125,7 @@ const I18N_MESSAGES = {
         'label.envGroup': '環境グループ',
         'label.envGroupShort': 'グループ',
         'label.copyTargetOrg': 'コピー先組織',
+        'label.moveTargetOrg': '移動先組織',
         'label.envName': '構築環境名',
         'label.url': 'URL',
         'label.tags': 'タグ',
@@ -196,6 +199,7 @@ const I18N_MESSAGES = {
         'modal.groupAdd': 'グループ追加',
         'modal.groupEdit': 'グループ編集',
         'modal.groupMove': 'グループ移動',
+        'modal.groupOrgMove': 'グループの組織移動',
         'modal.envAdd': '環境追加',
         'modal.envCopy': '環境コピー',
         'modal.productionAdd': '本番環境追加',
@@ -302,6 +306,7 @@ const I18N_MESSAGES = {
         'button.add': '新增',
         'button.addGroup': '新增分组',
         'button.moveGroup': '移动分组',
+        'button.moveGroupOrg': '移动分组到其他机构',
         'button.moveUp': '上移',
         'button.moveDown': '下移',
         'button.save': '保存',
@@ -348,6 +353,7 @@ const I18N_MESSAGES = {
         'error.groupNotEmpty': '有环境的分组不能删除。请先把环境移动到其他分组。',
         'error.lastGroupProtected': '不能删除该机构的最后一个分组。',
         'error.noCopyTargetOrg': '没有可复制到的目标机构',
+        'error.noMoveTargetOrg': '没有可移动到的目标机构',
         'confirm.delete': '确定要永久删除这条数据吗？（会立即从服务器删除）',
         'confirm.deleteEnv': '确定要删除这个环境吗？',
         'confirm.deleteGroup': '确定要删除这个空分组吗？',
@@ -364,6 +370,7 @@ const I18N_MESSAGES = {
         'label.envGroup': '环境组',
         'label.envGroupShort': '分组',
         'label.copyTargetOrg': '复制目标机构',
+        'label.moveTargetOrg': '移动目标机构',
         'label.envName': '环境名称',
         'label.url': 'URL',
         'label.tags': '标签',
@@ -437,6 +444,7 @@ const I18N_MESSAGES = {
         'modal.groupAdd': '环境组追加',
         'modal.groupEdit': '环境组编辑',
         'modal.groupMove': '移动环境分组',
+        'modal.groupOrgMove': '移动分组到其他机构',
         'modal.envAdd': '环境追加',
         'modal.envCopy': '环境复制',
         'modal.productionAdd': '本番环境追加',
