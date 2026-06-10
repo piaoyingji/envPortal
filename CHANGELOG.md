@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.20] - 2026-06-10
+
+### Fixed
+
+- Changed the TAG filter clear action so restricted roles keep their role TAG scope after clearing user selected filters.
+- Replaced the hardcoded `All` TAG filter button label with localized clear text.
+- Prevented unrestricted organization backfill when a role TAG scope is active.
+
 ## [2.4.19] - 2026-06-10
 
 ### Fixed

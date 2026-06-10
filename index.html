@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.19"></script>
+    <script src="i18n.js?v=2.4.20"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1599,6 +1599,10 @@
             return Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'ja'));
         }
 
+        function hasActiveRoleTagScope() {
+            return Boolean(dataTagFilterActive && portalFilterTags && portalFilterTags.size > 0);
+        }
+
         function orgInfoFromGroupRecord(record) {
             const code = String(record && record.code || '').trim();
             const name = String(record && record.name || '').trim();
@@ -1988,7 +1992,7 @@
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
             clearBtn.className = 'tag-clear-btn';
-            clearBtn.textContent = 'All';
+            clearBtn.textContent = t('filter.clear');
             clearBtn.onclick = () => {
                 selectedTags = [];
                 currentOrgPage = 1;
@@ -2010,7 +2014,7 @@
         function renderActiveView() {
             const currentOrg = document.getElementById('orgSelect').value;
             if (currentOrg) renderEnvironments(currentOrg);
-            else if (selectedTags.length > 0) renderTagEnvironments();
+            else if (selectedTags.length > 0 || hasActiveRoleTagScope()) renderTagEnvironments();
             else renderInitialSummary();
         }
 
@@ -2776,7 +2780,7 @@
                     }
                 }
             });
-            if (selectedTags.length === 0) {
+            if (selectedTags.length === 0 && !hasActiveRoleTagScope()) {
                 getOrgOptions().forEach(org => {
                     if (!org.isUnset && !orgMap.has(org.key)) orgMap.set(org.key, { ...org, envs: [] });
                 });

@@ -53,6 +53,11 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("if (dataTagFilterActive) {", self.index_html)
         self.assertIn("if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;", self.index_html)
         self.assertIn("return effectiveTags.every(tag => rowTags.includes(tag));", self.index_html)
+        self.assertIn("function hasActiveRoleTagScope()", self.index_html)
+        self.assertIn("selectedTags.length > 0 || hasActiveRoleTagScope()", self.index_html)
+        self.assertIn("selectedTags.length === 0 && !hasActiveRoleTagScope()", self.index_html)
+        self.assertIn("clearBtn.textContent = t('filter.clear');", self.index_html)
+        self.assertNotIn("clearBtn.textContent = 'All';", self.index_html)
 
     def test_page_edit_buttons_use_page_specific_permissions(self):
         self.assertIn("canEdit = Boolean(payload && payload.canEditPortal);", self.index_html)
