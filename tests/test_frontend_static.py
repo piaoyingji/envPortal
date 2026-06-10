@@ -70,6 +70,16 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertNotIn("payload.canEditProduction || payload.canEdit", self.production_html)
         self.assertNotIn("result.canEditProduction || result.canEdit", self.production_html)
 
+    def test_feature_navigation_uses_view_permissions(self):
+        self.assertIn('data-feature-nav="portal"', self.index_html)
+        self.assertIn('data-feature-nav="production"', self.index_html)
+        self.assertIn('data-feature-nav="portal"', self.production_html)
+        self.assertIn('data-feature-nav="production"', self.production_html)
+        self.assertIn("function applyFeatureNavigation(profile)", self.i18n_js)
+        self.assertIn("portal: Boolean(profile && profile.canViewPortal)", self.i18n_js)
+        self.assertIn("production: Boolean(profile && profile.canViewProduction)", self.i18n_js)
+        self.assertIn("link.hidden = !visible;", self.i18n_js)
+
 
 if __name__ == "__main__":
     unittest.main()

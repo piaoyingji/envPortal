@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.20"></script>
+    <script src="i18n.js?v=2.4.21"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1189,8 +1189,8 @@
         </div>
         <nav class="main-nav">
             <div class="main-nav-inner">
-                <a href="index.html" class="active" data-i18n="nav.search">環境検索</a>
-                <a id="productionNavLink" href="production.html" data-i18n="nav.production" onclick="syncProductionNavLink()">本番環境</a>
+                <a href="index.html" class="active" data-feature-nav="portal" data-i18n="nav.search" hidden>環境検索</a>
+                <a id="productionNavLink" href="production.html" data-feature-nav="production" data-i18n="nav.production" onclick="syncProductionNavLink()" hidden>本番環境</a>
             </div>
         </nav>
     </header>

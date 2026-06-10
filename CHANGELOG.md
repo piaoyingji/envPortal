@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.21] - 2026-06-10
+
+### Fixed
+
+- Hid top navigation entries for features the current role cannot view.
+- Added shared feature navigation visibility control based on `canViewPortal` and `canViewProduction`.
+
 ## [2.4.20] - 2026-06-10
 
 ### Fixed

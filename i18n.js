@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.20';
+const APP_VERSION_FALLBACK = '2.4.21';
 
 const I18N_MESSAGES = {
     ja: {
@@ -764,6 +764,7 @@ function isIpLikeUser(value) {
 function setCurrentUser(profile) {
     const label = document.getElementById('currentUserLabel');
     updateProxyLoginStatus(profile);
+    applyFeatureNavigation(profile);
     if (!label) return;
     const name = String((profile && (profile.displayName || profile.user)) || '').trim();
     if (!name || isIpLikeUser(name)) {
@@ -776,6 +777,22 @@ function setCurrentUser(profile) {
     label.dataset.name = name;
     label.textContent = t('app.currentUser', { name });
     label.hidden = false;
+}
+
+function applyFeatureNavigation(profile) {
+    const permissions = {
+        portal: Boolean(profile && profile.canViewPortal),
+        production: Boolean(profile && profile.canViewProduction)
+    };
+    document.querySelectorAll('[data-feature-nav]').forEach(link => {
+        const feature = link.dataset.featureNav;
+        if (!feature || !(feature in permissions)) return;
+        const visible = permissions[feature];
+        link.hidden = !visible;
+        link.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        if (visible) link.removeAttribute('tabindex');
+        else link.setAttribute('tabindex', '-1');
+    });
 }
 
 function updateProxyLoginStatus(profile) {
