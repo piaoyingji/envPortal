@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.23"></script>
+    <script src="i18n.js?v=2.4.24"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1387,8 +1387,10 @@
             portalDataLevel = level;
             canEdit = Boolean(payload && payload.canEditPortal);
             canManageUsers = Boolean(payload && payload.canManageUsers);
-            setCurrentUser(payload);
-            setSystemMenuVisible(isSystemAdmin(payload));
+            if (level > 1) {
+                setCurrentUser(payload);
+                setSystemMenuVisible(isSystemAdmin(payload));
+            }
             isAuthenticated = canEdit;
             tagStore = normalizeTagStore(payload.tags || {});
             portalFilterTags = Array.isArray(payload.filterTags) ? new Set(payload.filterTags.map(tag => String(tag || '').trim()).filter(Boolean)) : null;
@@ -1440,7 +1442,7 @@
         }
 
         function checkWindowsAuth(options = {}) {
-            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store', refreshAuth: true })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEditPortal);

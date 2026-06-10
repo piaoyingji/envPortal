@@ -47,6 +47,15 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("function escapeHtml(value)", self.proxy_admin_html)
         self.assertIn("function escapeJs(value)", self.proxy_admin_html)
 
+    def test_auth_refresh_controls_system_menu(self):
+        self.assertIn("delete nextOptions.refreshAuth;", self.i18n_js)
+        self.assertIn("const forceRefreshAuth = options.refreshAuth === true;", self.i18n_js)
+        self.assertIn("loadPortalAuth({ forceRefresh: forceRefreshAuth })", self.i18n_js)
+        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.i18n_js)
+        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.index_html)
+        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.production_html)
+        self.assertIn("if (level > 1) {", self.index_html)
+
     def test_tag_filter_uses_authorized_filter_tags(self):
         self.assertIn("let portalFilterTags = null;", self.index_html)
         self.assertIn("payload.filterTags", self.index_html)

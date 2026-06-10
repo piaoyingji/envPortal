@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.23';
+const APP_VERSION_FALLBACK = '2.4.24';
 
 const I18N_MESSAGES = {
     ja: {
@@ -608,6 +608,7 @@ function clearStoredPortalAuth() {
 function portalOptionsWithProxyRole(options = {}, includeProxy = true) {
     const nextOptions = { ...options };
     delete nextOptions.skipProxyRole;
+    delete nextOptions.refreshAuth;
     const headers = new Headers(options.headers || {});
     const proxyRole = includeProxy ? readPortalProxyRole() : '';
     if (proxyRole) headers.set('X-EnvPortal-Proxy-Role', proxyRole);
@@ -650,9 +651,10 @@ function applyCachedPortalIdentity() {
     return profile;
 }
 
-function loadPortalAuth() {
+function loadPortalAuth(options = {}) {
+    const forceRefresh = Boolean(options.forceRefresh);
     const stored = readStoredPortalAuth();
-    if (stored) {
+    if (stored && !forceRefresh) {
         PORTAL_AUTH_PROFILE = stored;
         return Promise.resolve(stored);
     }
@@ -681,17 +683,21 @@ function loadPortalAuth() {
 function portalFetch(path, options = {}) {
     return loadPortalRuntimeConfig().then(() => {
         const includeProxy = options.skipProxyRole !== true;
+        const forceRefreshAuth = options.refreshAuth === true;
         if (!portalProxyEnabled()) return fetch(path, portalOptionsWithProxyRole(options, includeProxy));
         if (isAuthEndpoint(path)) {
             if (includeProxy && readPortalProxyRole()) {
-                return loadPortalAuth().then(profile => {
+                return loadPortalAuth({ forceRefresh: forceRefreshAuth }).then(profile => {
                     const headers = new Headers(options.headers || {});
                     if (profile && profile.authToken) headers.set('X-EnvPortal-Auth', profile.authToken);
                     headers.set('X-EnvPortal-Proxy-Role', readPortalProxyRole());
-                    return fetch(path, { ...options, headers });
+                    const nextOptions = { ...options, headers };
+                    delete nextOptions.refreshAuth;
+                    delete nextOptions.skipProxyRole;
+                    return fetch(path, nextOptions);
                 });
             }
-            return loadPortalAuth().then(profile => new Response(JSON.stringify(profile || { ok: false }), {
+            return loadPortalAuth({ forceRefresh: forceRefreshAuth }).then(profile => new Response(JSON.stringify(profile || { ok: false }), {
                 status: profile && profile.ok ? 200 : 401,
                 headers: { 'Content-Type': 'application/json' }
             }));
@@ -778,7 +784,6 @@ function setCurrentUser(profile) {
     if (!label) return;
     const name = String((profile && (profile.displayName || profile.user)) || '').trim();
     if (!name || isIpLikeUser(name)) {
-        if (label.dataset.name) return;
         label.hidden = true;
         label.dataset.name = '';
         label.textContent = '';
@@ -835,7 +840,7 @@ function exitPortalProxyLogin() {
 }
 
 function loadCurrentUser() {
-    portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+    portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store', refreshAuth: true })
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             setCurrentUser(profile);

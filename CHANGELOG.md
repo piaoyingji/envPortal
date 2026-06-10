@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.24] - 2026-06-10
+
+### Fixed
+
+- Forced current-user authentication refresh for menu visibility so stale cached role data cannot hide administrator menus.
+- Prevented unauthenticated first-screen portal payloads from overriding the system management menu state.
+
 ## [2.4.23] - 2026-06-10
 
 ### Fixed

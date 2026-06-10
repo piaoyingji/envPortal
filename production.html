@@ -6,7 +6,7 @@
     <title>EnvPortal - 本番環境</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.23"></script>
+    <script src="i18n.js?v=2.4.24"></script>
     <script src="org_readings.js"></script>
     <style>
         .production-stat {
@@ -599,7 +599,7 @@
         }
 
         function checkWindowsAuth(options = {}) {
-            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
+            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store', refreshAuth: true })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEditProduction);
