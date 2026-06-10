@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.25] - 2026-06-10
+
+### Fixed
+
+- Added forced administrator protection for `x02851` so automatic registration and user management saves cannot downgrade that account from `admin`.
+- Restored the production `x02851` user role to `admin` on 20.38.
+
 ## [2.4.24] - 2026-06-10
 
 ### Fixed
