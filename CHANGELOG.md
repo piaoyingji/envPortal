@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.22] - 2026-06-10
+
+### Fixed
+
+- Made proxy logout available whenever a browser session has an active proxy role, even before a proxied profile response returns.
+- Cleared cached authentication state when leaving proxy login and redirected back to the search page to restore the real administrator profile.
+
 ## [2.4.21] - 2026-06-10
 
 ### Fixed

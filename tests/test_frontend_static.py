@@ -34,6 +34,11 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("proxyLoginLabel", self.i18n_js)
         self.assertIn("proxyLogoutBtn", self.i18n_js)
         self.assertIn("exitPortalProxyLogin", self.i18n_js)
+        self.assertIn("function clearStoredPortalAuth()", self.i18n_js)
+        self.assertIn("const activeProxyRole = readPortalProxyRole();", self.i18n_js)
+        self.assertIn("} else if (activeProxyRole) {", self.i18n_js)
+        self.assertIn("clearStoredPortalAuth();", self.i18n_js)
+        self.assertIn("location.href = 'index.html';", self.i18n_js)
 
     def test_proxy_admin_loads_roles_without_active_proxy(self):
         self.assertIn("roles_data.jsp", self.proxy_admin_html)

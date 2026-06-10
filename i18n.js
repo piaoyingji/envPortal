@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.21';
+const APP_VERSION_FALLBACK = '2.4.22';
 
 const I18N_MESSAGES = {
     ja: {
@@ -595,6 +595,16 @@ function clearPortalProxyRole() {
     setPortalProxyRole('');
 }
 
+function clearStoredPortalAuth() {
+    PORTAL_AUTH_PROFILE = null;
+    PORTAL_AUTH_PROMISE = null;
+    try {
+        localStorage.removeItem(PORTAL_AUTH_STORAGE_KEY);
+        sessionStorage.removeItem(PORTAL_AUTH_STORAGE_KEY);
+    } catch (e) {
+    }
+}
+
 function portalOptionsWithProxyRole(options = {}, includeProxy = true) {
     const nextOptions = { ...options };
     delete nextOptions.skipProxyRole;
@@ -799,10 +809,15 @@ function updateProxyLoginStatus(profile) {
     const label = document.getElementById('proxyLoginLabel');
     const button = document.getElementById('proxyLogoutBtn');
     if (!label || !button) return;
+    const activeProxyRole = readPortalProxyRole();
     if (profile && profile.isProxyLogin) {
         const role = String(profile.proxyRoleLabel || profile.proxyRole || profile.role || '').trim();
         const user = String(profile.actualDisplayName || profile.actualUser || profile.displayName || profile.user || '').trim();
         label.textContent = `${t('proxyAdmin.current', { role })} / ${t('proxyAdmin.actualUser', { user })}`;
+        label.hidden = false;
+        button.hidden = false;
+    } else if (activeProxyRole) {
+        label.textContent = t('proxyAdmin.current', { role: activeProxyRole });
         label.hidden = false;
         button.hidden = false;
     } else {
@@ -814,9 +829,9 @@ function updateProxyLoginStatus(profile) {
 
 function exitPortalProxyLogin() {
     clearPortalProxyRole();
-    PORTAL_AUTH_PROMISE = null;
+    clearStoredPortalAuth();
     updateProxyLoginStatus(null);
-    location.reload();
+    location.href = 'index.html';
 }
 
 function loadCurrentUser() {
@@ -824,9 +839,12 @@ function loadCurrentUser() {
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             setCurrentUser(profile);
-            if (isSystemAdmin(profile)) setSystemMenuVisible(true);
+            setSystemMenuVisible(isSystemAdmin(profile));
         })
-        .catch(() => setCurrentUser(null));
+        .catch(() => {
+            setCurrentUser(null);
+            setSystemMenuVisible(false);
+        });
 }
 
 function initI18n() {
