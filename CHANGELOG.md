@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.18] - 2026-06-10
+
+### Fixed
+
+- Kept role data permission TAGs as a base query condition whenever environment TAG filters are applied.
+- Treated user selected TAG filters as additional AND conditions after the role data permission scope.
+
 ## [2.4.17] - 2026-06-10
 
 ### Fixed

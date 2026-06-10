@@ -681,6 +681,10 @@ def portal_filter_tags_for_role(role, known_tags):
     return effective_role_data_tags(role_info, valid_known_tags)
 
 
+def role_uses_data_tag_filter(role):
+    return role_config(role).get("key") != "admin"
+
+
 def profile_response_fields(profile):
     return {
         "user": profile.get("user", ""),
@@ -2405,6 +2409,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "rdp": rdp_rows,
                 "tags": filter_tags_for_rows(tags_json, data_rows),
                 "filterTags": filter_tags,
+                "dataTagFilterActive": role_uses_data_tag_filter(role),
                 "tagCategories": tag_categories,
                 "envGroups": env_groups_json,
             }), "application/json; charset=utf-8")

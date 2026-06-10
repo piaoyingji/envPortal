@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.17"></script>
+    <script src="i18n.js?v=2.4.18"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1272,6 +1272,7 @@
         let rdpData = []; // RDP情報を保持
         let tagStore = {};
         let portalFilterTags = null;
+        let dataTagFilterActive = false;
         let envGroupStore = { records: {} };
         let tagCategoryConfig = normalizeTagCategories(null);
         let portalConfig = {};
@@ -1390,6 +1391,7 @@
             isAuthenticated = canEdit;
             tagStore = normalizeTagStore(payload.tags || {});
             portalFilterTags = Array.isArray(payload.filterTags) ? new Set(payload.filterTags.map(tag => String(tag || '').trim()).filter(Boolean)) : null;
+            dataTagFilterActive = Boolean(payload.dataTagFilterActive);
             envGroupStore = normalizeEnvGroupStore(payload.envGroups || {});
             tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
             fullData = assignRowIds(payload.data || [], 'env');
@@ -4095,9 +4097,13 @@
 
         function getFilteredData() {
             const effectiveTags = pruneSelectedTags();
-            if (effectiveTags.length === 0) return fullData;
             return fullData.filter(row => {
                 const rowTags = allTagsForRow(row);
+                if (dataTagFilterActive) {
+                    if (!portalFilterTags || portalFilterTags.size === 0) return false;
+                    if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;
+                }
+                if (effectiveTags.length === 0) return true;
                 return effectiveTags.every(tag => rowTags.includes(tag));
             });
         }

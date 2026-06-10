@@ -98,6 +98,13 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(filter_tags, ["OneHR"])
 
+    def test_proxy_role_marks_data_tag_filter_active(self):
+        with mock.patch.object(server, "load_roles", self.roles):
+            profile = server.apply_proxy_role(self.admin_profile(), "viewer")
+
+            self.assertTrue(server.role_uses_data_tag_filter(profile["role"]))
+            self.assertFalse(server.role_uses_data_tag_filter("admin"))
+
 
 if __name__ == "__main__":
     unittest.main()

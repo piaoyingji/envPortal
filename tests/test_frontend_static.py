@@ -46,6 +46,13 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("payload.filterTags", self.index_html)
         self.assertIn("if (portalFilterTags && !portalFilterTags.has(tag)) return;", self.index_html)
 
+    def test_filtered_data_keeps_role_tag_scope_as_base_condition(self):
+        self.assertIn("let dataTagFilterActive = false;", self.index_html)
+        self.assertIn("payload.dataTagFilterActive", self.index_html)
+        self.assertIn("if (dataTagFilterActive) {", self.index_html)
+        self.assertIn("if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;", self.index_html)
+        self.assertIn("return effectiveTags.every(tag => rowTags.includes(tag));", self.index_html)
+
 
 if __name__ == "__main__":
     unittest.main()
