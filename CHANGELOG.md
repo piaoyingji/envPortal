@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.17] - 2026-06-10
+
+### Fixed
+
+- Limited the environment search TAG filter to the current role's authorized data permission TAGs, while keeping matching environments visible when they also contain other TAGs.
+- Added backend `filterTags` to keep frontend filtering aligned with role data permissions and proxy login permissions.
+
 ## [2.4.16] - 2026-06-10
 
 ### Added

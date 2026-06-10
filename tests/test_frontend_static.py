@@ -41,6 +41,11 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("function escapeHtml(value)", self.proxy_admin_html)
         self.assertIn("function escapeJs(value)", self.proxy_admin_html)
 
+    def test_tag_filter_uses_authorized_filter_tags(self):
+        self.assertIn("let portalFilterTags = null;", self.index_html)
+        self.assertIn("payload.filterTags", self.index_html)
+        self.assertIn("if (portalFilterTags && !portalFilterTags.has(tag)) return;", self.index_html)
+
 
 if __name__ == "__main__":
     unittest.main()

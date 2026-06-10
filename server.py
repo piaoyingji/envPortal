@@ -673,6 +673,14 @@ def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
     return [row for row in rows if allowed_tags.intersection(all_tags_for_row(row, tags_json, rdp_rows))]
 
 
+def portal_filter_tags_for_role(role, known_tags):
+    role_info = role_config(role)
+    valid_known_tags = unique_tags(known_tags)
+    if role_info.get("key") == "admin":
+        return valid_known_tags
+    return effective_role_data_tags(role_info, valid_known_tags)
+
+
 def profile_response_fields(profile):
     return {
         "user": profile.get("user", ""),
@@ -2375,9 +2383,11 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             tags_json = read_tags_json()
             env_groups_json = read_env_groups_json()
             all_portal_tags = all_known_tags(data_rows, tags_json, rdp_rows)
+            filter_tags = portal_filter_tags_for_role(role, all_portal_tags)
             if not profile.get("canViewPortal"):
                 data_rows = []
                 rdp_rows = []
+                filter_tags = []
             data_rows = portal_rows_for_role(data_rows, tags_json, rdp_rows, role, all_portal_tags)
             visible_orgs = {str(row.get("組織名", "") or "").strip() for row in data_rows}
             if not profile.get("canEditPortal"):
@@ -2394,6 +2404,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "data": data_rows,
                 "rdp": rdp_rows,
                 "tags": filter_tags_for_rows(tags_json, data_rows),
+                "filterTags": filter_tags,
                 "tagCategories": tag_categories,
                 "envGroups": env_groups_json,
             }), "application/json; charset=utf-8")

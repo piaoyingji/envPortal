@@ -179,6 +179,13 @@ class RoleDataPermissionTest(unittest.TestCase):
         self.assertNotIn("PostgreSQL 16", server.all_tags_for_row(row, {key: []}, []))
         self.assertEqual(server.all_known_tags([row], {key: []}, []), [])
 
+    def test_role_filter_tags_do_not_include_neighbor_tags(self):
+        role = server.normalize_role_record("viewer", {"dataTags": ["OneHR"]})
+        with mock.patch.object(server, "load_roles", lambda: {"viewer": role, "admin": server.normalize_role_record("admin", {})}):
+            filter_tags = server.portal_filter_tags_for_role("viewer", ["OneHR", "Other"])
+
+        self.assertEqual(filter_tags, ["OneHR"])
+
     def test_known_tags_use_product_display_order(self):
         rows = [
             {"組織コード": "1", "組織名": "A", "構築環境名": "A", "URL": "http://a", "ログインID": "a"},

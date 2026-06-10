@@ -91,6 +91,13 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, [rows[0]])
 
+    def test_proxy_role_filter_tags_expose_only_authorized_tags(self):
+        with mock.patch.object(server, "load_roles", self.roles):
+            profile = server.apply_proxy_role(self.admin_profile(), "viewer")
+            filter_tags = server.portal_filter_tags_for_role(profile["role"], ["OneHR", "Other"])
+
+        self.assertEqual(filter_tags, ["OneHR"])
+
 
 if __name__ == "__main__":
     unittest.main()

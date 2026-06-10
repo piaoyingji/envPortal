@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.16"></script>
+    <script src="i18n.js?v=2.4.17"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1271,6 +1271,7 @@
         let fullData = [];
         let rdpData = []; // RDP情報を保持
         let tagStore = {};
+        let portalFilterTags = null;
         let envGroupStore = { records: {} };
         let tagCategoryConfig = normalizeTagCategories(null);
         let portalConfig = {};
@@ -1388,6 +1389,7 @@
             setSystemMenuVisible(isSystemAdmin(payload));
             isAuthenticated = canEdit;
             tagStore = normalizeTagStore(payload.tags || {});
+            portalFilterTags = Array.isArray(payload.filterTags) ? new Set(payload.filterTags.map(tag => String(tag || '').trim()).filter(Boolean)) : null;
             envGroupStore = normalizeEnvGroupStore(payload.envGroups || {});
             tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
             fullData = assignRowIds(payload.data || [], 'env');
@@ -4030,6 +4032,7 @@
             const tagCounts = {};
             fullData.forEach(row => {
                 allTagsForRow(row).forEach(tag => {
+                    if (portalFilterTags && !portalFilterTags.has(tag)) return;
                     tagSet.add(tag);
                     tagCounts[tag] = (tagCounts[tag] || 0) + 1;
                 });
