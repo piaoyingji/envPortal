@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.16] - 2026-06-10
+
+### Added
+
+- Added administrator proxy login so an admin can temporarily access EnvPortal as a selected role in the current browser session.
+- Added backend validation that only a real administrator can activate a proxy role, while effective permissions and data filters are calculated from the proxied role.
+- Added a proxy login status indicator and logout button in the header.
+
 ## [2.4.15] - 2026-06-08
 
 ### Fixed

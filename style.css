@@ -158,7 +158,8 @@ h1, h2, h3 {
 }
 
 .client-ip,
-.app-version {
+.app-version,
+.proxy-login-status {
     color: #6b7f8f;
     font-size: 0.72rem;
     font-weight: 600;
@@ -177,6 +178,34 @@ h1, h2, h3 {
 
 .app-version {
     padding-right: 0.1rem;
+}
+
+.proxy-login-status {
+    color: #9a3412;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    padding: 0.22rem 0.5rem;
+}
+
+.proxy-login-status[hidden] {
+    display: none;
+}
+
+.proxy-logout-btn {
+    min-height: 26px;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    background: #fff;
+    color: #9a3412;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.proxy-logout-btn[hidden] {
+    display: none;
 }
 
 .system-menu {

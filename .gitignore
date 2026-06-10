@@ -1,4 +1,5 @@
 *.csv
+*.bak_*
 # .env file should also be ignored if not already
 .env
 .envportal-update.lock

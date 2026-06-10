@@ -687,6 +687,11 @@ def profile_response_fields(profile):
         "canViewProduction": profile.get("canViewProduction", False),
         "canEditProduction": profile.get("canEditProduction", False),
         "canManageUsers": profile.get("canManageUsers", False),
+        "isProxyLogin": profile.get("isProxyLogin", False),
+        "actualUser": profile.get("actualUser", ""),
+        "actualDisplayName": profile.get("actualDisplayName", ""),
+        "proxyRole": profile.get("proxyRole", ""),
+        "proxyRoleLabel": profile.get("proxyRoleLabel", ""),
     }
 
 
@@ -817,6 +822,32 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         "department": record.get("department", ""),
         "title": record.get("title", ""),
     }
+
+
+def apply_proxy_role(profile, requested_role):
+    proxy_role = normalize_role_key(requested_role)
+    if not proxy_role:
+        return profile
+    if not profile.get("canManageUsers"):
+        return profile
+    roles = load_roles()
+    role_info = roles.get(proxy_role)
+    if not role_info:
+        return profile
+    proxied = dict(profile)
+    proxied["actualUser"] = profile.get("user", "")
+    proxied["actualDisplayName"] = profile.get("displayName", profile.get("user", ""))
+    proxied["isProxyLogin"] = True
+    proxied["proxyRole"] = proxy_role
+    proxied["proxyRoleLabel"] = role_info.get("label", proxy_role)
+    proxied["role"] = proxy_role
+    proxied["canViewPortal"] = bool(role_info.get("canViewPortal"))
+    proxied["canEditPortal"] = bool(role_info.get("canEditPortal"))
+    proxied["canViewProduction"] = bool(role_info.get("canViewProduction"))
+    proxied["canEditProduction"] = bool(role_info.get("canEditProduction"))
+    proxied["canEdit"] = bool(role_info.get("canEditPortal") or role_info.get("canEditProduction") or role_info.get("canEdit"))
+    proxied["canManageUsers"] = bool(role_info.get("canManageUsers"))
+    return proxied
 
 
 def masked_records(rows, mask_fields):
@@ -2046,6 +2077,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
         user, initial_admin, auth_source = self.request_auth()
         client_ip = client_ip_from_request(self.headers, self.client_address)
         profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
+        profile = apply_proxy_role(profile, self.headers.get("X-EnvPortal-Proxy-Role", ""))
         if auth_source == "windows":
             attach_auth_token(profile)
         profile["ip"] = client_ip
