@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.4.15';
+const APP_VERSION_FALLBACK = '2.4.16';
 
 const I18N_MESSAGES = {
     ja: {
@@ -25,6 +25,7 @@ const I18N_MESSAGES = {
         'nav.roles': 'ロール管理',
         'nav.tagCategories': 'タグ分類管理',
         'nav.tagSkins': 'タグ表示設定',
+        'nav.proxyLogin': '代理ログイン',
         'nav.system': 'システム管理',
         'nav.org': '対象組織',
         'lang.label': '言語',
@@ -75,6 +76,8 @@ const I18N_MESSAGES = {
         'button.unlock': '解除',
         'button.backList': '≪ 一覧に戻る',
         'button.useForRendering': 'この分類を表示に使用',
+        'button.proxyLogin': '代理ログイン',
+        'button.proxyLogout': '代理ログアウト',
         'button.expand': '展開',
         'button.collapse': '折りたたみ',
         'modal.unlockTitle': 'ロック解除',
@@ -210,6 +213,12 @@ const I18N_MESSAGES = {
         'roleAdmin.filterHelp': '機能権限で画面操作を制御し、データ権限タグで表示データを制御します。存在しないタグはデータ権限として無効です。',
         'roleAdmin.dataTagsAll': '全データ',
         'roleAdmin.dataTagsNone': '有効なタグがありません',
+        'proxyAdmin.description': '指定ロールで画面権限を確認します',
+        'proxyAdmin.help': '現在のブラウザーセッションだけでロールを代理します。ユーザー設定は変更されません。',
+        'proxyAdmin.current': '代理ログイン中: {role}',
+        'proxyAdmin.actualUser': '実ユーザー: {user}',
+        'proxyAdmin.noPermission': '代理ログイン権限がありません。',
+        'proxyAdmin.selectRole': '代理するロールを選択',
         'tagAdmin.description': 'タグ分類を明示的に管理します',
         'tagAdmin.noPermission': 'タグ分類管理権限がありません。',
         'tagAdmin.noTags': '分類できるタグがありません。',
@@ -270,6 +279,7 @@ const I18N_MESSAGES = {
         'nav.roles': '角色管理',
         'nav.tagCategories': 'TAG分类管理',
         'nav.tagSkins': 'TAG显示设定',
+        'nav.proxyLogin': '代理登录',
         'nav.system': '系统管理',
         'nav.org': '目标机构',
         'lang.label': '语言',
@@ -320,6 +330,8 @@ const I18N_MESSAGES = {
         'button.unlock': '解锁',
         'button.backList': '≪ 返回列表',
         'button.useForRendering': '将此分类用于显示',
+        'button.proxyLogin': '代理登录',
+        'button.proxyLogout': '退出代理登录',
         'button.expand': '展开',
         'button.collapse': '收缩',
         'modal.unlockTitle': '解除锁定',
@@ -455,6 +467,12 @@ const I18N_MESSAGES = {
         'roleAdmin.filterHelp': '功能权限控制画面操作，数据权限TAG控制可见数据。不存在的TAG不会作为有效数据权限。',
         'roleAdmin.dataTagsAll': '全部数据',
         'roleAdmin.dataTagsNone': '没有有效TAG',
+        'proxyAdmin.description': '用指定角色检查画面权限',
+        'proxyAdmin.help': '只在当前浏览器会话中代理角色，不修改用户设定。',
+        'proxyAdmin.current': '代理登录中：{role}',
+        'proxyAdmin.actualUser': '真实用户：{user}',
+        'proxyAdmin.noPermission': '没有代理登录权限。',
+        'proxyAdmin.selectRole': '选择要代理的角色',
         'tagAdmin.description': '显式管理TAG分类',
         'tagAdmin.noPermission': '没有TAG分类管理权限。',
         'tagAdmin.noTags': '没有可分类的TAG。',
@@ -500,6 +518,7 @@ let PORTAL_RUNTIME_CONFIG = null;
 let PORTAL_AUTH_PROMISE = null;
 let PORTAL_AUTH_PROFILE = null;
 const PORTAL_AUTH_STORAGE_KEY = 'envPortalAuthProfile';
+const PORTAL_PROXY_ROLE_STORAGE_KEY = 'envPortalProxyRole';
 
 function loadPortalRuntimeConfig() {
     if (PORTAL_RUNTIME_CONFIG_PROMISE) return PORTAL_RUNTIME_CONFIG_PROMISE;
@@ -555,6 +574,37 @@ function isProtectedPortalEndpoint(path) {
     ].includes(endpoint);
 }
 
+function readPortalProxyRole() {
+    try {
+        return String(sessionStorage.getItem(PORTAL_PROXY_ROLE_STORAGE_KEY) || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+function setPortalProxyRole(role) {
+    const value = String(role || '').trim();
+    try {
+        if (value) sessionStorage.setItem(PORTAL_PROXY_ROLE_STORAGE_KEY, value);
+        else sessionStorage.removeItem(PORTAL_PROXY_ROLE_STORAGE_KEY);
+    } catch (e) {
+    }
+}
+
+function clearPortalProxyRole() {
+    setPortalProxyRole('');
+}
+
+function portalOptionsWithProxyRole(options = {}, includeProxy = true) {
+    const nextOptions = { ...options };
+    delete nextOptions.skipProxyRole;
+    const headers = new Headers(options.headers || {});
+    const proxyRole = includeProxy ? readPortalProxyRole() : '';
+    if (proxyRole) headers.set('X-EnvPortal-Proxy-Role', proxyRole);
+    nextOptions.headers = headers;
+    return nextOptions;
+}
+
 function readStoredPortalAuth() {
     try {
         const raw = localStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || sessionStorage.getItem(PORTAL_AUTH_STORAGE_KEY) || 'null';
@@ -586,7 +636,7 @@ function applyCachedPortalIdentity() {
     const profile = readStoredPortalAuth();
     if (!profile) return null;
     setCurrentUser(profile);
-    setSystemMenuVisible(isSystemAdmin(profile));
+    setSystemMenuVisible(readPortalProxyRole() ? false : isSystemAdmin(profile));
     return profile;
 }
 
@@ -620,8 +670,17 @@ function loadPortalAuth() {
 
 function portalFetch(path, options = {}) {
     return loadPortalRuntimeConfig().then(() => {
-        if (!portalProxyEnabled()) return fetch(path, options);
+        const includeProxy = options.skipProxyRole !== true;
+        if (!portalProxyEnabled()) return fetch(path, portalOptionsWithProxyRole(options, includeProxy));
         if (isAuthEndpoint(path)) {
+            if (includeProxy && readPortalProxyRole()) {
+                return loadPortalAuth().then(profile => {
+                    const headers = new Headers(options.headers || {});
+                    if (profile && profile.authToken) headers.set('X-EnvPortal-Auth', profile.authToken);
+                    headers.set('X-EnvPortal-Proxy-Role', readPortalProxyRole());
+                    return fetch(path, { ...options, headers });
+                });
+            }
             return loadPortalAuth().then(profile => new Response(JSON.stringify(profile || { ok: false }), {
                 status: profile && profile.ok ? 200 : 401,
                 headers: { 'Content-Type': 'application/json' }
@@ -631,6 +690,7 @@ function portalFetch(path, options = {}) {
         return loadPortalAuth().then(profile => {
             const headers = new Headers(options.headers || {});
             if (profile && profile.authToken) headers.set('X-EnvPortal-Auth', profile.authToken);
+            if (includeProxy && readPortalProxyRole()) headers.set('X-EnvPortal-Proxy-Role', readPortalProxyRole());
             return fetch(path, { ...options, headers });
         });
     });
@@ -703,6 +763,7 @@ function isIpLikeUser(value) {
 
 function setCurrentUser(profile) {
     const label = document.getElementById('currentUserLabel');
+    updateProxyLoginStatus(profile);
     if (!label) return;
     const name = String((profile && (profile.displayName || profile.user)) || '').trim();
     if (!name || isIpLikeUser(name)) {
@@ -715,6 +776,30 @@ function setCurrentUser(profile) {
     label.dataset.name = name;
     label.textContent = t('app.currentUser', { name });
     label.hidden = false;
+}
+
+function updateProxyLoginStatus(profile) {
+    const label = document.getElementById('proxyLoginLabel');
+    const button = document.getElementById('proxyLogoutBtn');
+    if (!label || !button) return;
+    if (profile && profile.isProxyLogin) {
+        const role = String(profile.proxyRoleLabel || profile.proxyRole || profile.role || '').trim();
+        const user = String(profile.actualDisplayName || profile.actualUser || profile.displayName || profile.user || '').trim();
+        label.textContent = `${t('proxyAdmin.current', { role })} / ${t('proxyAdmin.actualUser', { user })}`;
+        label.hidden = false;
+        button.hidden = false;
+    } else {
+        label.textContent = '';
+        label.hidden = true;
+        button.hidden = true;
+    }
+}
+
+function exitPortalProxyLogin() {
+    clearPortalProxyRole();
+    PORTAL_AUTH_PROMISE = null;
+    updateProxyLoginStatus(null);
+    location.reload();
 }
 
 function loadCurrentUser() {
@@ -743,6 +828,8 @@ function initI18n() {
             <div class="client-meta">
                 <span id="currentUserLabel" class="client-ip" hidden></span>
                 <span id="appVersionLabel" class="app-version" data-version="${APP_VERSION_FALLBACK}">${t('app.version', { version: APP_VERSION_FALLBACK })}</span>
+                <span id="proxyLoginLabel" class="proxy-login-status" hidden></span>
+                <button id="proxyLogoutBtn" type="button" class="proxy-logout-btn" onclick="exitPortalProxyLogin()" data-i18n="button.proxyLogout" hidden>${t('button.proxyLogout')}</button>
             </div>
         `;
         logoArea.appendChild(wrap);
@@ -760,6 +847,7 @@ function initI18n() {
             <div class="system-menu-panel">
                 <a href="user-admin.html" data-system-link="user-admin.html" data-i18n="nav.users">${t('nav.users')}</a>
                 <a href="role-admin.html" data-system-link="role-admin.html" data-i18n="nav.roles">${t('nav.roles')}</a>
+                <a href="proxy-admin.html" data-system-link="proxy-admin.html" data-i18n="nav.proxyLogin">${t('nav.proxyLogin')}</a>
                 <a href="tag-admin.html" data-system-link="tag-admin.html" data-i18n="nav.tagCategories">${t('nav.tagCategories')}</a>
                 <a href="tag-skin-admin.html" data-system-link="tag-skin-admin.html" data-i18n="nav.tagSkins">${t('nav.tagSkins')}</a>
             </div>
