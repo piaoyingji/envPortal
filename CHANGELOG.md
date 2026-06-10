@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.19] - 2026-06-10
+
+### Fixed
+
+- Restricted environment search operation buttons to `canEditPortal` instead of the legacy aggregate `canEdit`.
+- Restricted production operation buttons to `canEditProduction` instead of the legacy aggregate `canEdit`.
+
 ## [2.4.18] - 2026-06-10
 
 ### Fixed

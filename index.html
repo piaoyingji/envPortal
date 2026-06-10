@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.18"></script>
+    <script src="i18n.js?v=2.4.19"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1384,7 +1384,7 @@
         function applyPortalPayload(payload, level) {
             if (level < portalDataLevel) return payload;
             portalDataLevel = level;
-            canEdit = Boolean(payload && (payload.canEditPortal || payload.canEdit));
+            canEdit = Boolean(payload && payload.canEditPortal);
             canManageUsers = Boolean(payload && payload.canManageUsers);
             setCurrentUser(payload);
             setSystemMenuVisible(isSystemAdmin(payload));
@@ -1442,7 +1442,7 @@
             portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store' })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
-                    canEdit = Boolean(result && (result.canEditPortal || result.canEdit));
+                    canEdit = Boolean(result && result.canEditPortal);
                     canManageUsers = Boolean(result && result.canManageUsers);
                     setCurrentUser(result);
                     setSystemMenuVisible(isSystemAdmin(result));

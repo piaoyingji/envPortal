@@ -6,6 +6,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.index_html = Path("index.html").read_text(encoding="utf-8")
+        cls.production_html = Path("production.html").read_text(encoding="utf-8")
         cls.i18n_js = Path("i18n.js").read_text(encoding="utf-8")
         cls.proxy_admin_html = Path("proxy-admin.html").read_text(encoding="utf-8")
 
@@ -52,6 +53,17 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("if (dataTagFilterActive) {", self.index_html)
         self.assertIn("if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;", self.index_html)
         self.assertIn("return effectiveTags.every(tag => rowTags.includes(tag));", self.index_html)
+
+    def test_page_edit_buttons_use_page_specific_permissions(self):
+        self.assertIn("canEdit = Boolean(payload && payload.canEditPortal);", self.index_html)
+        self.assertIn("canEdit = Boolean(result && result.canEditPortal);", self.index_html)
+        self.assertNotIn("payload.canEditPortal || payload.canEdit", self.index_html)
+        self.assertNotIn("result.canEditPortal || result.canEdit", self.index_html)
+
+        self.assertIn("canEdit = Boolean(payload && payload.canEditProduction);", self.production_html)
+        self.assertIn("canEdit = Boolean(result && result.canEditProduction);", self.production_html)
+        self.assertNotIn("payload.canEditProduction || payload.canEdit", self.production_html)
+        self.assertNotIn("result.canEditProduction || result.canEdit", self.production_html)
 
 
 if __name__ == "__main__":
