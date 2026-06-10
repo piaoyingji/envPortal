@@ -94,6 +94,11 @@ def is_forced_admin_user(user):
     return normalize_windows_user(user) in forced_admin_users()
 
 
+def is_machine_account_user(user):
+    normalized = normalize_windows_user(user)
+    return bool(normalized and normalized.endswith("$"))
+
+
 PORTAL_CSV_FIELDS = [
     "組織コード",
     "組織名",
@@ -730,6 +735,16 @@ def save_users(users):
     USERS_PATH.write_text(json.dumps(users, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def human_users(users):
+    if not isinstance(users, dict):
+        return {}
+    return {
+        key: record
+        for key, record in users.items()
+        if not is_machine_account_user(key) and not is_machine_account_user((record or {}).get("user", ""))
+    }
+
+
 def now_text():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime())
 
@@ -795,6 +810,22 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
     normalized = normalize_windows_user(user)
     if not normalized:
         return {"user": "", "role": "staff", "canEdit": False, "canManageUsers": False}
+    if is_machine_account_user(normalized):
+        return {
+            "user": normalized,
+            "displayName": metadata.get("displayName") or normalized,
+            "role": "staff",
+            "canViewPortal": False,
+            "canEditPortal": False,
+            "canViewProduction": False,
+            "canEditProduction": False,
+            "canEdit": False,
+            "canManageUsers": False,
+            "lastIp": client_ip or "",
+            "email": metadata.get("email", ""),
+            "department": metadata.get("department", ""),
+            "title": metadata.get("title", ""),
+        }
     forced_admin = is_forced_admin_user(normalized)
     users = load_users()
     now = now_text()
@@ -2300,6 +2331,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                         normalized = normalize_windows_user(key)
                         if not normalized or not isinstance(record, dict):
                             continue
+                        if is_machine_account_user(normalized) or is_machine_account_user(record.get("user", "")):
+                            continue
                         role = record.get("role", "staff")
                         if role not in role_keys():
                             role = "staff"
@@ -2453,7 +2486,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 **profile_response_fields(profile),
                 "roles": role_options(),
-                "users": load_users(),
+                "users": human_users(load_users()),
             }), "application/json; charset=utf-8")
             return
 
@@ -2467,7 +2500,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 **profile_response_fields(profile),
                 "roles": role_options(),
                 "tags": all_known_tags(read_csv_records("data.csv", PORTAL_CSV_FIELDS), read_tags_json(), read_csv_records("rdp.csv", RDP_CSV_FIELDS)),
-                "users": load_users(),
+                "users": human_users(load_users()),
             }), "application/json; charset=utf-8")
             return
 

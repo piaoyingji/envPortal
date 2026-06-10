@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.26] - 2026-06-10
+
+### Fixed
+
+- Excluded Windows machine accounts from automatic user registration and system management user payloads.
+- Prevented saved user updates from writing machine account records back into `users.json`.
+
 ## [2.4.25] - 2026-06-10
 
 ### Fixed
