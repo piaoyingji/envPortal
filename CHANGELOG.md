@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.27] - 2026-06-10
+
+### Fixed
+
+- Fixed the TAG clear action so role TAG data scope stays as a data condition while the right pane returns to the normal organization summary layout.
+
 ## [2.4.26] - 2026-06-10
 
 ### Fixed
