@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.23] - 2026-06-10
+
+### Fixed
+
+- Wrapped the RDP unlock password field in a form with an accessible label and autocomplete metadata to avoid browser password form warnings.
+
 ## [2.4.22] - 2026-06-10
 
 ### Fixed

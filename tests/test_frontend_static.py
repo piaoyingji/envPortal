@@ -85,6 +85,13 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("production: Boolean(profile && profile.canViewProduction)", self.i18n_js)
         self.assertIn("link.hidden = !visible;", self.i18n_js)
 
+    def test_password_unlock_input_is_inside_form(self):
+        self.assertIn('<form class="modal-content" onsubmit="submitPwdModal(); return false;">', self.index_html)
+        self.assertIn('name="rdpUnlockPassword"', self.index_html)
+        self.assertIn('autocomplete="current-password"', self.index_html)
+        self.assertIn('type="submit" class="primary-btn"', self.index_html)
+        self.assertNotIn("onkeypress=\"if(event.key==='Enter') submitPwdModal()\"", self.index_html)
+
 
 if __name__ == "__main__":
     unittest.main()
