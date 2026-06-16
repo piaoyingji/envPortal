@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
 import server
@@ -86,6 +88,43 @@ class MachineAccountUsersTest(unittest.TestCase):
 
         self.assertIn("x02851", filtered)
         self.assertNotIn("win-bg8f1p9amb0$", filtered)
+
+
+class UsersFileRecoveryTest(unittest.TestCase):
+    def test_load_users_recovers_from_latest_valid_backup(self):
+        with TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            users_path = base_dir / "users.json"
+            users_path.write_text("{invalid json", encoding="utf-8")
+            older = base_dir / "users.json.bak_old"
+            older.write_text('{"x00001": {"user": "x00001", "role": "staff"}}', encoding="utf-8")
+            newer = base_dir / "users.json.bak_new"
+            newer.write_text(
+                '{"x02851": {"user": "x02851", "role": "admin"}, '
+                '"win-bg8f1p9amb0$": {"user": "win-bg8f1p9amb0$", "role": "staff"}}',
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(server, "BASE_DIR", base_dir), \
+                    mock.patch.object(server, "USERS_PATH", users_path):
+                loaded = server.load_users()
+
+        self.assertEqual(sorted(loaded), ["x02851"])
+        self.assertEqual(loaded["x02851"]["role"], "admin")
+
+    def test_save_users_filters_machine_accounts(self):
+        with TemporaryDirectory() as tmp:
+            users_path = Path(tmp) / "users.json"
+            users = {
+                "x02851": {"user": "x02851", "role": "admin"},
+                "win-bg8f1p9amb0$": {"user": "win-bg8f1p9amb0$", "role": "staff"},
+            }
+
+            with mock.patch.object(server, "USERS_PATH", users_path):
+                server.save_users(users)
+                loaded = server.load_users()
+
+        self.assertEqual(sorted(loaded), ["x02851"])
 
 
 if __name__ == "__main__":

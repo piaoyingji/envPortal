@@ -727,12 +727,34 @@ def load_users():
     try:
         data = json.loads(USERS_PATH.read_text(encoding="utf-8-sig") or "{}")
         return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError:
-        return {}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        recovered = load_latest_users_backup()
+        if recovered:
+            return recovered
+        raise
 
 
 def save_users(users):
-    USERS_PATH.write_text(json.dumps(users, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    cleaned = human_users(users)
+    temp_path = USERS_PATH.with_name(f"{USERS_PATH.name}.tmp")
+    temp_path.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(USERS_PATH)
+
+
+def load_latest_users_backup():
+    candidates = sorted(
+        (path for path in BASE_DIR.glob("users.json.bak*") if path.is_file()),
+        key=lambda path: (path.stat().st_mtime, path.name),
+        reverse=True,
+    )
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+            if isinstance(data, dict):
+                return human_users(data)
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            continue
+    return {}
 
 
 def human_users(users):

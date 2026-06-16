@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.28] - 2026-06-16
+
+### Fixed
+
+- Restored the production user list on 20.38 from the last valid backup after detecting the list had shrunk to two users.
+- Hardened `users.json` loading so a broken file falls back to the latest valid local backup instead of being treated as an empty user table.
+- Made user saves use a temporary file replacement and continue filtering Windows machine accounts from persisted users.
+
 ## [2.4.27] - 2026-06-10
 
 ### Fixed
