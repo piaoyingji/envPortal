@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.29] - 2026-06-16
+
+### Fixed
+
+- Centralized protected JSON runtime-file loading and saving for users, roles, tags, tag categories, and environment groups.
+- Added backup fallback for protected JSON files so parse failures recover from the latest valid `*.bak*` file.
+- Added autosave backups and temporary-file replacement for protected JSON writes.
+
 ## [2.4.28] - 2026-06-16
 
 ### Fixed

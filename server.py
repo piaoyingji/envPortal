@@ -237,14 +237,56 @@ def write_csv_records(filename, fields, rows):
             writer.writerow({field: row.get(field, "") for field in fields})
 
 
+def json_backup_candidates(path):
+    return sorted(
+        (item for item in BASE_DIR.glob(f"{path.name}.bak*") if item.is_file()),
+        key=lambda item: (item.stat().st_mtime, item.name),
+        reverse=True,
+    )
+
+
+def load_latest_json_backup(path, default=None):
+    fallback = default if default is not None else {}
+    for backup_path in json_backup_candidates(path):
+        try:
+            data = json.loads(backup_path.read_text(encoding="utf-8-sig") or "{}")
+            if isinstance(data, dict):
+                return data
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            continue
+    return fallback
+
+
+def load_json_file(path, default=None):
+    fallback = default if default is not None else {}
+    if not path.exists():
+        return fallback
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+        return data if isinstance(data, dict) else fallback
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return load_latest_json_backup(path, fallback)
+
+
+def backup_json_file(path):
+    if not path.exists():
+        return None
+    stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    backup_path = path.with_name(f"{path.name}.bak_autosave_{stamp}_{uuid.uuid4().hex[:8]}")
+    shutil.copy2(path, backup_path)
+    return backup_path
+
+
+def write_json_file(path, payload, encoding="utf-8"):
+    backup_json_file(path)
+    temp_path = path.with_name(f"{path.name}.tmp")
+    temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding=encoding)
+    temp_path.replace(path)
+
+
 def read_tags_json():
     path = BASE_DIR / "tags.json"
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8-sig") or "{}")
-    except json.JSONDecodeError:
-        return {}
+    return load_json_file(path, {})
 
 
 def org_key_for_values(code, name):
@@ -291,12 +333,7 @@ def normalize_env_groups_config(raw=None):
 
 
 def read_env_groups_json():
-    if not ENV_GROUPS_PATH.exists():
-        return normalize_env_groups_config(None)
-    try:
-        raw = json.loads(ENV_GROUPS_PATH.read_text(encoding="utf-8-sig") or "{}")
-    except json.JSONDecodeError:
-        raw = {}
+    raw = load_json_file(ENV_GROUPS_PATH, {})
     return normalize_env_groups_config(raw)
 
 
@@ -368,8 +405,8 @@ def update_org_bundle_files(before_org, after_org):
 
     write_csv_records("data.csv", PORTAL_CSV_FIELDS, data_rows)
     write_csv_records("rdp.csv", RDP_CSV_FIELDS, rdp_rows)
-    (BASE_DIR / "tags.json").write_text(json.dumps(tags_json, ensure_ascii=False, indent=2) + "\n", encoding="utf-8-sig")
-    ENV_GROUPS_PATH.write_text(json.dumps(env_groups, ensure_ascii=False, indent=2) + "\n", encoding="utf-8-sig")
+    write_json_file(BASE_DIR / "tags.json", tags_json, encoding="utf-8-sig")
+    write_json_file(ENV_GROUPS_PATH, env_groups, encoding="utf-8-sig")
     return data_rows, rdp_rows, tags_json, env_groups, changed_count
 
 
@@ -473,12 +510,7 @@ def merge_tag_categories_payload(incoming, existing):
 
 
 def read_tag_categories_json(known_tags=None):
-    if not TAG_CATEGORIES_PATH.exists():
-        return normalize_tag_categories_config(None, known_tags)
-    try:
-        raw = json.loads(TAG_CATEGORIES_PATH.read_text(encoding="utf-8-sig") or "{}")
-    except json.JSONDecodeError:
-        raw = {}
+    raw = load_json_file(TAG_CATEGORIES_PATH, {})
     return normalize_tag_categories_config(raw, known_tags)
 
 
@@ -614,14 +646,7 @@ def normalize_role_record(key, record):
 
 def load_roles():
     roles = {}
-    raw = {}
-    if ROLES_PATH.exists():
-        try:
-            data = json.loads(ROLES_PATH.read_text(encoding="utf-8-sig") or "{}")
-            if isinstance(data, dict):
-                raw = data
-        except json.JSONDecodeError:
-            raw = {}
+    raw = load_json_file(ROLES_PATH, {})
     for key, record in {**DEFAULT_ROLES, **raw}.items():
         normalized = normalize_role_record(key, record if isinstance(record, dict) else {})
         if normalized:
@@ -648,7 +673,7 @@ def save_roles(roles):
     cleaned["admin"]["dataTags"] = []
     cleaned["admin"]["filterTag"] = ""
     cleaned["admin"]["protected"] = True
-    ROLES_PATH.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json_file(ROLES_PATH, cleaned)
 
 
 def role_options():
@@ -722,39 +747,12 @@ def profile_response_fields(profile):
 
 
 def load_users():
-    if not USERS_PATH.exists():
-        return {}
-    try:
-        data = json.loads(USERS_PATH.read_text(encoding="utf-8-sig") or "{}")
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        recovered = load_latest_users_backup()
-        if recovered:
-            return recovered
-        raise
+    return human_users(load_json_file(USERS_PATH, {}))
 
 
 def save_users(users):
     cleaned = human_users(users)
-    temp_path = USERS_PATH.with_name(f"{USERS_PATH.name}.tmp")
-    temp_path.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temp_path.replace(USERS_PATH)
-
-
-def load_latest_users_backup():
-    candidates = sorted(
-        (path for path in BASE_DIR.glob("users.json.bak*") if path.is_file()),
-        key=lambda path: (path.stat().st_mtime, path.name),
-        reverse=True,
-    )
-    for path in candidates:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
-            if isinstance(data, dict):
-                return human_users(data)
-        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
-            continue
-    return {}
+    write_json_file(USERS_PATH, cleaned)
 
 
 def human_users(users):
@@ -2275,17 +2273,18 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             files = {
                 "data.csv": data_csv,
                 "rdp.csv": rdp_csv,
-                "tags.json": tags_json_text,
-                "env_groups.json": env_groups_json_text,
             }
+            saved_files = list(files.keys()) + ["tags.json", "env_groups.json"]
             for filename, content in files.items():
                 (BASE_DIR / filename).write_text(content, encoding="utf-8-sig", newline="")
+            write_json_file(BASE_DIR / "tags.json", json.loads(tags_json_text or "{}"), encoding="utf-8-sig")
+            write_json_file(ENV_GROUPS_PATH, normalized_env_groups, encoding="utf-8-sig")
             profile = self.request_profile()
             append_change_summary_log(
                 profile.get("user", ""),
                 client_ip_from_request(self.headers, self.client_address),
                 path,
-                list(files.keys()),
+                saved_files,
                 change_summary,
             )
             self.send_bytes(b"success")
@@ -2392,12 +2391,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                     incoming = json.loads(body or "{}")
                     if not isinstance(incoming, dict):
                         raise ValueError("tag categories payload must be object")
-                    existing = {}
-                    if TAG_CATEGORIES_PATH.exists():
-                        try:
-                            existing = json.loads(TAG_CATEGORIES_PATH.read_text(encoding="utf-8-sig") or "{}")
-                        except json.JSONDecodeError:
-                            existing = {}
+                    existing = load_json_file(TAG_CATEGORIES_PATH, {})
                     incoming = merge_tag_categories_payload(incoming, existing)
                     data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
                     rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
@@ -2408,7 +2402,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 except Exception as exc:
                     self.send_bytes(f"Invalid tag_categories.json: {exc}".encode("utf-8"), status=400)
                     return
-            target_path.write_text(body, encoding="utf-8-sig", newline="")
+            if filename.endswith(".json"):
+                write_json_file(target_path, json.loads(body or "{}"), encoding="utf-8-sig")
+            else:
+                target_path.write_text(body, encoding="utf-8-sig", newline="")
             self.send_bytes(b"success")
             return
 
