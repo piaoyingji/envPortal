@@ -91,6 +91,53 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, [rows[0]])
 
+    def test_proxy_role_data_permission_uses_or_within_category_and_and_between_categories(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A", "URL": "http://a", "ログインID": "a"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B", "URL": "http://b", "ログインID": "b"},
+            {"組織コード": "3", "組織名": "C", "構築環境名": "C", "URL": "http://c", "ログインID": "c"},
+            {"組織コード": "4", "組織名": "D", "構築環境名": "D", "URL": "http://d", "ログインID": "d"},
+        ]
+        tags_json = {
+            server.row_key(rows[0]): ["UHR", "社内"],
+            server.row_key(rows[1]): ["PHR", "受入"],
+            server.row_key(rows[2]): ["UHR", "デモ"],
+            server.row_key(rows[3]): ["Oracle", "社内"],
+        }
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "scoped": server.normalize_role_record("scoped", {
+                "canViewPortal": True,
+                "dataTags": ["UHR", "PHR", "社内", "受入"],
+            }),
+        }
+        categories = server.normalize_tag_categories_config({
+            "categories": [
+                {"id": "product", "label": "製品"},
+                {"id": "environment", "label": "環境"},
+            ],
+            "assignments": {
+                "UHR": "product",
+                "PHR": "product",
+                "社内": "environment",
+                "受入": "environment",
+                "デモ": "environment",
+                "Oracle": "software",
+            },
+        }, ["UHR", "PHR", "社内", "受入", "デモ", "Oracle"])
+
+        with mock.patch.object(server, "load_roles", lambda: roles), \
+                mock.patch.object(server, "read_tag_categories_json", lambda known_tags=None: categories):
+            visible = server.portal_rows_for_role(
+                rows,
+                tags_json,
+                [],
+                "scoped",
+                ["UHR", "PHR", "社内", "受入", "デモ", "Oracle"],
+            )
+
+        self.assertEqual(visible, [rows[0], rows[1]])
+
     def test_proxy_role_filter_tags_expose_only_authorized_tags(self):
         with mock.patch.object(server, "load_roles", self.roles):
             profile = server.apply_proxy_role(self.admin_profile(), "viewer")

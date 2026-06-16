@@ -80,10 +80,20 @@ GUACAMOLE_DRIVE_ROOT = BASE_DIR / "guacamole-drive"
 GUACAMOLE_DRIVE_RETENTION_HOURS = env_float("GUACAMOLE_DRIVE_RETENTION_HOURS", 24)
 GUACAMOLE_DRIVE_CLEANUP_INTERVAL_SECONDS = 3600
 GUACAMOLE_DRIVE_LAST_CLEANUP = 0
+JSON_FILE_LOCKS = {}
+JSON_FILE_LOCKS_GUARD = threading.Lock()
 
 
 def json_bytes(payload):
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def json_file_lock(path):
+    key = str(Path(path).resolve())
+    with JSON_FILE_LOCKS_GUARD:
+        if key not in JSON_FILE_LOCKS:
+            JSON_FILE_LOCKS[key] = threading.Lock()
+        return JSON_FILE_LOCKS[key]
 
 
 def forced_admin_users():
@@ -278,10 +288,11 @@ def backup_json_file(path):
 
 
 def write_json_file(path, payload, encoding="utf-8"):
-    backup_json_file(path)
-    temp_path = path.with_name(f"{path.name}.tmp")
-    temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding=encoding)
-    temp_path.replace(path)
+    with json_file_lock(path):
+        backup_json_file(path)
+        temp_path = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+        temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding=encoding)
+        temp_path.replace(path)
 
 
 def read_tags_json():
@@ -701,15 +712,31 @@ def effective_role_data_tags(role_info, known_tags):
     return [tag for tag in tags if tag in valid_tags]
 
 
+def role_data_tag_groups(role_info, known_tags, tag_categories=None):
+    allowed_tags = effective_role_data_tags(role_info, known_tags)
+    if not allowed_tags:
+        return []
+    config = tag_categories or read_tag_categories_json(known_tags)
+    assignments = config.get("assignments", {}) if isinstance(config, dict) else {}
+    groups = {}
+    for tag in allowed_tags:
+        category_id = assignments.get(tag, OTHER_TAG_CATEGORY_ID)
+        groups.setdefault(category_id, set()).add(tag)
+    return [group for group in groups.values() if group]
+
+
 def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
     role_info = role_config(role)
     if role_info.get("key") == "admin":
         return rows
     valid_known_tags = known_tags if known_tags is not None else all_known_tags(rows, tags_json, rdp_rows)
-    allowed_tags = set(effective_role_data_tags(role_info, valid_known_tags))
-    if not allowed_tags:
+    allowed_groups = role_data_tag_groups(role_info, valid_known_tags)
+    if not allowed_groups:
         return []
-    return [row for row in rows if allowed_tags.intersection(all_tags_for_row(row, tags_json, rdp_rows))]
+    return [
+        row for row in rows
+        if all(group.intersection(all_tags_for_row(row, tags_json, rdp_rows)) for group in allowed_groups)
+    ]
 
 
 def portal_filter_tags_for_role(role, known_tags):

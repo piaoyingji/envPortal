@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.30] - 2026-06-16
+
+### Fixed
+
+- Changed role data permissions to combine TAGs by category: OR within the same TAG category and AND across different TAG categories.
+- Fixed concurrent protected JSON writes by using per-file locks and unique temporary filenames.
+
 ## [2.4.29] - 2026-06-16
 
 ### Fixed
