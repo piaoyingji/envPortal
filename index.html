@@ -2036,7 +2036,7 @@
         function refreshEnvironmentCardInPlace(rowId) {
             const env = fullData.find(row => row.__rowId === rowId);
             const currentCard = document.querySelector(`.env-card[data-env-row-id="${CSS.escape(rowId)}"]`);
-            if (!env || !currentCard) {
+            if (!env || !currentCard || !currentVisibleEnvRowIds().includes(rowId)) {
                 renderActiveView();
                 return;
             }
@@ -2046,6 +2046,22 @@
                 replacement.dataset.statusObserved = '1';
                 setTimeout(() => queueStatusCheck(replacement, true), 0);
             }
+        }
+
+        function currentVisibleEnvRowIds() {
+            const currentOrg = document.getElementById('orgSelect').value;
+            const rows = currentOrg
+                ? getFilteredData().filter(row => getOrgGroup(row).key === currentOrg)
+                : getFilteredData();
+            return sortEnvironmentsByDisplayOrder(rows).map(row => row.__rowId);
+        }
+
+        function shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds) {
+            const env = fullData.find(row => row.__rowId === rowId);
+            const afterVisibleRowIds = currentVisibleEnvRowIds();
+            if (!env || !afterVisibleRowIds.includes(rowId)) return true;
+            if (normalizeGroupName(beforeGroup) !== envGroupValue(env)) return true;
+            return beforeVisibleRowIds.join('\u0001') !== afterVisibleRowIds.join('\u0001');
         }
 
         function getInlineContextFromCard(card) {
@@ -2145,6 +2161,23 @@
             return JSON.parse(JSON.stringify(value || null));
         }
 
+        function portalStateSnapshot() {
+            return {
+                fullData: cloneForLog(fullData) || [],
+                rdpData: cloneForLog(rdpData) || [],
+                tagStore: cloneForLog(tagStore) || {},
+                envGroupStore: cloneForLog(envGroupStore) || { records: {} },
+            };
+        }
+
+        function restorePortalState(snapshot) {
+            fullData = assignRowIds(snapshot.fullData || [], 'env');
+            rdpData = assignRowIds(snapshot.rdpData || [], 'rdp');
+            tagStore = normalizeTagStore(snapshot.tagStore || {});
+            envGroupStore = normalizeEnvGroupStore(snapshot.envGroupStore || {});
+            resetPortalDerivedCaches();
+        }
+
         function uniqueByReference(items) {
             const seen = new Set();
             return items.filter(item => {
@@ -2219,6 +2252,7 @@
             const rows = fullData.filter(row => getOrgGroup(row).key === orgKey);
             const existingOrg = getOrgOptions().find(item => item.key === orgKey);
             if (!existingOrg) return;
+            const beforeState = portalStateSnapshot();
             const beforeRows = rows.map(row => cloneForLog(row));
             const beforeOrg = rows.length ? getOrgGroup(rows[0]) : existingOrg;
             const afterOrg = {
@@ -2269,7 +2303,16 @@
                     renderEnvironments(afterOrg.key);
                     renderTagFilters();
                 })
-                .catch(err => alert(t('error.save') + err.message));
+                .catch(err => {
+                    restorePortalState(beforeState);
+                    initDropdown();
+                    renderOrgFilterMenu();
+                    document.getElementById('orgSelect').value = beforeOrg.key;
+                    syncProductionNavLink();
+                    renderActiveView();
+                    renderTagFilters();
+                    alert(t('error.save') + err.message);
+                });
         }
 
         function openGroupAdd(orgKey, event) {
@@ -2493,6 +2536,8 @@
             const beforeEnv = cloneForLog(env);
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
             const beforeTags = cloneForLog(tagsForRow(env));
+            const beforeGroup = envGroupValue(env);
+            const beforeVisibleRowIds = currentVisibleEnvRowIds();
             const originalKey = editor.dataset.originalKey || getRowKey(env);
             editor.querySelectorAll('[data-env-field]').forEach(control => {
                 if (DATA_FIELDS.includes(control.dataset.envField)) {
@@ -2539,7 +2584,11 @@
                     showToast(t('toast.savedDetail'));
                     editingEnvId = '';
                     renderTagFilters();
-                    refreshEnvironmentCardInPlace(rowId);
+                    if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds)) {
+                        renderActiveView();
+                    } else {
+                        refreshEnvironmentCardInPlace(rowId);
+                    }
                 })
                 .catch(err => alert(t('error.save') + err.message));
         }
@@ -2610,7 +2659,12 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({ beforeOrg, afterOrg, changeSummary })
-            }).then(res => res.ok ? res.json() : Promise.reject(new Error('organization bundle save failed')));
+            }).then(res => {
+                if (res.ok) return res.json();
+                return res.text().then(text => {
+                    throw new Error((text || 'organization bundle save failed').trim());
+                });
+            });
         }
 
         function applyOrganizationBundlePayload(payload) {

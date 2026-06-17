@@ -21,6 +21,13 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         sorted_lookup = "sortEnvironmentsByDisplayOrder(getFilteredData().filter"
         self.assertGreaterEqual(self.index_html.count(sorted_lookup), 2)
 
+    def test_environment_save_rerenders_when_visible_order_changes(self):
+        self.assertIn("function currentVisibleEnvRowIds()", self.index_html)
+        self.assertIn("function shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds)", self.index_html)
+        self.assertIn("!currentVisibleEnvRowIds().includes(rowId)", self.index_html)
+        self.assertIn("const beforeVisibleRowIds = currentVisibleEnvRowIds();", self.index_html)
+        self.assertIn("if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds))", self.index_html)
+
     def test_system_menu_contains_proxy_login(self):
         self.assertIn('href="proxy-admin.html"', self.i18n_js)
         self.assertIn("nav.proxyLogin", self.i18n_js)

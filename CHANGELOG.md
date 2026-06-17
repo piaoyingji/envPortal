@@ -2,6 +2,21 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.32] - 2026-06-17
+
+### Fixed
+
+- Re-rendered the active environment view after saving an environment when TAG or group changes alter the visible environment order.
+- Prevented stale inline environment cards from remaining after a saved TAG removal makes the card no longer match the current filter.
+
+## [2.4.31] - 2026-06-17
+
+### Fixed
+
+- Fixed organization code edits so related data rows, TAG keys, and environment group records migrate together during organization bundle saves.
+- Rejected organization code edits that target an existing organization code instead of merging or overwriting another organization.
+- Improved organization save failures so the frontend shows the backend error detail and rolls back unsaved in-memory changes.
+
 ## [2.4.30] - 2026-06-16
 
 ### Fixed

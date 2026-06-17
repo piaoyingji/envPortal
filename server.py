@@ -278,6 +278,26 @@ def load_json_file(path, default=None):
         return load_latest_json_backup(path, fallback)
 
 
+def load_json_file_or_raise(path, default=None):
+    fallback = default if default is not None else {}
+    if not path.exists():
+        return fallback
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+        if isinstance(data, dict):
+            return data
+        raise ValueError(f"invalid {path.name}: root must be an object")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        for backup_path in json_backup_candidates(path):
+            try:
+                data = json.loads(backup_path.read_text(encoding="utf-8-sig") or "{}")
+                if isinstance(data, dict):
+                    return data
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+                continue
+        raise ValueError(f"invalid {path.name}: JSON parse failed")
+
+
 def backup_json_file(path):
     if not path.exists():
         return None
@@ -385,8 +405,16 @@ def update_org_bundle_files(before_org, after_org):
 
     data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
     rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
-    tags_json = read_tags_json()
-    env_groups = read_env_groups_json()
+    tags_json = load_json_file_or_raise(BASE_DIR / "tags.json", {})
+    env_groups = normalize_env_groups_config(load_json_file_or_raise(ENV_GROUPS_PATH, {}))
+
+    if after_key != before_key:
+        for row in data_rows:
+            if org_key_for_row(row) == after_key:
+                raise ValueError("target organization code already exists")
+        records = env_groups.get("records", {})
+        if after_key in records and before_key not in (after_key,):
+            raise ValueError("target organization code already exists")
 
     changed_count = 0
     for row in data_rows:
