@@ -138,6 +138,70 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, [rows[0], rows[1]])
 
+    def test_role_data_permission_matches_organization_tags_but_returns_matching_rows(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A2", "URL": "http://a2", "ログインID": "a2"},
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A3", "URL": "http://a3", "ログインID": "a3"},
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A4", "URL": "http://a4", "ログインID": "a4"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B2", "URL": "http://b2", "ログインID": "b2"},
+        ]
+        tags_json = {
+            server.row_key(rows[0]): ["UHR"],
+            server.row_key(rows[1]): ["V6"],
+            server.row_key(rows[2]): ["社内"],
+            server.row_key(rows[3]): ["無関係"],
+            server.row_key(rows[4]): ["UHR"],
+            server.row_key(rows[5]): ["V6"],
+        }
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "scoped": server.normalize_role_record("scoped", {
+                "canViewPortal": True,
+                "dataTags": ["UHR", "V6", "社内"],
+            }),
+        }
+        categories = server.normalize_tag_categories_config({
+            "categories": [
+                {"id": "product", "label": "製品"},
+                {"id": "version", "label": "版本"},
+                {"id": "environment", "label": "環境"},
+            ],
+            "assignments": {
+                "UHR": "product",
+                "V6": "version",
+                "社内": "environment",
+                "無関係": "other",
+            },
+        }, ["UHR", "V6", "社内", "無関係"])
+
+        with mock.patch.object(server, "load_roles", lambda: roles), \
+                mock.patch.object(server, "read_tag_categories_json", lambda known_tags=None: categories):
+            visible = server.portal_rows_for_role(
+                rows,
+                tags_json,
+                [],
+                "scoped",
+                ["UHR", "V6", "社内", "無関係"],
+            )
+
+        self.assertEqual(visible, rows[:3])
+
+    def test_admin_role_data_permission_still_returns_all_rows(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
+        ]
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+        }
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            visible = server.portal_rows_for_role(rows, {}, [], "admin", [])
+
+        self.assertEqual(visible, rows)
+
     def test_proxy_role_filter_tags_expose_only_authorized_tags(self):
         with mock.patch.object(server, "load_roles", self.roles):
             profile = server.apply_proxy_role(self.admin_profile(), "viewer")

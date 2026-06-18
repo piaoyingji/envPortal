@@ -758,12 +758,24 @@ def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
     if role_info.get("key") == "admin":
         return rows
     valid_known_tags = known_tags if known_tags is not None else all_known_tags(rows, tags_json, rdp_rows)
+    allowed_tags = set(effective_role_data_tags(role_info, valid_known_tags))
     allowed_groups = role_data_tag_groups(role_info, valid_known_tags)
     if not allowed_groups:
         return []
+    org_tags = {}
+    for row in rows:
+        key = org_key_for_row(row)
+        if key == "__unset__":
+            continue
+        org_tags.setdefault(key, set()).update(all_tags_for_row(row, tags_json, rdp_rows))
+    visible_orgs = {
+        key for key, tags in org_tags.items()
+        if all(group.intersection(tags) for group in allowed_groups)
+    }
     return [
         row for row in rows
-        if all(group.intersection(all_tags_for_row(row, tags_json, rdp_rows)) for group in allowed_groups)
+        if org_key_for_row(row) in visible_orgs
+        and allowed_tags.intersection(all_tags_for_row(row, tags_json, rdp_rows))
     ]
 
 

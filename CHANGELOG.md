@@ -2,6 +2,18 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.34] - 2026-06-18
+
+### Changed
+
+- Changed role data permission filtering to evaluate TAG category requirements at the organization level, while returning only environment rows that contain at least one authorized data TAG.
+
+## [2.4.33] - 2026-06-18
+
+### Fixed
+
+- Added `update_org_bundle.jsp` to the protected frontend endpoint list so organization name and code saves include the current auth token and no longer fail with `Forbidden` for authorized editors.
+
 ## [2.4.32] - 2026-06-17
 
 ### Fixed

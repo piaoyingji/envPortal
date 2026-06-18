@@ -36,6 +36,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("PORTAL_PROXY_ROLE_STORAGE_KEY", self.i18n_js)
         self.assertIn("X-EnvPortal-Proxy-Role", self.i18n_js)
         self.assertIn("readPortalProxyRole()", self.i18n_js)
+        self.assertIn("'update_org_bundle.jsp'", self.i18n_js)
 
     def test_header_has_proxy_logout_status(self):
         self.assertIn("proxyLoginLabel", self.i18n_js)
