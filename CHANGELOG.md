@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.35] - 2026-06-18
+
+### Changed
+
+- Treated non-admin roles whose data permission TAGs cover all current effective TAGs as unrestricted, so selecting every data TAG shows the full environment scope.
+
 ## [2.4.34] - 2026-06-18
 
 ### Changed

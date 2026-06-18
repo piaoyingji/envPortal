@@ -740,6 +740,15 @@ def effective_role_data_tags(role_info, known_tags):
     return [tag for tag in tags if tag in valid_tags]
 
 
+def role_data_tags_unrestricted(role_info, known_tags):
+    if (role_info or {}).get("key") == "admin":
+        return True
+    valid_known_tags = set(unique_tags(known_tags))
+    if not valid_known_tags:
+        return False
+    return valid_known_tags.issubset(set(effective_role_data_tags(role_info, valid_known_tags)))
+
+
 def role_data_tag_groups(role_info, known_tags, tag_categories=None):
     allowed_tags = effective_role_data_tags(role_info, known_tags)
     if not allowed_tags:
@@ -758,6 +767,8 @@ def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
     if role_info.get("key") == "admin":
         return rows
     valid_known_tags = known_tags if known_tags is not None else all_known_tags(rows, tags_json, rdp_rows)
+    if role_data_tags_unrestricted(role_info, valid_known_tags):
+        return rows
     allowed_tags = set(effective_role_data_tags(role_info, valid_known_tags))
     allowed_groups = role_data_tag_groups(role_info, valid_known_tags)
     if not allowed_groups:
@@ -782,13 +793,18 @@ def portal_rows_for_role(rows, tags_json, rdp_rows, role, known_tags=None):
 def portal_filter_tags_for_role(role, known_tags):
     role_info = role_config(role)
     valid_known_tags = unique_tags(known_tags)
-    if role_info.get("key") == "admin":
+    if role_data_tags_unrestricted(role_info, valid_known_tags):
         return valid_known_tags
     return effective_role_data_tags(role_info, valid_known_tags)
 
 
-def role_uses_data_tag_filter(role):
-    return role_config(role).get("key") != "admin"
+def role_uses_data_tag_filter(role, known_tags=None):
+    role_info = role_config(role)
+    if role_info.get("key") == "admin":
+        return False
+    if known_tags is not None and role_data_tags_unrestricted(role_info, known_tags):
+        return False
+    return True
 
 
 def profile_response_fields(profile):
@@ -2542,7 +2558,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 "rdp": rdp_rows,
                 "tags": filter_tags_for_rows(tags_json, data_rows),
                 "filterTags": filter_tags,
-                "dataTagFilterActive": role_uses_data_tag_filter(role),
+                "dataTagFilterActive": role_uses_data_tag_filter(role, all_portal_tags),
                 "tagCategories": tag_categories,
                 "envGroups": env_groups_json,
             }), "application/json; charset=utf-8")

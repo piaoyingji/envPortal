@@ -202,6 +202,52 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, rows)
 
+    def test_role_with_all_data_tags_is_unrestricted(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
+            {"組織コード": "3", "組織名": "C", "構築環境名": "C1", "URL": "http://c1", "ログインID": "c1"},
+        ]
+        tags_json = {
+            server.row_key(rows[0]): ["UHR"],
+            server.row_key(rows[1]): ["社内"],
+            server.row_key(rows[2]): ["無関係"],
+        }
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "watcher": server.normalize_role_record("watcher", {
+                "canViewPortal": True,
+                "dataTags": ["UHR", "社内", "無関係"],
+            }),
+        }
+        known_tags = ["UHR", "社内", "無関係"]
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            visible = server.portal_rows_for_role(rows, tags_json, [], "watcher", known_tags)
+            filter_tags = server.portal_filter_tags_for_role("watcher", known_tags)
+            active = server.role_uses_data_tag_filter("watcher", known_tags)
+
+        self.assertEqual(visible, rows)
+        self.assertEqual(filter_tags, known_tags)
+        self.assertFalse(active)
+
+    def test_role_with_no_effective_data_tags_still_returns_no_rows(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+        ]
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "empty": server.normalize_role_record("empty", {
+                "canViewPortal": True,
+                "dataTags": [],
+            }),
+        }
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            visible = server.portal_rows_for_role(rows, {}, [], "empty", ["UHR"])
+
+        self.assertEqual(visible, [])
+
     def test_proxy_role_filter_tags_expose_only_authorized_tags(self):
         with mock.patch.object(server, "load_roles", self.roles):
             profile = server.apply_proxy_role(self.admin_profile(), "viewer")
