@@ -2,6 +2,11 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.36] - 2026-06-22
+
+### Fixed
+
+- Allowed initialization environments with CSV data but no effective TAGs to show portal data for users who can view the portal, instead of treating empty role data TAGs as an active deny-all filter.
 ## [2.4.35] - 2026-06-18
 
 ### Changed
@@ -999,3 +1004,4 @@ All notable changes to EnvPortal are documented here.
 
 - `mstsc` does not provide a supported plaintext password argument. EnvPortal now copies the RDP password to the clipboard before launching the connection as a reliable fallback.
 - `data.csv`, `rdp.csv`, and `.env` remain local runtime files and should be handled carefully when publishing.
+

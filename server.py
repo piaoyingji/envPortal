@@ -745,7 +745,7 @@ def role_data_tags_unrestricted(role_info, known_tags):
         return True
     valid_known_tags = set(unique_tags(known_tags))
     if not valid_known_tags:
-        return False
+        return True
     return valid_known_tags.issubset(set(effective_role_data_tags(role_info, valid_known_tags)))
 
 
@@ -2731,3 +2731,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -230,6 +230,24 @@ class ProxyLoginTest(unittest.TestCase):
         self.assertEqual(visible, rows)
         self.assertEqual(filter_tags, known_tags)
         self.assertFalse(active)
+    def test_role_with_no_effective_data_tags_allows_initial_empty_tag_state(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+        ]
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "empty": server.normalize_role_record("empty", {
+                "canViewPortal": True,
+                "dataTags": [],
+            }),
+        }
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            visible = server.portal_rows_for_role(rows, {}, [], "empty", [])
+            active = server.role_uses_data_tag_filter("empty", [])
+
+        self.assertEqual(visible, rows)
+        self.assertFalse(active)
 
     def test_role_with_no_effective_data_tags_still_returns_no_rows(self):
         rows = [
@@ -265,3 +283,6 @@ class ProxyLoginTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
