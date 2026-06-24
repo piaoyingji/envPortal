@@ -202,7 +202,7 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, rows)
 
-    def test_role_with_all_data_tags_is_unrestricted(self):
+    def test_role_with_all_data_tags_still_uses_data_filter(self):
         rows = [
             {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
             {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
@@ -229,7 +229,31 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, rows)
         self.assertEqual(filter_tags, known_tags)
-        self.assertFalse(active)
+        self.assertTrue(active)
+
+    def test_role_with_partial_data_tags_keeps_scope_when_other_filters_change(self):
+        rows = [
+            {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
+            {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
+            {"組織コード": "3", "組織名": "C", "構築環境名": "C1", "URL": "http://c1", "ログインID": "c1"},
+        ]
+        tags_json = {
+            server.row_key(rows[0]): ["UHR", "社内"],
+            server.row_key(rows[1]): ["PHR", "社内"],
+            server.row_key(rows[2]): ["UHR", "デモ"],
+        }
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "watcher": server.normalize_role_record("watcher", {
+                "canViewPortal": True,
+                "dataTags": ["UHR"],
+            }),
+        }
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            scoped_rows = server.portal_rows_for_role(rows, tags_json, [], "watcher", ["UHR", "PHR", "社内", "デモ"])
+
+        self.assertEqual(scoped_rows, [rows[0], rows[2]])
     def test_role_with_no_effective_data_tags_allows_initial_empty_tag_state(self):
         rows = [
             {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},

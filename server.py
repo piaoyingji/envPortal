@@ -3,6 +3,7 @@ import ctypes
 from ctypes import wintypes
 import hashlib
 import hmac
+import io
 import json
 import os
 import re
@@ -240,11 +241,12 @@ def read_csv_records(filename, fields):
 
 def write_csv_records(filename, fields, rows):
     path = BASE_DIR / filename
-    with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field, "") for field in fields})
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({field: row.get(field, "") for field in fields})
+    write_text_file(path, buffer.getvalue(), encoding="utf-8-sig")
 
 
 def json_backup_candidates(path):
@@ -298,7 +300,7 @@ def load_json_file_or_raise(path, default=None):
         raise ValueError(f"invalid {path.name}: JSON parse failed")
 
 
-def backup_json_file(path):
+def backup_runtime_file(path):
     if not path.exists():
         return None
     stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -307,11 +309,24 @@ def backup_json_file(path):
     return backup_path
 
 
+def backup_json_file(path):
+    return backup_runtime_file(path)
+
+
+def write_text_file(path, content, encoding="utf-8"):
+    with json_file_lock(path):
+        backup_runtime_file(path)
+        temp_path = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+        with temp_path.open("w", encoding=encoding, newline="") as handle:
+            handle.write(content)
+        temp_path.replace(path)
+
+
 def write_json_file(path, payload, encoding="utf-8"):
     with json_file_lock(path):
-        backup_json_file(path)
         temp_path = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
         temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding=encoding)
+        backup_json_file(path)
         temp_path.replace(path)
 
 
@@ -746,7 +761,7 @@ def role_data_tags_unrestricted(role_info, known_tags):
     valid_known_tags = set(unique_tags(known_tags))
     if not valid_known_tags:
         return True
-    return valid_known_tags.issubset(set(effective_role_data_tags(role_info, valid_known_tags)))
+    return False
 
 
 def role_data_tag_groups(role_info, known_tags, tag_categories=None):
@@ -2359,7 +2374,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             }
             saved_files = list(files.keys()) + ["tags.json", "env_groups.json"]
             for filename, content in files.items():
-                (BASE_DIR / filename).write_text(content, encoding="utf-8-sig", newline="")
+                write_text_file(BASE_DIR / filename, content, encoding="utf-8-sig")
             write_json_file(BASE_DIR / "tags.json", json.loads(tags_json_text or "{}"), encoding="utf-8-sig")
             write_json_file(ENV_GROUPS_PATH, normalized_env_groups, encoding="utf-8-sig")
             profile = self.request_profile()

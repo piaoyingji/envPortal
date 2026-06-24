@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.37] - 2026-06-24
+
+### Fixed
+
+- Kept non-admin role data TAG permissions active even when the role currently selects every known TAG, so proxy-login verification and normal access still report an active data scope instead of silently treating the role as unrestricted.
+- Added autosave backups and temporary-file replacement for `data.csv`, `rdp.csv`, and portal bundle CSV saves, matching the protected JSON runtime-file write path.
+
 ## [2.4.36] - 2026-06-22
 
 ### Fixed

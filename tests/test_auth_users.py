@@ -156,6 +156,20 @@ class UsersFileRecoveryTest(unittest.TestCase):
         self.assertEqual(sorted(loaded), ["admin"])
         self.assertEqual(len(backups), 1)
 
+    def test_write_csv_records_creates_backup_and_replaces_atomically(self):
+        with TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            path = base_dir / "data.csv"
+            path.write_text("name\nold\n", encoding="utf-8-sig")
+
+            with mock.patch.object(server, "BASE_DIR", base_dir):
+                server.write_csv_records("data.csv", ["name"], [{"name": "new"}])
+                loaded = server.read_csv_records("data.csv", ["name"])
+                backups = list(base_dir.glob("data.csv.bak_autosave_*"))
+
+        self.assertEqual(loaded, [{"name": "new"}])
+        self.assertEqual(len(backups), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
