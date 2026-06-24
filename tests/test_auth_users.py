@@ -170,6 +170,14 @@ class UsersFileRecoveryTest(unittest.TestCase):
         self.assertEqual(loaded, [{"name": "new"}])
         self.assertEqual(len(backups), 1)
 
+    def test_count_csv_text_rows_rejects_missing_header_fields(self):
+        with self.assertRaises(ValueError):
+            server.count_csv_text_rows("name\nold\n", ["name", "url"])
+
+    def test_count_csv_text_rows_counts_empty_and_non_empty_payloads(self):
+        self.assertEqual(server.count_csv_text_rows("name,url\n", ["name", "url"]), 0)
+        self.assertEqual(server.count_csv_text_rows("name,url\na,http://a\n", ["name", "url"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

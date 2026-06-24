@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.38] - 2026-06-24
+
+### Fixed
+
+- Rejected portal bundle saves that would overwrite a non-empty `data.csv` with a zero-row CSV payload.
+- Added CSV header validation for portal bundle data saves before touching runtime files.
+
 ## [2.4.37] - 2026-06-24
 
 ### Fixed

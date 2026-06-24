@@ -239,6 +239,15 @@ def read_csv_records(filename, fields):
         return rows
 
 
+def count_csv_text_rows(content, required_fields):
+    reader = csv.DictReader(io.StringIO(content or ""))
+    fieldnames = reader.fieldnames or []
+    missing = [field for field in required_fields if field not in fieldnames]
+    if missing:
+        raise ValueError(f"CSV header missing fields: {', '.join(missing)}")
+    return sum(1 for _ in reader)
+
+
 def write_csv_records(filename, fields, rows):
     path = BASE_DIR / filename
     buffer = io.StringIO(newline="")
@@ -2361,6 +2370,10 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
                 json.loads(tags_json_text or "{}")
                 normalized_env_groups = normalize_env_groups_config(json.loads(env_groups_json_text or "{}"))
                 env_groups_json_text = json.dumps(normalized_env_groups, ensure_ascii=False, indent=2) + "\n"
+                incoming_data_count = count_csv_text_rows(data_csv, PORTAL_CSV_FIELDS)
+                existing_data_count = len(read_csv_records("data.csv", PORTAL_CSV_FIELDS))
+                if existing_data_count > 0 and incoming_data_count == 0:
+                    raise ValueError("refusing to overwrite non-empty data.csv with an empty portal bundle")
                 change_summary = payload.get("changeSummary", {})
                 if not isinstance(change_summary, dict):
                     change_summary = {}
