@@ -34,6 +34,17 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("editEnvironmentCard(row.__rowId);", self.index_html)
         self.assertIn("restorePortalState(snapshot);", self.index_html)
 
+    def test_home_uses_cached_auth_for_first_data_load(self):
+        self.assertIn("const cachedPortalAuth = typeof readStoredPortalAuth === 'function' ? readStoredPortalAuth() : null;", self.index_html)
+        self.assertIn("loadPortalData({ authenticated: Boolean(cachedPortalAuth) });", self.index_html)
+        self.assertIn("skipDataReload: Boolean(cachedPortalAuth)", self.index_html)
+        self.assertIn("refreshAuth: options.refreshAuth === true", self.index_html)
+        self.assertIn("if (!options.skipDataReload) loadPortalData({ authenticated: true });", self.index_html)
+        self.assertIn("function loadCurrentUser(options = {})", self.i18n_js)
+        self.assertIn("options.skipIfCached && cachedProfile", self.i18n_js)
+        self.assertIn("loadCurrentUser({ skipIfCached: Boolean(cachedProfile) });", self.i18n_js)
+        self.assertNotIn("refreshAuth: true })", self.i18n_js)
+
     def test_server_info_editor_uses_editable_server_name(self):
         self.assertIn('"サーバ名"', self.index_html)
         self.assertIn("SERVER_NAME_OPTION_KEYS", self.index_html)
@@ -78,8 +89,8 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("delete nextOptions.refreshAuth;", self.i18n_js)
         self.assertIn("const forceRefreshAuth = options.refreshAuth === true;", self.i18n_js)
         self.assertIn("loadPortalAuth({ forceRefresh: forceRefreshAuth })", self.i18n_js)
-        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.i18n_js)
-        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.index_html)
+        self.assertIn("refreshAuth: options.refreshAuth === true", self.i18n_js)
+        self.assertIn("refreshAuth: options.refreshAuth === true", self.index_html)
         self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.production_html)
         self.assertIn("if (level > 1) {", self.index_html)
 

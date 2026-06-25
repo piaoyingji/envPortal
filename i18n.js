@@ -856,16 +856,27 @@ function exitPortalProxyLogin() {
     location.href = 'index.html';
 }
 
-function loadCurrentUser() {
-    portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store', refreshAuth: true })
+function loadCurrentUser(options = {}) {
+    const cachedProfile = readStoredPortalAuth();
+    if (options.skipIfCached && cachedProfile) {
+        setCurrentUser(cachedProfile);
+        setSystemMenuVisible(isSystemAdmin(cachedProfile));
+        return Promise.resolve(cachedProfile);
+    }
+    return portalFetch('auth_windows.jsp?t=' + new Date().getTime(), {
+        cache: 'no-store',
+        refreshAuth: options.refreshAuth === true
+    })
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             setCurrentUser(profile);
             setSystemMenuVisible(isSystemAdmin(profile));
+            return profile;
         })
         .catch(() => {
             setCurrentUser(null);
             setSystemMenuVisible(false);
+            return null;
         });
 }
 
@@ -911,8 +922,8 @@ function initI18n() {
         `;
         navInner.appendChild(menu);
     }
-    applyCachedPortalIdentity();
-    loadCurrentUser();
+    const cachedProfile = applyCachedPortalIdentity();
+    loadCurrentUser({ skipIfCached: Boolean(cachedProfile) });
     applyI18n();
 }
 

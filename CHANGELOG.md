@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.5.2] - 2026-06-25
+
+### Changed
+
+- Used cached Windows authentication tokens for the first homepage data load, avoiding the initial empty unauthenticated render and a forced domain-auth refresh on every page load.
+
 ## [2.5.1] - 2026-06-25
 
 ### Fixed

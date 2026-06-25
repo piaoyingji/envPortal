@@ -1349,14 +1349,17 @@
         const SERVER_NAME_OPTION_KEYS = ['serverName.apRdp', 'serverName.dbRdp', 'serverName.shared', 'serverName.bastion', 'serverName.server'];
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
-            
-            // 認証状態の確認
+
+            const cachedPortalAuth = typeof readStoredPortalAuth === 'function' ? readStoredPortalAuth() : null;
             const expiry = localStorage.getItem('authExpiry');
-            if (expiry && new Date().getTime() < parseInt(expiry)) {
+            if (cachedPortalAuth || (expiry && new Date().getTime() < parseInt(expiry))) {
                 isAuthenticated = true;
             }
-            loadPortalData({ authenticated: false });
-            loadPortalConfig().then(() => checkWindowsAuth({ allowProxy: false }));
+            loadPortalData({ authenticated: Boolean(cachedPortalAuth) });
+            loadPortalConfig().then(() => checkWindowsAuth({
+                allowProxy: false,
+                skipDataReload: Boolean(cachedPortalAuth)
+            }));
         });
         window.addEventListener('storage', event => {
             if (event.key === TAG_CATEGORY_CHANGE_KEY && event.newValue) {
@@ -1480,7 +1483,10 @@
         }
 
         function checkWindowsAuth(options = {}) {
-            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), { cache: 'no-store', refreshAuth: true })
+            portalFetch('auth_windows.jsp?t=' + new Date().getTime(), {
+                cache: 'no-store',
+                refreshAuth: options.refreshAuth === true
+            })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
                     canEdit = Boolean(result && result.canEditPortal);
@@ -1497,7 +1503,7 @@
                     isAuthenticated = true;
                     localStorage.setItem('authExpiry', new Date().getTime() + 15 * 60 * 1000);
                     closePwdModal();
-                    loadPortalData({ authenticated: true });
+                    if (!options.skipDataReload) loadPortalData({ authenticated: true });
                 })
                 .catch(() => {
                     canEdit = false;
