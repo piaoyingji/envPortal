@@ -1087,6 +1087,29 @@
             font-weight: 700;
             font-size: 0.86rem;
         }
+        .server-editor-heading,
+        .server-editor-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .server-editor-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.55);
+        }
+        .server-editor-title {
+            grid-column: span 12;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .server-editor-title .delete-btn {
+            width: 30px;
+            padding: 0;
+        }
         .card-edit-section-title:first-child {
             margin-top: 0;
         }
@@ -1308,7 +1331,8 @@
         const DISPLAY_SORT_ORDER = ['UPDS-V6', 'UHR', 'UPDS-V7', 'PHR'];
         const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
-        const RDP_FIELDS = ["組織名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
+        const RDP_FIELDS = ["組織名","サーバ名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
+        const SERVER_NAME_OPTION_KEYS = ['serverName.apRdp', 'serverName.dbRdp', 'serverName.shared', 'serverName.bastion', 'serverName.server'];
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
             
@@ -2115,10 +2139,35 @@
             return normalizeGroupName(row['環境グループ']);
         }
 
-        function renderCardRdpEditor(kind, row, fallbackTarget) {
-            const remote = row || {};
+        function remoteServerName(remote, fallbackName = '') {
+            const name = String((remote && (remote['サーバ名'] || remote['サーバ種別'] || remote['用途'])) || '').trim();
+            return name || fallbackName || t('section.rdpPlain');
+        }
+
+        function renderCardServerNameField(value) {
+            const listId = `serverNameOptions_${Math.random().toString(36).slice(2)}`;
+            const options = SERVER_NAME_OPTION_KEYS.map(key => t(key));
             return `
-                <div class="card-edit-grid" data-rdp-kind="${kind}" data-rdp-row-id="${escapeJs(remote.__rowId || '')}">
+                <div class="card-edit-field">
+                    <label>${t('label.serverName')}</label>
+                    <input data-env-field="サーバ名" value="${sanitizeHTML(value || '')}" list="${listId}">
+                    <datalist id="${listId}">
+                        ${options.map(option => `<option value="${sanitizeHTML(option)}"></option>`).join('')}
+                    </datalist>
+                </div>
+            `;
+        }
+
+        function renderCardRdpEditor(kind, row, fallbackTarget, fallbackName = '') {
+            const remote = row || {};
+            const serverName = remoteServerName(remote, fallbackName);
+            return `
+                <div class="server-editor-card card-edit-grid" data-rdp-kind="${kind}" data-rdp-row-id="${escapeJs(remote.__rowId || '')}">
+                    <div class="server-editor-title wide">
+                        <span>${sanitizeHTML(serverName)}</span>
+                        <button type="button" class="secondary-btn delete-btn" onclick="removeRdpEditor(this)" title="${t('button.delete')}" aria-label="${t('button.delete')}">${trashIcon()}</button>
+                    </div>
+                    ${renderCardServerNameField(serverName)}
                     ${renderCardEditField('接続タイプ', remote['接続タイプ'] || 'RDP')}
                     ${renderCardEditField('RDPユーザー名', remote['RDPユーザー名'] || '')}
                     ${renderCardEditField('RDPパスワード', remote['RDPパスワード'] || '')}
@@ -2140,14 +2189,22 @@
                 ['DBパスワード', env['DBパスワード'] || '', false],
             ].map(([field, value, wide]) => renderCardEditField(field, value, wide)).join('');
             const tagValue = tagsForRow(env).join(', ');
-            const apEditors = (matchedRdps.length ? matchedRdps : [null])
-                .map(remote => renderCardRdpEditor('ap', remote, getEndpoint(env['URL']).host ? `${getEndpoint(env['URL']).host}${getEndpoint(env['URL']).port ? ':' + getEndpoint(env['URL']).port : ''}` : ''))
+            const seenRemoteIds = new Set();
+            const serverEditors = matchedRdps
+                .map(remote => ({ remote, kind: 'server', fallbackName: t('section.apRdp') }))
+                .concat(matchedDbRdps.map(remote => ({ remote, kind: 'server', fallbackName: t('section.dbRdpInfo') })))
+                .filter(item => {
+                    const key = item.remote && item.remote.__rowId ? item.remote.__rowId : JSON.stringify(item.remote || {});
+                    if (seenRemoteIds.has(key)) return false;
+                    seenRemoteIds.add(key);
+                    return true;
+                });
+            const serverEditorHtml = serverEditors
+                .map(item => renderCardRdpEditor(item.kind, item.remote, '', item.fallbackName))
                 .join('');
-            const dbEditors = (matchedDbRdps.length ? matchedDbRdps : [null])
-                .map(remote => renderCardRdpEditor('db', remote, getEndpoint(env['DB名']).host ? `${getEndpoint(env['DB名']).host}${getEndpoint(env['DB名']).port ? ':' + getEndpoint(env['DB名']).port : ''}` : ''))
-                .join('');
+            const originalRdpIds = serverEditors.map(item => item.remote && item.remote.__rowId).filter(Boolean).join(',');
             return `
-                <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}">
+                <div class="env-detail-wrapper" data-card-editor="${escapeJs(env.__rowId)}" data-original-key="${escapeJs(getRowKey(env))}" data-original-rdp-ids="${escapeJs(originalRdpIds)}">
                     <div class="card-edit-section-title">${t('section.envInfo')}</div>
                     <div class="card-edit-grid">
                         ${envFields}
@@ -2156,10 +2213,13 @@
                             <input data-env-tags="true" value="${sanitizeHTML(tagValue)}" placeholder="${t('placeholder.tagsExample')}">
                         </div>
                     </div>
-                    <div class="card-edit-section-title">${t('section.apRdp')}</div>
-                    ${apEditors}
-                    <div class="card-edit-section-title">${t('section.dbRdpInfo')}</div>
-                    ${dbEditors}
+                    <div class="card-edit-section-title server-editor-heading">
+                        <span>${t('section.rdpPlain')}</span>
+                        <button type="button" class="secondary-btn env-add-btn" onclick="addRdpEditorToCard('${escapeJs(env.__rowId)}')">${t('button.addServerInfo')}</button>
+                    </div>
+                    <div class="server-editor-list">
+                        ${serverEditorHtml}
+                    </div>
                 </div>
             `;
         }
@@ -2170,6 +2230,22 @@
                 row[input.dataset.envField] = input.value.trim();
             });
             return row;
+        }
+
+        function addRdpEditorToCard(rowId) {
+            const editor = document.querySelector(`[data-card-editor="${CSS.escape(rowId)}"]`);
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!editor || !env) return;
+            const list = editor.querySelector('.server-editor-list');
+            if (!list) return;
+            const endpoint = getEndpoint(env['URL']);
+            const fallbackTarget = endpoint.host ? `${endpoint.host}${endpoint.port ? ':' + endpoint.port : ''}` : '';
+            list.insertAdjacentHTML('beforeend', renderCardRdpEditor('server', null, fallbackTarget, t('section.rdpPlain')));
+        }
+
+        function removeRdpEditor(button) {
+            const row = button ? button.closest('[data-rdp-kind]') : null;
+            if (row) row.remove();
         }
 
         function cloneForLog(value) {
@@ -2570,9 +2646,15 @@
             const updatedKey = getRowKey(env);
             if (tags.length > 0) tagStore[updatedKey] = tags;
 
+            const originalRdpIds = String(editor.dataset.originalRdpIds || '')
+                .split(',')
+                .map(id => id.trim())
+                .filter(Boolean);
+            const retainedRdpIds = new Set();
             editor.querySelectorAll('[data-rdp-kind]').forEach(group => {
                 const values = rdpEditorValues(group);
-                const hasAny = RDP_FIELDS.some(field => String(values[field] || '').trim());
+                const hasAny = ['RDPユーザー名', 'RDPパスワード', '接続先(IP:Port)']
+                    .some(field => String(values[field] || '').trim());
                 const existingId = group.dataset.rdpRowId || '';
                 const existing = existingId ? rdpData.find(row => row.__rowId === existingId) : null;
                 if (!hasAny) {
@@ -2585,7 +2667,11 @@
                     if (field !== '組織名') target[field] = values[field] || '';
                 });
                 if (!existing) rdpData.push(target);
+                if (target.__rowId) retainedRdpIds.add(target.__rowId);
             });
+            if (originalRdpIds.length) {
+                rdpData = rdpData.filter(row => !originalRdpIds.includes(row.__rowId) || retainedRdpIds.has(row.__rowId));
+            }
             resetPortalDerivedCaches();
 
             const summary = changeSummaryFor('save-env', beforeEnv, env, {
@@ -3232,6 +3318,16 @@
             const matchedDbRdps = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
             const matchedRdps = findRemotesByHost(envHost)
                 .filter(remote => !matchedDbRdps.includes(remote));
+            const seenRemoteViewIds = new Set();
+            const relatedRemoteItems = matchedRdps
+                .map(remote => ({ remote, fallbackName: t('section.apRdp') }))
+                .concat(matchedDbRdps.map(remote => ({ remote, fallbackName: t('section.dbRdpInfo') })))
+                .filter(item => {
+                    const key = item.remote && item.remote.__rowId ? item.remote.__rowId : JSON.stringify(item.remote || {});
+                    if (seenRemoteViewIds.has(key)) return false;
+                    seenRemoteViewIds.add(key);
+                    return true;
+                });
             const remoteTypes = uniqueTags(matchedRdps.map(remote => detectRemoteType(remote)).filter(Boolean));
             const dbRemoteTypes = uniqueTags(matchedDbRdps.map(remote => detectRemoteType(remote)).filter(Boolean));
             const rdpDownloadBtnIds = [];
@@ -3248,7 +3344,7 @@
                 const currentRemoteType = detectRemoteType(remote);
                 const remoteTarget = sanitizeHTML(remote['接続先(IP:Port)']);
                 const remoteUser = sanitizeHTML(remote['RDPユーザー名']);
-                const sectionTitle = totalItems > 1 ? `${sectionLabel} ${itemIndex + 1}` : sectionLabel;
+                const sectionTitle = remoteServerName(remote, sectionLabel);
                 const wrapperClass = embedded ? 'db-remote-section' : 'info-subcard';
                 const downloadBtn = currentRemoteType === 'RDP' && remoteTarget
                     ? `<button id="${downloadBtnId}" class="icon-btn" disabled onclick="openRdpConnection('${escapeJs(remote['接続先(IP:Port)'])}', '${escapeJs(remote['RDPユーザー名'])}', '${escapeJs(remote['RDPパスワード'])}', '${escapeJs(env['組織名'])}', '${escapeJs(env['構築環境名'])}${fileSuffix}${totalItems > 1 ? '_' + (itemIndex + 1) : ''}')" title="${t('button.downloadRdp')}" aria-label="${t('button.downloadRdp')}">${rdpFileDownloadIcon()}</button>`
@@ -3295,23 +3391,23 @@
                 return '';
             }
 
-            function renderRemoteGroup(remotes, sectionLabel, idPrefix, certIdPrefix, fileSuffix, embedded = false) {
-                return remotes.map((remote, index) => renderRemoteInfo(
-                    remote,
-                    sectionLabel,
+            function renderRemoteGroup(items, sectionLabel, idPrefix, certIdPrefix, fileSuffix, embedded = false) {
+                return items.map((item, index) => renderRemoteInfo(
+                    item.remote,
+                    item.fallbackName || sectionLabel,
                     `${idPrefix}_${index}`,
                     `${certIdPrefix}_${index}`,
                     fileSuffix,
                     index,
-                    remotes.length,
+                    items.length,
                     embedded
                 )).join('');
             }
 
-            apRdpInfoHtml = renderRemoteGroup(matchedRdps, t('section.rdp'), rdpDownloadBtnId, rdpCertBtnId, '');
-            dbRdpInfoHtml = renderRemoteGroup(matchedDbRdps, t('section.dbRdp'), dbRdpDownloadBtnId, dbRdpCertBtnId, '_DB', true);
+            apRdpInfoHtml = renderRemoteGroup(relatedRemoteItems, t('section.rdpPlain'), rdpDownloadBtnId, rdpCertBtnId, '');
+            dbRdpInfoHtml = '';
 
-            if ((matchedRdps.length || matchedDbRdps.length) && !isAuthenticated) {
+            if (relatedRemoteItems.length && !isAuthenticated) {
                 const remoteLabels = uniqueTags(remoteTypes.concat(dbRemoteTypes)).join(' / ') || t('label.remoteAccess');
                 rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }

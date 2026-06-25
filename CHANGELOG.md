@@ -2,6 +2,18 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.5.0] - 2026-06-25
+
+### Added
+
+- Added editable server information entries for environment cards, including a new compatible `rdp.csv` field `サーバ名`.
+- Added add and delete controls for server information rows in environment edit mode so AP-only, DB-only, shared AP/DB, and custom server layouts can be maintained.
+
+### Changed
+
+- Changed remote connection display titles to use `サーバ名` first, then AP/DB matching fallback labels, instead of generic numbered server labels.
+- Unified AP and DB remote connection editing into a flexible server information list while preserving existing RDP/SSH connection fields.
+
 ## [2.4.39] - 2026-06-25
 
 ### Fixed

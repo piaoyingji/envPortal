@@ -21,6 +21,7 @@ class OrganizationBundleUpdateTest(unittest.TestCase):
             server.write_csv_records("data.csv", server.PORTAL_CSV_FIELDS, rows)
             server.write_csv_records("rdp.csv", server.RDP_CSV_FIELDS, [{
                 "組織名": "筑波大学",
+                "サーバ名": "AP/DB共用",
                 "接続タイプ": "RDP",
                 "RDPユーザー名": "rdp",
                 "RDPパスワード": "pass",
@@ -84,6 +85,7 @@ class OrganizationBundleUpdateTest(unittest.TestCase):
         self.assertEqual(data_rows[0]["組織コード"], "9999")
         self.assertEqual(data_rows[0]["組織名"], "東京大学")
         self.assertEqual(rdp_rows[0]["組織名"], "東京大学")
+        self.assertEqual(rdp_rows[0]["サーバ名"], "AP/DB共用")
         self.assertIn("9999||東京大学||本番||http://example/login||user", tags_json)
         self.assertEqual(env_groups["records"]["9999"]["name"], "東京大学")
 

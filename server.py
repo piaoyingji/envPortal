@@ -126,6 +126,7 @@ PORTAL_CSV_FIELDS = [
 ]
 RDP_CSV_FIELDS = [
     "組織名",
+    "サーバ名",
     "接続タイプ",
     "RDPユーザー名",
     "RDPパスワード",

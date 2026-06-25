@@ -34,6 +34,17 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("editEnvironmentCard(row.__rowId);", self.index_html)
         self.assertIn("restorePortalState(snapshot);", self.index_html)
 
+    def test_server_info_editor_uses_editable_server_name(self):
+        self.assertIn('"サーバ名"', self.index_html)
+        self.assertIn("SERVER_NAME_OPTION_KEYS", self.index_html)
+        self.assertIn("function renderCardServerNameField(value)", self.index_html)
+        self.assertIn("function addRdpEditorToCard(rowId)", self.index_html)
+        self.assertIn("function removeRdpEditor(button)", self.index_html)
+        self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)
+        self.assertIn("data-original-rdp-ids", self.index_html)
+        self.assertIn("retainedRdpIds", self.index_html)
+        self.assertIn("serverName.shared", self.i18n_js)
+
     def test_system_menu_contains_proxy_login(self):
         self.assertIn('href="proxy-admin.html"', self.i18n_js)
         self.assertIn("nav.proxyLogin", self.i18n_js)
