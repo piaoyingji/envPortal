@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.4.39] - 2026-06-25
+
+### Fixed
+
+- Persisted newly added environment rows immediately from the add-environment modal before switching the row into edit mode.
+- Added frontend rollback handling so a failed add-environment save restores the previous in-memory portal state.
+
 ## [2.4.38] - 2026-06-24
 
 ### Fixed

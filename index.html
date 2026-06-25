@@ -1925,6 +1925,7 @@
                 return;
             }
             if (addModalContext.type === 'env') {
+                const snapshot = portalStateSnapshot();
                 const org = addModalContext.extra.org;
                 if (!org) return;
                 const row = Object.fromEntries(DATA_FIELDS.map(field => [field, '']));
@@ -1938,8 +1939,22 @@
                 fullData.push(row);
                 resetPortalDerivedCaches();
                 closeAddModal();
-                renderEnvironments(org.key);
-                editEnvironmentCard(row.__rowId);
+                savePortalFiles(changeSummaryFor('add-env', null, row))
+                    .then(() => {
+                        showToast(t('toast.savedDetail'));
+                        initDropdown();
+                        renderOrgFilterMenu();
+                        renderTagFilters();
+                        document.getElementById('orgSelect').value = org.key;
+                        syncProductionNavLink();
+                        renderEnvironments(org.key);
+                        editEnvironmentCard(row.__rowId);
+                    })
+                    .catch(err => {
+                        restorePortalState(snapshot);
+                        renderActiveView();
+                        alert(t('error.save') + err.message);
+                    });
             }
             if (addModalContext.type === 'copy-env') {
                 copyEnvironmentToOrg(addModalContext.extra.rowId, values['コピー先組織']);

@@ -28,6 +28,12 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("const beforeVisibleRowIds = currentVisibleEnvRowIds();", self.index_html)
         self.assertIn("if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds))", self.index_html)
 
+    def test_add_environment_modal_persists_new_row(self):
+        self.assertIn("const snapshot = portalStateSnapshot();", self.index_html)
+        self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)
+        self.assertIn("editEnvironmentCard(row.__rowId);", self.index_html)
+        self.assertIn("restorePortalState(snapshot);", self.index_html)
+
     def test_system_menu_contains_proxy_login(self):
         self.assertIn('href="proxy-admin.html"', self.i18n_js)
         self.assertIn("nav.proxyLogin", self.i18n_js)
