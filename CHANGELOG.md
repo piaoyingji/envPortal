@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.5.1] - 2026-06-25
+
+### Fixed
+
+- Matched server information delete icon button sizing with the environment card action buttons in edit mode.
+
 ## [2.5.0] - 2026-06-25
 
 ### Added

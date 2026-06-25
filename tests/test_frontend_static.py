@@ -43,6 +43,8 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)
         self.assertIn("data-original-rdp-ids", self.index_html)
         self.assertIn("retainedRdpIds", self.index_html)
+        self.assertIn(".server-editor-title .delete-btn svg", self.index_html)
+        self.assertIn("flex: 0 0 30px;", self.index_html)
         self.assertIn("serverName.shared", self.i18n_js)
 
     def test_system_menu_contains_proxy_login(self):
