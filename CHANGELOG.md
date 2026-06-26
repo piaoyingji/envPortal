@@ -2,6 +2,16 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.2] - 2026-06-26
+
+### Fixed
+
+- Fixed the environment group summary edit button so it renders as a visible 24px icon button instead of a blank action button.
+
+### Added
+
+- Added project-level validation rules requiring relevant tests for every change and browser screenshot verification for UI changes.
+
 ## [2.6.1] - 2026-06-26
 
 ### Changed

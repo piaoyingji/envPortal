@@ -38,6 +38,12 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertNotIn("normalizeGroupName(groupName) !== DEFAULT_ENV_GROUP", self.index_html)
         self.assertNotIn("normalizeGroupName(group.groupValue) !== DEFAULT_ENV_GROUP", self.index_html)
 
+    def test_group_summary_action_buttons_are_real_icon_buttons(self):
+        self.assertIn(".group-title-actions > button", self.index_html)
+        self.assertIn(".group-title-actions > button svg", self.index_html)
+        self.assertIn("width: 24px;", self.index_html)
+        self.assertIn("width: 14px;", self.index_html)
+
     def test_add_environment_modal_persists_new_row(self):
         self.assertIn("const snapshot = portalStateSnapshot();", self.index_html)
         self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)
