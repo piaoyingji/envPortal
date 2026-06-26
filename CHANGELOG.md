@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.4] - 2026-06-26
+
+### Fixed
+
+- Restored visibility for legacy `production.csv` records after the production tab was merged into the unified environment view.
+- Added backend compatibility mapping from legacy production VPN, bastion, AP, and DB fields into unified environment and server-info records during `portal_data.jsp` reads.
+- Filtered unified environment rows by portal and production view permissions before returning data to the browser.
+
 ## [2.6.3] - 2026-06-26
 
 ### Changed

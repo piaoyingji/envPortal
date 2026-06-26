@@ -261,6 +261,110 @@ def write_csv_records(filename, fields, rows):
     write_text_file(path, buffer.getvalue(), encoding="utf-8-sig")
 
 
+def clean_cell(value):
+    return str(value or "").strip()
+
+
+def portal_row_is_production(row):
+    return clean_cell(row.get("用途")) == "生産" or clean_cell(row.get("環境種別")) == "本番"
+
+
+def portal_rows_for_view_permissions(rows, profile):
+    can_view_portal = bool(profile.get("canViewPortal"))
+    can_view_production = bool(profile.get("canViewProduction"))
+    if can_view_portal and can_view_production:
+        return rows
+    if can_view_production:
+        return [row for row in rows if portal_row_is_production(row)]
+    if can_view_portal:
+        return [row for row in rows if not portal_row_is_production(row)]
+    return []
+
+
+def legacy_production_has_info(row):
+    return any(clean_cell(row.get(field)) for field in PRODUCTION_CSV_FIELDS)
+
+
+def legacy_production_key(row):
+    return (clean_cell(row.get("組織名")).casefold(), clean_cell(row.get("構築環境名")).casefold())
+
+
+def legacy_production_data_row(row):
+    data_row = {field: "" for field in PORTAL_CSV_FIELDS}
+    data_row.update({
+        "組織名": clean_cell(row.get("組織名")),
+        "環境グループ": DEFAULT_ENV_GROUP,
+        "環境種別": "本番",
+        "用途": "生産",
+        "構築環境名": clean_cell(row.get("構築環境名")) or clean_cell(row.get("組織名")),
+        "URL": clean_cell(row.get("AP IP")) or clean_cell(row.get("踏み台IP")) or clean_cell(row.get("VPN IP")),
+        "ログインID": clean_cell(row.get("APユーザー名")),
+        "ログインパスワード": clean_cell(row.get("APパスワード")),
+        "DB名": clean_cell(row.get("DB IP")),
+        "DBユーザー名": clean_cell(row.get("DBユーザー名")),
+        "DBパスワード": clean_cell(row.get("DBパスワード")),
+    })
+    return data_row
+
+
+def legacy_production_rdp_rows(row):
+    org_name = clean_cell(row.get("組織名"))
+    candidates = [
+        ("VPN", clean_cell(row.get("使用VPN")) or "VPN", "VPN IP", "VPNユーザー名", "VPNパスワード"),
+        ("踏み台", "RDP", "踏み台IP", "踏み台ユーザー名", "踏み台パスワード"),
+        ("AP", "RDP", "AP IP", "APユーザー名", "APパスワード"),
+        ("DB", "", "DB IP", "DBユーザー名", "DBパスワード"),
+    ]
+    rows = []
+    for server_name, connection_type, target_field, user_field, password_field in candidates:
+        target = clean_cell(row.get(target_field))
+        user = clean_cell(row.get(user_field))
+        password = clean_cell(row.get(password_field))
+        if not any([target, user, password]):
+            continue
+        rows.append({
+            "組織名": org_name,
+            "サーバ名": server_name,
+            "接続タイプ": connection_type,
+            "RDPユーザー名": user,
+            "RDPパスワード": password,
+            "接続先(IP:Port)": target,
+        })
+    return rows
+
+
+def rdp_row_identity(row):
+    return tuple(clean_cell(row.get(field)).casefold() for field in RDP_CSV_FIELDS)
+
+
+def merge_legacy_production_records(data_rows, rdp_rows, production_rows):
+    merged_data = list(data_rows)
+    merged_rdp = list(rdp_rows)
+    existing_production_keys = {
+        legacy_production_key(row)
+        for row in merged_data
+        if portal_row_is_production(row) and legacy_production_key(row) != ("", "")
+    }
+    existing_rdp_keys = {rdp_row_identity(row) for row in merged_rdp}
+
+    for legacy_row in production_rows:
+        if not legacy_production_has_info(legacy_row):
+            continue
+        legacy_key = legacy_production_key(legacy_row)
+        if legacy_key != ("", "") and legacy_key not in existing_production_keys:
+            data_row = legacy_production_data_row(legacy_row)
+            merged_data.append(data_row)
+            existing_production_keys.add(legacy_key)
+        for remote_row in legacy_production_rdp_rows(legacy_row):
+            remote_key = rdp_row_identity(remote_row)
+            if remote_key in existing_rdp_keys:
+                continue
+            merged_rdp.append(remote_row)
+            existing_rdp_keys.add(remote_key)
+
+    return merged_data, merged_rdp
+
+
 def json_backup_candidates(path):
     return sorted(
         (item for item in BASE_DIR.glob(f"{path.name}.bak*") if item.is_file()),
@@ -2571,8 +2675,11 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             role = profile.get("role", "staff")
             data_rows = read_csv_records("data.csv", PORTAL_CSV_FIELDS)
             rdp_rows = read_csv_records("rdp.csv", RDP_CSV_FIELDS)
+            production_rows = read_csv_records("production.csv", PRODUCTION_CSV_FIELDS)
+            data_rows, rdp_rows = merge_legacy_production_records(data_rows, rdp_rows, production_rows)
             tags_json = read_tags_json()
             env_groups_json = read_env_groups_json()
+            data_rows = portal_rows_for_view_permissions(data_rows, profile)
             all_portal_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             filter_tags = portal_filter_tags_for_role(role, all_portal_tags)
             if not profile.get("canViewPortal") and not profile.get("canViewProduction"):
