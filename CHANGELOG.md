@@ -2,6 +2,19 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.0] - 2026-06-26
+
+### Added
+
+- Added explicit environment enum fields to `data.csv`: `環境種別` for `社内` / `本番` and `用途` for `生産` / `開発` / `テスト` / `受入`.
+- Added environment and group maintenance entry points in the environment search summary view, including direct environment add and group rename access.
+
+### Changed
+
+- Changed the production tab to reuse the environment search card, grouping, editing, and save format via `index.html?mode=production`.
+- Limited production mode to `用途=生産` records and page-specific `canViewProduction` / `canEditProduction` permissions.
+- Stopped treating environment kind and purpose as normal display/filter TAGs while retaining legacy structural TAGs internally for old role-scope compatibility.
+
 ## [2.5.2] - 2026-06-25
 
 ### Changed

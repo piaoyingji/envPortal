@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.4.30"></script>
+    <script src="i18n.js?v=2.6.0"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -246,7 +246,8 @@
             gap: 0.28rem;
             margin-top: 0.42rem;
         }
-        .env-summary-tags .tag-chip {
+        .env-summary-tags .tag-chip,
+        .env-summary-tags .dimension-chip {
             margin: 0;
             font-size: 0.68rem;
             padding: 0.08rem 0.38rem;
@@ -588,6 +589,18 @@
             font-weight: 700;
             border-style: solid;
         }
+        .dimension-chip {
+            display: inline-block;
+            border-radius: 4px;
+            padding: 0.15rem 0.45rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: rgba(248, 250, 252, 0.82);
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            margin-left: 0.35rem;
+            margin-bottom: 0.25rem;
+        }
         .env-card-title-wrap {
             border-bottom: 1px solid var(--border);
             padding-bottom: 0.65rem;
@@ -632,6 +645,9 @@
             gap: 0.35rem;
         }
         .env-card-tag-row .tag-chip {
+            margin: 0;
+        }
+        .env-card-tag-row .dimension-chip {
             margin: 0;
         }
         .db-title-tags {
@@ -1227,7 +1243,7 @@
         <nav class="main-nav">
             <div class="main-nav-inner">
                 <a href="index.html" class="active" data-feature-nav="portal" data-i18n="nav.search" hidden>環境検索</a>
-                <a id="productionNavLink" href="production.html" data-feature-nav="production" data-i18n="nav.production" onclick="syncProductionNavLink()" hidden>本番環境</a>
+                <a id="productionNavLink" href="index.html?mode=production" data-feature-nav="production" data-i18n="nav.production" onclick="syncProductionNavLink()" hidden>本番環境</a>
             </div>
         </nav>
     </header>
@@ -1336,19 +1352,24 @@
         let orgGroupCache = new Map();
         let rdpHostIndex = new Map();
         let rdpEndpointIndex = new Map();
+        const pageMode = new URLSearchParams(window.location.search).get('mode') === 'production' ? 'production' : 'portal';
         const ORGS_PER_PAGE = 6;
         const STATUS_REFRESH_MS = 60000;
         const STATUS_CHECK_CONCURRENCY = 1;
         const RENDER_BATCH_SIZE = 12;
         const DEFAULT_ENV_GROUP = 'デフォルト';
+        const ENV_KIND_OPTIONS = ['社内', '本番'];
+        const ENV_PURPOSE_OPTIONS = ['生産', '開発', 'テスト', '受入'];
+        const STRUCTURAL_TAGS = new Set(['本番', '社内', '受入', 'テスト', '開発', '生産', '生产', '开发', '测试']);
         const ENV_GROUP_OPTIONS = [DEFAULT_ENV_GROUP, 'UHR-V6', 'PHR-V7', 'UPDS-V6', 'UPDS-V7'];
         const DISPLAY_SORT_ORDER = ['UPDS-V6', 'UHR', 'UPDS-V7', 'PHR'];
         const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
-        const DATA_FIELDS = ["組織コード","組織名","環境グループ","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
+        const DATA_FIELDS = ["組織コード","組織名","環境グループ","環境種別","用途","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
         const RDP_FIELDS = ["組織名","サーバ名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         const SERVER_NAME_OPTION_KEYS = ['serverName.apRdp', 'serverName.dbRdp', 'serverName.shared', 'serverName.bastion', 'serverName.server'];
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
+            applyPageModeUi();
 
             const cachedPortalAuth = typeof readStoredPortalAuth === 'function' ? readStoredPortalAuth() : null;
             const expiry = localStorage.getItem('authExpiry');
@@ -1426,20 +1447,23 @@
         function applyPortalPayload(payload, level) {
             if (level < portalDataLevel) return payload;
             portalDataLevel = level;
-            canEdit = Boolean(payload && payload.canEditPortal);
+            canEdit = pageCanEdit(payload);
             canManageUsers = Boolean(payload && payload.canManageUsers);
             if (level > 1) {
                 setCurrentUser(payload);
                 setSystemMenuVisible(isSystemAdmin(payload));
             }
-            isAuthenticated = canEdit;
+            const canViewPage = pageMode === 'production'
+                ? Boolean(payload && payload.canViewProduction)
+                : Boolean(payload && payload.canViewPortal);
+            isAuthenticated = canViewPage;
             tagStore = normalizeTagStore(payload.tags || {});
             portalFilterTags = Array.isArray(payload.filterTags) ? new Set(payload.filterTags.map(tag => String(tag || '').trim()).filter(Boolean)) : null;
             dataTagFilterActive = Boolean(payload.dataTagFilterActive);
             envGroupStore = normalizeEnvGroupStore(payload.envGroups || {});
             tagCategoryConfig = normalizeTagCategories(payload.tagCategories || {});
-            fullData = assignRowIds(payload.data || [], 'env');
-            rdpData = assignRowIds(payload.rdp || [], 'rdp');
+            fullData = assignRowIds(canViewPage ? (payload.data || []) : [], 'env');
+            rdpData = assignRowIds(canViewPage ? (payload.rdp || []) : [], 'rdp');
             syncEnvGroupsFromData();
             resetPortalDerivedCaches();
             updateEditToolbar();
@@ -1489,7 +1513,7 @@
             })
                 .then(res => res.ok ? res.json() : { ok: false })
                 .then(result => {
-                    canEdit = Boolean(result && result.canEditPortal);
+                    canEdit = pageCanEdit(result);
                     canManageUsers = Boolean(result && result.canManageUsers);
                     setCurrentUser(result);
                     setSystemMenuVisible(isSystemAdmin(result));
@@ -1524,11 +1548,35 @@
             syncProductionNavLink();
         }
 
+        function applyPageModeUi() {
+            document.body.dataset.titleKey = pageMode === 'production' ? 'app.productionTitle' : 'app.searchTitle';
+            const desc = document.querySelector('.logo-area p');
+            if (desc) {
+                desc.dataset.i18n = pageMode === 'production' ? 'header.productionDesc' : 'header.searchDesc';
+                desc.textContent = t(desc.dataset.i18n);
+            }
+            syncProductionNavLink();
+            if (typeof applyI18n === 'function') applyI18n();
+        }
+
+        function pageCanEdit(profile) {
+            return pageMode === 'production'
+                ? Boolean(profile && profile.canEditProduction)
+                : Boolean(profile && profile.canEditPortal);
+        }
+
+        function canEditEnvironment(env) {
+            if (!canEdit) return false;
+            return pageMode !== 'production' || envPurposeValue(env) === '生産';
+        }
+
         function syncProductionNavLink() {
             const link = document.getElementById('productionNavLink');
+            const portalLink = document.querySelector('[data-feature-nav="portal"]');
+            if (portalLink) portalLink.classList.toggle('active', pageMode !== 'production');
             if (!link) return;
-            const orgName = selectedOrgNameForProduction();
-            link.href = orgName ? `production.html?org=${encodeURIComponent(orgName)}` : 'production.html';
+            link.href = 'index.html?mode=production';
+            link.classList.toggle('active', pageMode === 'production');
         }
 
         function selectedOrgNameForProduction() {
@@ -1873,6 +1921,8 @@
                 '組織コード': 'label.orgCode',
                 '組織名': 'label.orgName',
                 '環境グループ': 'label.envGroup',
+                '環境種別': 'label.envKind',
+                '用途': 'label.envPurpose',
                 '構築環境名': 'label.envName',
                 'URL': 'label.url',
                 'ログインID': 'label.loginId',
@@ -1892,7 +1942,7 @@
                 <div class="add-modal-field${wide ? ' wide' : ''}">
                     <label>${sanitizeHTML(modalFieldLabel(field))}</label>
                     ${kind === 'select'
-                        ? `<select data-add-field="${sanitizeHTML(field)}">${ENV_GROUP_OPTIONS.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${option ? sanitizeHTML(option) : ''}</option>`).join('')}</select>`
+                        ? `<select data-add-field="${sanitizeHTML(field)}">${(options || []).map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${labelForEnumValue(field, option)}</option>`).join('')}</select>`
                         : kind === 'group-select'
                             ? `<select data-add-field="${sanitizeHTML(field)}">${(options || groupNameOptions()).map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${sanitizeHTML(option)}</option>`).join('')}</select>`
                         : kind === 'group-input'
@@ -1978,6 +2028,10 @@
                 row['環境グループ'] = normalizeGroupName(values['環境グループ'] || addModalContext.extra.groupName);
                 DATA_FIELDS.forEach(field => { if (values[field] !== undefined) row[field] = values[field]; });
                 row['環境グループ'] = normalizeGroupName(row['環境グループ']);
+                if (pageMode === 'production') {
+                    row['環境種別'] = '本番';
+                    row['用途'] = '生産';
+                }
                 addGroupNameToOrg(org.key, row['環境グループ']);
                 row.__rowId = `env_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 fullData.push(row);
@@ -2081,7 +2135,8 @@
         }
 
         function editEnvironmentCard(rowId) {
-            if (!canEdit) return;
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!canEditEnvironment(env)) return;
             editingEnvId = rowId;
             refreshEnvironmentCardInPlace(rowId);
         }
@@ -2145,18 +2200,50 @@
         }
 
         function renderCardSelectField(field, value, options, wide = false) {
+            const currentValue = String(value || '').trim();
             return `
                 <div class="card-edit-field${wide ? ' wide' : ''}">
                     <label>${sanitizeHTML(field)}</label>
                     <select data-env-field="${sanitizeHTML(field)}">
-                        ${options.map(option => `<option value="${sanitizeHTML(option)}" ${option === value ? 'selected' : ''}>${sanitizeHTML(option)}</option>`).join('')}
+                        ${options.map(option => `<option value="${sanitizeHTML(option)}" ${option === currentValue ? 'selected' : ''}>${labelForEnumValue(field, option)}</option>`).join('')}
                     </select>
                 </div>
             `;
         }
 
+        function labelForEnumValue(field, value) {
+            if (field === '環境種別') return sanitizeHTML(t('envKind.' + value));
+            if (field === '用途') return sanitizeHTML(t('envPurpose.' + value));
+            return sanitizeHTML(value);
+        }
+
         function envGroupValue(row) {
             return normalizeGroupName(row['環境グループ']);
+        }
+
+        function structuralTagsForRow(row) {
+            const tags = tagsForRowRaw(row);
+            return new Set(tags.map(tag => String(tag || '').trim()).filter(Boolean));
+        }
+
+        function envKindValue(row) {
+            const explicit = String(row && row['環境種別'] || '').trim();
+            if (ENV_KIND_OPTIONS.includes(explicit)) return explicit;
+            const tags = structuralTagsForRow(row || {});
+            if (tags.has('本番') || tags.has('生産') || tags.has('生产')) return '本番';
+            return '社内';
+        }
+
+        function envPurposeValue(row) {
+            const explicit = String(row && row['用途'] || '').trim();
+            if (explicit === '本番') return '生産';
+            if (ENV_PURPOSE_OPTIONS.includes(explicit)) return explicit;
+            const tags = structuralTagsForRow(row || {});
+            if (tags.has('受入')) return '受入';
+            if (tags.has('テスト') || tags.has('测试')) return 'テスト';
+            if (tags.has('開発') || tags.has('开发')) return '開発';
+            if (tags.has('本番') || tags.has('生産') || tags.has('生产')) return '生産';
+            return envKindValue(row) === '本番' ? '生産' : 'テスト';
         }
 
         function remoteServerName(remote, fallbackName = '') {
@@ -2198,6 +2285,8 @@
 
         function renderEnvironmentCardEditor(env, matchedRdps, matchedDbRdps) {
             const envFields = [
+                ['環境種別', envKindValue(env), false, 'kind'],
+                ['用途', envPurposeValue(env), false, 'purpose'],
                 ['構築環境名', env['構築環境名'] || '', false],
                 ['URL', env['URL'] || '', true],
                 ['ログインID', env['ログインID'] || '', false],
@@ -2207,7 +2296,11 @@
                 ['DB名', env['DB名'] || '', true],
                 ['DBユーザー名', env['DBユーザー名'] || '', false],
                 ['DBパスワード', env['DBパスワード'] || '', false],
-            ].map(([field, value, wide]) => renderCardEditField(field, value, wide)).join('');
+            ].map(([field, value, wide, kind]) => {
+                if (kind === 'kind') return renderCardSelectField(field, value, ENV_KIND_OPTIONS, wide);
+                if (kind === 'purpose') return renderCardSelectField(field, value, ENV_PURPOSE_OPTIONS, wide);
+                return renderCardEditField(field, value, wide);
+            }).join('');
             const tagValue = tagsForRow(env).join(', ');
             const seenRemoteIds = new Set();
             const serverEditors = matchedRdps
@@ -2640,9 +2733,9 @@
         }
 
         function saveEnvironmentCard(rowId) {
-            if (!canEdit) return;
             const editor = document.querySelector(`[data-card-editor="${CSS.escape(rowId)}"]`);
             const env = fullData.find(row => row.__rowId === rowId);
+            if (!canEditEnvironment(env)) return;
             if (!editor || !env) return;
             const beforeEnv = cloneForLog(env);
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
@@ -2659,10 +2752,11 @@
             addGroupNameToOrg(getOrgGroup(env).key, env['環境グループ']);
             delete tagStore[originalKey];
             const tagsInput = editor.querySelector('input[data-env-tags]');
-            const tags = String(tagsInput ? tagsInput.value : '')
+            const retainedStructuralTags = tagsForRowRaw(beforeEnv).filter(isStructuralTag);
+            const tags = uniqueTags(retainedStructuralTags.concat(String(tagsInput ? tagsInput.value : '')
                 .split(',')
                 .map(tag => tag.trim())
-                .filter(Boolean);
+                .filter(tag => tag && !isStructuralTag(tag))));
             const updatedKey = getRowKey(env);
             if (tags.length > 0) tagStore[updatedKey] = tags;
 
@@ -2721,6 +2815,8 @@
             const selectedGroup = normalizeGroupName(groupName);
             openAddModal('env', 'modal.envAdd', [
                 ['環境グループ', selectedGroup, false, 'group-select', getEnvGroupsForOrg(org.key)],
+                ['環境種別', pageMode === 'production' ? '本番' : '社内', false, 'select', ENV_KIND_OPTIONS],
+                ['用途', pageMode === 'production' ? '生産' : 'テスト', false, 'select', ENV_PURPOSE_OPTIONS],
                 ['構築環境名', t('default.envName'), true],
                 ['URL', '', true],
                 ['ログインID', ''],
@@ -2729,9 +2825,9 @@
         }
 
         function deleteEnvironmentCard(rowId) {
-            if (!canEdit) return;
-            if (!confirm(t('confirm.deleteEnv'))) return;
             const env = fullData.find(row => row.__rowId === rowId);
+            if (!canEditEnvironment(env)) return;
+            if (!confirm(t('confirm.deleteEnv'))) return;
             const beforeEnv = cloneForLog(env);
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
             const beforeTags = cloneForLog(tagsForRow(env));
@@ -2763,7 +2859,12 @@
 
         function savePortalFiles(changeSummary = {}) {
             syncEnvGroupsFromData();
-            const dataRows = fullData.map(row => ({ ...row, '環境グループ': envGroupValue(row) }));
+            const dataRows = fullData.map(row => ({
+                ...row,
+                '環境グループ': envGroupValue(row),
+                '環境種別': envKindValue(row),
+                '用途': envPurposeValue(row)
+            }));
             const dataCsv = Papa.unparse({ fields: DATA_FIELDS, data: dataRows }, { quotes: true });
             const rdpCsv = Papa.unparse({ fields: RDP_FIELDS, data: rdpData }, { quotes: true });
             const tagsJson = JSON.stringify(tagStore, null, 2);
@@ -2846,8 +2947,8 @@
         }
 
         function copyEnvironmentCard(rowId) {
-            if (!canEdit) return;
             const env = fullData.find(row => row.__rowId === rowId);
+            if (!canEditEnvironment(env)) return;
             if (!env) return;
             const currentOrgKey = getOrgGroup(env).key;
             const orgs = getOrgOptions().filter(org => org.key !== currentOrgKey);
@@ -3000,6 +3101,7 @@
                         ${(canEdit || canManageEnvGroups()) ? `
                             <span class="org-level-actions">
                                 ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                                ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(org.key)}', '${escapeJs(DEFAULT_ENV_GROUP)}')">${t('button.addEnvToOrg')}</button>` : ''}
                                 ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(org.key)}', event)">${t('button.addGroup')}</button>` : ''}
                             </span>
                         ` : ''}
@@ -3055,6 +3157,7 @@
                         <span class="group-title-actions">
                             ${groupOrderActionsHtml(orgKey, groupName)}
                             ${groupMoveOrgActionHtml(orgKey, groupName)}
+                            ${canManageEnvGroups() && normalizeGroupName(groupName) !== DEFAULT_ENV_GROUP ? `<button type="button" class="secondary-btn" onclick="openGroupEdit('${escapeJs(orgKey)}', '${escapeJs(groupName)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
                         </span>
                     </div>
                     <div class="org-summary-group-items">
@@ -3089,6 +3192,7 @@
             const tags = rawTags.filter(tag => tag !== envGroupValue(env));
             const visibleTags = tags.slice(0, 5).map(tag => renderTagChip(tag, tagsForRow(env).includes(tag))).join('');
             const overflow = tags.length > 5 ? `<span class="tag-chip auto-tag" style="background:#f5fbfc; color:#627987; border:1px solid #d7e6ee;">+${tags.length - 5}</span>` : '';
+            const dimensionHtml = renderDimensionChips(env);
             const dbType = String(env['DBタイプ'] || '').trim();
             const dbVersion = String(env['DBバージョン'] || '').trim();
             const meta = dbType ? `${sanitizeHTML(dbType)}${dbVersion ? ' ' + sanitizeHTML(dbVersion) : ''}` : (host || '');
@@ -3108,7 +3212,7 @@
                             <button type="button" class="env-expand-btn" onclick="expandInlineEnv('${escapeJs(orgKey)}', ${index})" title="${t('button.expand')}" aria-label="${t('button.expand')}">${expandIcon()}</button>
                         </div>
                     </div>
-                    ${tags.length > 0 ? `<div class="env-summary-tags">${visibleTags}${overflow}</div>` : ''}
+                    ${(dimensionHtml || tags.length > 0) ? `<div class="env-summary-tags">${dimensionHtml}${visibleTags}${overflow}</div>` : ''}
                     ${url ? `<div class="env-summary-url">${url}</div>` : ''}
                 </div>
             `;
@@ -3135,6 +3239,7 @@
                 ${(canEdit || canManageEnvGroups()) ? `
                     <div class="org-level-actions">
                         ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                        ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(selectedOrgKey)}', '${escapeJs(DEFAULT_ENV_GROUP)}')">${t('button.addEnvToOrg')}</button>` : ''}
                         ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.addGroup')}</button>` : ''}
                     </div>
                 ` : ''}
@@ -3312,6 +3417,7 @@
             const orgTitleHtml = showOrgTitle ? `<span class="env-org-title">${sanitizeHTML(org.label)}</span>` : '';
             const manualTagSet = new Set(tagsForRow(env));
             const tagHtml = allTagsForRow(env).map(tag => renderTagChip(tag, manualTagSet.has(tag))).join('');
+            const dimensionHtml = renderDimensionChips(env);
             const skin = tagSkinForRow(env);
             if (skin) {
                 card.dataset.skin = '1';
@@ -3357,7 +3463,8 @@
             let rdpTagHtml = '';
             let apRdpInfoHtml = '';
             let dbRdpInfoHtml = '';
-            const isEditingCard = canEdit && editingEnvId === env.__rowId;
+            const rowCanEdit = canEditEnvironment(env);
+            const isEditingCard = rowCanEdit && editingEnvId === env.__rowId;
 
             function renderRemoteInfo(remote, sectionLabel, downloadBtnId, certBtnId, fileSuffix, itemIndex, totalItems, embedded = false) {
                 if (!remote) return '';
@@ -3432,7 +3539,7 @@
                 rdpTagHtml = `<span class="rdp-tag" onclick="openPwdModal()" title="${t('modal.rdpUnlockDesc')}">${remoteLabels}</span>`;
             }
 
-            const editActionButtonsHtml = canEdit ? `
+            const editActionButtonsHtml = rowCanEdit ? `
                     ${isEditingCard
                         ? `<button type="button" class="primary-btn" onclick="saveEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.save')}" aria-label="${t('button.save')}">${saveActionIcon()}</button>`
                         : `<button type="button" class="secondary-btn" onclick="editEnvironmentCard('${escapeJs(env.__rowId)}')" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>`}
@@ -3510,7 +3617,7 @@
                     ${actionAreaHtml}
                     </div>
                     ${rdpTagHtml ? `<div class="env-card-status-row">${rdpTagHtml}</div>` : ''}
-                    ${tagHtml ? `<div class="env-card-tag-row">${tagHtml}</div>` : ''}
+                    ${(dimensionHtml || tagHtml) ? `<div class="env-card-tag-row">${dimensionHtml}${tagHtml}</div>` : ''}
                 </div>
                 ${isEditingCard ? renderEnvironmentCardEditor(env, matchedRdps, matchedDbRdps) : viewBodyHtml}
             `;
@@ -4185,11 +4292,23 @@
             ].map(value => String(value).trim()).join('||');
         }
 
-        function tagsForRow(row) {
+        function isStructuralTag(tag) {
+            return STRUCTURAL_TAGS.has(String(tag || '').trim());
+        }
+
+        function tagsForRowRaw(row) {
             const record = tagStore[getRowKey(row)] || tagStore[getLegacyRowKey(row)];
             if (Array.isArray(record)) return record;
             if (record && Array.isArray(record.tags)) return record.tags;
             return [];
+        }
+
+        function tagsForRow(row) {
+            return tagsForRowRaw(row).filter(tag => !isStructuralTag(tag));
+        }
+
+        function permissionTagsForRow(row) {
+            return uniqueTags(tagsForRowRaw(row));
         }
 
         function detectRemoteType(remote) {
@@ -4225,6 +4344,12 @@
             const tagSet = new Set();
             const tagCounts = {};
             fullData.forEach(row => {
+                if (pageMode === 'production' && envPurposeValue(row) !== '生産') return;
+                const permissionTags = permissionTagsForRow(row);
+                if (dataTagFilterActive) {
+                    if (!portalFilterTags || portalFilterTags.size === 0) return;
+                    if (!permissionTags.some(tag => portalFilterTags.has(tag))) return;
+                }
                 allTagsForRow(row).forEach(tag => {
                     if (portalFilterTags && !portalFilterTags.has(tag)) return;
                     tagSet.add(tag);
@@ -4290,10 +4415,11 @@
         function getFilteredData() {
             const effectiveTags = pruneSelectedTags();
             return fullData.filter(row => {
+                if (pageMode === 'production' && envPurposeValue(row) !== '生産') return false;
                 const rowTags = allTagsForRow(row);
                 if (dataTagFilterActive) {
                     if (!portalFilterTags || portalFilterTags.size === 0) return false;
-                    if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;
+                    if (!permissionTagsForRow(row).some(tag => portalFilterTags.has(tag))) return false;
                 }
                 if (effectiveTags.length === 0) return true;
                 return effectiveTags.every(tag => rowTags.includes(tag));
@@ -4341,6 +4467,13 @@
             const color = tagColor(tag);
             const className = 'tag-chip' + (isManual ? '' : ' auto-tag');
             return `<span class="${className}" style="background:${color.bg}; color:${color.text}; border:1px solid ${color.border};">${sanitizeHTML(tag)}</span>`;
+        }
+
+        function renderDimensionChips(row) {
+            return [
+                `${t('label.envKind')}: ${labelForEnumValue('環境種別', envKindValue(row))}`,
+                `${t('label.envPurpose')}: ${labelForEnumValue('用途', envPurposeValue(row))}`
+            ].map(text => `<span class="dimension-chip">${text}</span>`).join('');
         }
 
         function tagSkinForRow(row) {

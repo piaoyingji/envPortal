@@ -114,6 +114,8 @@ PORTAL_CSV_FIELDS = [
     "組織コード",
     "組織名",
     "環境グループ",
+    "環境種別",
+    "用途",
     "構築環境名",
     "URL",
     "ログインID",
@@ -2566,7 +2568,7 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             env_groups_json = read_env_groups_json()
             all_portal_tags = all_known_tags(data_rows, tags_json, rdp_rows)
             filter_tags = portal_filter_tags_for_role(role, all_portal_tags)
-            if not profile.get("canViewPortal"):
+            if not profile.get("canViewPortal") and not profile.get("canViewProduction"):
                 data_rows = []
                 rdp_rows = []
                 filter_tags = []

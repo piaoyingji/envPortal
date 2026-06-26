@@ -91,7 +91,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("loadPortalAuth({ forceRefresh: forceRefreshAuth })", self.i18n_js)
         self.assertIn("refreshAuth: options.refreshAuth === true", self.i18n_js)
         self.assertIn("refreshAuth: options.refreshAuth === true", self.index_html)
-        self.assertIn("{ cache: 'no-store', refreshAuth: true }", self.production_html)
+        self.assertIn("index.html?mode=production", self.production_html)
         self.assertIn("if (level > 1) {", self.index_html)
 
     def test_tag_filter_uses_authorized_filter_tags(self):
@@ -103,7 +103,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("let dataTagFilterActive = false;", self.index_html)
         self.assertIn("payload.dataTagFilterActive", self.index_html)
         self.assertIn("if (dataTagFilterActive) {", self.index_html)
-        self.assertIn("if (!rowTags.some(tag => portalFilterTags.has(tag))) return false;", self.index_html)
+        self.assertIn("if (!permissionTagsForRow(row).some(tag => portalFilterTags.has(tag))) return false;", self.index_html)
         self.assertIn("return effectiveTags.every(tag => rowTags.includes(tag));", self.index_html)
         self.assertIn("function hasActiveRoleTagScope()", self.index_html)
         self.assertIn("else if (selectedTags.length > 0) renderTagEnvironments();", self.index_html)
@@ -113,25 +113,47 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertNotIn("clearBtn.textContent = 'All';", self.index_html)
 
     def test_page_edit_buttons_use_page_specific_permissions(self):
-        self.assertIn("canEdit = Boolean(payload && payload.canEditPortal);", self.index_html)
-        self.assertIn("canEdit = Boolean(result && result.canEditPortal);", self.index_html)
+        self.assertIn("function pageCanEdit(profile)", self.index_html)
+        self.assertIn("canEdit = pageCanEdit(payload);", self.index_html)
+        self.assertIn("canEdit = pageCanEdit(result);", self.index_html)
+        self.assertIn("Boolean(profile && profile.canEditProduction)", self.index_html)
+        self.assertIn("Boolean(profile && profile.canEditPortal)", self.index_html)
+        self.assertIn("function canEditEnvironment(env)", self.index_html)
+        self.assertIn("const canViewPage = pageMode === 'production'", self.index_html)
+        self.assertIn("isAuthenticated = canViewPage;", self.index_html)
         self.assertNotIn("payload.canEditPortal || payload.canEdit", self.index_html)
         self.assertNotIn("result.canEditPortal || result.canEdit", self.index_html)
-
-        self.assertIn("canEdit = Boolean(payload && payload.canEditProduction);", self.production_html)
-        self.assertIn("canEdit = Boolean(result && result.canEditProduction);", self.production_html)
-        self.assertNotIn("payload.canEditProduction || payload.canEdit", self.production_html)
-        self.assertNotIn("result.canEditProduction || result.canEdit", self.production_html)
+        self.assertIn("index.html?mode=production", self.production_html)
 
     def test_feature_navigation_uses_view_permissions(self):
         self.assertIn('data-feature-nav="portal"', self.index_html)
         self.assertIn('data-feature-nav="production"', self.index_html)
-        self.assertIn('data-feature-nav="portal"', self.production_html)
-        self.assertIn('data-feature-nav="production"', self.production_html)
+        self.assertIn("index.html?mode=production", self.production_html)
         self.assertIn("function applyFeatureNavigation(profile)", self.i18n_js)
         self.assertIn("portal: Boolean(profile && profile.canViewPortal)", self.i18n_js)
         self.assertIn("production: Boolean(profile && profile.canViewProduction)", self.i18n_js)
         self.assertIn("link.hidden = !visible;", self.i18n_js)
+
+    def test_environment_kind_and_purpose_are_enum_fields(self):
+        self.assertIn('"環境種別"', self.index_html)
+        self.assertIn('"用途"', self.index_html)
+        self.assertIn("const ENV_KIND_OPTIONS = ['社内', '本番'];", self.index_html)
+        self.assertIn("const ENV_PURPOSE_OPTIONS = ['生産', '開発', 'テスト', '受入'];", self.index_html)
+        self.assertIn("function envKindValue(row)", self.index_html)
+        self.assertIn("function envPurposeValue(row)", self.index_html)
+        self.assertIn("function renderDimensionChips(row)", self.index_html)
+        self.assertIn("'label.envKind': '環境区分'", self.i18n_js)
+        self.assertIn("'envPurpose.生産': '生产'", self.i18n_js)
+        self.assertIn("if (pageMode === 'production') {", self.index_html)
+        self.assertIn("row['用途'] = '生産';", self.index_html)
+
+    def test_structural_tags_are_hidden_from_display_filters_but_kept_for_permission_scope(self):
+        self.assertIn("const STRUCTURAL_TAGS = new Set", self.index_html)
+        self.assertIn("function tagsForRowRaw(row)", self.index_html)
+        self.assertIn("function permissionTagsForRow(row)", self.index_html)
+        self.assertIn("return tagsForRowRaw(row).filter(tag => !isStructuralTag(tag));", self.index_html)
+        self.assertIn("permissionTagsForRow(row).some(tag => portalFilterTags.has(tag))", self.index_html)
+        self.assertIn("const retainedStructuralTags = tagsForRowRaw(beforeEnv).filter(isStructuralTag);", self.index_html)
 
     def test_password_unlock_input_is_inside_form(self):
         self.assertIn('<form class="modal-content" onsubmit="submitPwdModal(); return false;">', self.index_html)
