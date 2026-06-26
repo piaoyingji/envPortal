@@ -28,6 +28,16 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("const beforeVisibleRowIds = currentVisibleEnvRowIds();", self.index_html)
         self.assertIn("if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds))", self.index_html)
 
+    def test_environment_groups_can_rename_default_and_delete_last_empty_group(self):
+        self.assertIn("record.groups = nextGroups.length ? nextGroups : [DEFAULT_ENV_GROUP];", self.index_html)
+        self.assertIn("const canDeleteGroup = canManageGroup && group.rows.length === 0;", self.index_html)
+        self.assertNotIn("error.defaultGroupProtected", self.index_html)
+        self.assertNotIn("error.lastGroupProtected", self.index_html)
+        self.assertNotIn("groups.length <= 1", self.index_html)
+        self.assertNotIn("normalizeGroupName(groupValue) === DEFAULT_ENV_GROUP", self.index_html)
+        self.assertNotIn("normalizeGroupName(groupName) !== DEFAULT_ENV_GROUP", self.index_html)
+        self.assertNotIn("normalizeGroupName(group.groupValue) !== DEFAULT_ENV_GROUP", self.index_html)
+
     def test_add_environment_modal_persists_new_row(self):
         self.assertIn("const snapshot = portalStateSnapshot();", self.index_html)
         self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)

@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.1] - 2026-06-26
+
+### Changed
+
+- Allowed all environment groups, including `デフォルト`, to be renamed by administrators.
+- Allowed deleting the final empty group in an organization; the frontend recreates `デフォルト` automatically when no groups remain.
+
 ## [2.6.0] - 2026-06-26
 
 ### Added

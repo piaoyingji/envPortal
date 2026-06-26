@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.6.0';
+const APP_VERSION_FALLBACK = '2.6.1';
 
 const I18N_MESSAGES = {
     ja: {
@@ -108,9 +108,7 @@ const I18N_MESSAGES = {
         'error.save': '保存エラー: ',
         'error.orgNameRequired': '組織名を入力してください',
         'error.groupRequired': '環境グループを入力してください',
-        'error.defaultGroupProtected': 'デフォルトグループは変更できません',
         'error.groupNotEmpty': '環境があるグループは削除できません。先に環境を別グループへ移動してください。',
-        'error.lastGroupProtected': '組織の最後のグループは削除できません。',
         'error.noCopyTargetOrg': 'コピー先組織がありません',
         'error.noMoveTargetOrg': '移動先組織がありません',
         'confirm.delete': 'このデータを完全に削除してもよろしいですか？（※即座にサーバーから削除されます）',
@@ -378,9 +376,7 @@ const I18N_MESSAGES = {
         'error.save': '保存错误: ',
         'error.orgNameRequired': '请输入机构名称',
         'error.groupRequired': '请输入环境组',
-        'error.defaultGroupProtected': '默认环境组不能修改',
         'error.groupNotEmpty': '有环境的分组不能删除。请先把环境移动到其他分组。',
-        'error.lastGroupProtected': '不能删除该机构的最后一个分组。',
         'error.noCopyTargetOrg': '没有可复制到的目标机构',
         'error.noMoveTargetOrg': '没有可移动到的目标机构',
         'confirm.delete': '确定要永久删除这条数据吗？（会立即从服务器删除）',
