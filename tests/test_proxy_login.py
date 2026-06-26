@@ -68,6 +68,31 @@ class ProxyLoginTest(unittest.TestCase):
         self.assertFalse(profile["canEditPortal"])
         self.assertFalse(profile["canManageUsers"])
 
+    def test_admin_proxy_to_non_admin_role_stays_read_only_even_if_role_has_edit_flags(self):
+        roles = {
+            "admin": server.normalize_role_record("admin", {}),
+            "editor": server.normalize_role_record("editor", {
+                "label": "Editor",
+                "canViewPortal": False,
+                "canEditPortal": True,
+                "canViewProduction": False,
+                "canEditProduction": True,
+                "canManageUsers": True,
+            }),
+        }
+
+        with mock.patch.object(server, "load_roles", lambda: roles):
+            profile = server.apply_proxy_role(self.admin_profile(), "editor")
+
+        self.assertTrue(profile["isProxyLogin"])
+        self.assertEqual(profile["role"], "editor")
+        self.assertTrue(profile["canViewPortal"])
+        self.assertFalse(profile["canEditPortal"])
+        self.assertTrue(profile["canViewProduction"])
+        self.assertFalse(profile["canEditProduction"])
+        self.assertFalse(profile["canEdit"])
+        self.assertFalse(profile["canManageUsers"])
+
     def test_invalid_proxy_role_is_ignored(self):
         with mock.patch.object(server, "load_roles", self.roles):
             profile = server.apply_proxy_role(self.admin_profile(), "missing")

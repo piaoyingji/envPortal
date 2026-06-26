@@ -678,13 +678,15 @@ def normalize_role_record(key, record):
     defaults = DEFAULT_ROLES.get(role_key, {})
     protected = bool(defaults.get("protected"))
     legacy_can_edit = bool((record or {}).get("canEdit", defaults.get("canEdit", False)))
+    requested_can_edit_portal = bool((record or {}).get("canEditPortal", defaults.get("canEditPortal", legacy_can_edit)))
+    requested_can_edit_production = bool((record or {}).get("canEditProduction", defaults.get("canEditProduction", legacy_can_edit)))
     role = {
         "key": role_key,
         "label": str((record or {}).get("label") or defaults.get("label") or role_key),
-        "canViewPortal": bool((record or {}).get("canViewPortal", defaults.get("canViewPortal", legacy_can_edit))),
-        "canEditPortal": bool((record or {}).get("canEditPortal", defaults.get("canEditPortal", legacy_can_edit))),
-        "canViewProduction": bool((record or {}).get("canViewProduction", defaults.get("canViewProduction", legacy_can_edit))),
-        "canEditProduction": bool((record or {}).get("canEditProduction", defaults.get("canEditProduction", legacy_can_edit))),
+        "canViewPortal": bool((record or {}).get("canViewPortal", defaults.get("canViewPortal", legacy_can_edit)) or requested_can_edit_portal),
+        "canEditPortal": requested_can_edit_portal,
+        "canViewProduction": bool((record or {}).get("canViewProduction", defaults.get("canViewProduction", legacy_can_edit)) or requested_can_edit_production),
+        "canEditProduction": requested_can_edit_production,
         "canEdit": legacy_can_edit,
         "canManageUsers": bool((record or {}).get("canManageUsers", defaults.get("canManageUsers", False))),
         "dataTags": normalize_role_data_tags(record, defaults),
@@ -707,6 +709,11 @@ def normalize_role_record(key, record):
         role["dataTags"] = []
         role["filterTag"] = ""
         role["protected"] = True
+    else:
+        role["canEditPortal"] = False
+        role["canEditProduction"] = False
+        role["canEdit"] = False
+        role["canManageUsers"] = False
     return role
 
 

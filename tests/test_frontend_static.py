@@ -9,6 +9,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         cls.production_html = Path("production.html").read_text(encoding="utf-8")
         cls.i18n_js = Path("i18n.js").read_text(encoding="utf-8")
         cls.proxy_admin_html = Path("proxy-admin.html").read_text(encoding="utf-8")
+        cls.role_admin_html = Path("role-admin.html").read_text(encoding="utf-8")
 
     def test_environment_rendering_uses_product_display_order(self):
         self.assertIn("function environmentDisplayRank(row)", self.index_html)
@@ -132,14 +133,25 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("function pageCanEdit(profile)", self.index_html)
         self.assertIn("canEdit = pageCanEdit(payload);", self.index_html)
         self.assertIn("canEdit = pageCanEdit(result);", self.index_html)
-        self.assertIn("Boolean(profile && profile.canEditProduction)", self.index_html)
-        self.assertIn("Boolean(profile && profile.canEditPortal)", self.index_html)
+        self.assertIn("if (!profile || profile.role !== 'admin') return false;", self.index_html)
+        self.assertIn("Boolean(profile.canEditProduction)", self.index_html)
+        self.assertIn("Boolean(profile.canEditPortal)", self.index_html)
         self.assertIn("function canEditEnvironment(env)", self.index_html)
         self.assertIn("const canViewPage = pageMode === 'production'", self.index_html)
         self.assertIn("isAuthenticated = canViewPage;", self.index_html)
         self.assertNotIn("payload.canEditPortal || payload.canEdit", self.index_html)
         self.assertNotIn("result.canEditPortal || result.canEdit", self.index_html)
         self.assertIn("index.html?mode=production", self.production_html)
+
+    def test_role_admin_keeps_non_admin_roles_read_only(self):
+        self.assertIn("const isAdminRole = key === 'admin';", self.role_admin_html)
+        self.assertIn("canEditPortal: isAdminRole && requestedEditPortal", self.role_admin_html)
+        self.assertIn("canEditProduction: isAdminRole && requestedEditProduction", self.role_admin_html)
+        self.assertIn("canManageUsers: isAdminRole && Boolean(role.canManageUsers)", self.role_admin_html)
+        self.assertIn("const adminOnlyDisabled = 'disabled';", self.role_admin_html)
+        self.assertIn("data-field=\"canEditPortal\" ${role.canEditPortal ? 'checked' : ''} ${adminOnlyDisabled}", self.role_admin_html)
+        self.assertIn("data-field=\"canEditProduction\" ${role.canEditProduction ? 'checked' : ''} ${adminOnlyDisabled}", self.role_admin_html)
+        self.assertIn("data-field=\"canManageUsers\" ${role.canManageUsers ? 'checked' : ''} ${adminOnlyDisabled}", self.role_admin_html)
 
     def test_feature_navigation_uses_view_permissions(self):
         self.assertIn('data-feature-nav="portal"', self.index_html)
@@ -149,6 +161,8 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("portal: Boolean(profile && profile.canViewPortal)", self.i18n_js)
         self.assertIn("production: Boolean(profile && profile.canViewProduction)", self.i18n_js)
         self.assertIn("link.hidden = !visible;", self.i18n_js)
+        self.assertIn("return Boolean(profile && profile.role === 'admin');", self.i18n_js)
+        self.assertNotIn("profile.role === 'admin' || profile.canManageUsers === true", self.i18n_js)
 
     def test_environment_kind_and_purpose_are_enum_fields(self):
         self.assertIn('"環境種別"', self.index_html)

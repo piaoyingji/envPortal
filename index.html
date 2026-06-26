@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.6.2"></script>
+    <script src="i18n.js?v=2.6.3"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1562,9 +1562,10 @@
         }
 
         function pageCanEdit(profile) {
+            if (!profile || profile.role !== 'admin') return false;
             return pageMode === 'production'
-                ? Boolean(profile && profile.canEditProduction)
-                : Boolean(profile && profile.canEditPortal);
+                ? Boolean(profile.canEditProduction)
+                : Boolean(profile.canEditPortal);
         }
 
         function canEditEnvironment(env) {

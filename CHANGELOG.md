@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.3] - 2026-06-26
+
+### Changed
+
+- Restricted all environment edit, production edit, and system management permissions to the `admin` role at backend normalization time.
+- Updated role management so non-admin roles can only receive view and data-scope permissions, with edit and management columns shown as fixed read-only controls.
+
 ## [2.6.2] - 2026-06-26
 
 ### Fixed

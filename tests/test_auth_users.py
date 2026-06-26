@@ -91,6 +91,56 @@ class MachineAccountUsersTest(unittest.TestCase):
         self.assertNotIn("win-bg8f1p9amb0$", filtered)
 
 
+class RolePermissionNormalizationTest(unittest.TestCase):
+    def test_non_admin_edit_flags_become_read_only_view_permissions(self):
+        role = server.normalize_role_record("import_staff", {
+            "label": "Import",
+            "canViewPortal": False,
+            "canEditPortal": True,
+            "canViewProduction": False,
+            "canEditProduction": True,
+            "canEdit": True,
+            "canManageUsers": True,
+            "dataTags": ["OneHR"],
+        })
+
+        self.assertTrue(role["canViewPortal"])
+        self.assertFalse(role["canEditPortal"])
+        self.assertTrue(role["canViewProduction"])
+        self.assertFalse(role["canEditProduction"])
+        self.assertFalse(role["canEdit"])
+        self.assertFalse(role["canManageUsers"])
+        self.assertEqual(role["dataTags"], ["OneHR"])
+
+    def test_save_roles_strips_non_admin_edit_and_management_flags(self):
+        with TemporaryDirectory() as tmp:
+            roles_path = Path(tmp) / "roles.json"
+            with mock.patch.object(server, "ROLES_PATH", roles_path):
+                server.save_roles({
+                    "admin": server.normalize_role_record("admin", {}),
+                    "editor": {
+                        "key": "editor",
+                        "label": "Editor",
+                        "canViewPortal": False,
+                        "canEditPortal": True,
+                        "canViewProduction": False,
+                        "canEditProduction": True,
+                        "canManageUsers": True,
+                        "dataTags": ["UHR"],
+                    },
+                })
+                loaded = server.load_json_file(roles_path, {})
+
+        editor = loaded["editor"]
+        self.assertTrue(editor["canViewPortal"])
+        self.assertFalse(editor["canEditPortal"])
+        self.assertTrue(editor["canViewProduction"])
+        self.assertFalse(editor["canEditProduction"])
+        self.assertFalse(editor["canEdit"])
+        self.assertFalse(editor["canManageUsers"])
+        self.assertEqual(editor["dataTags"], ["UHR"])
+
+
 class UsersFileRecoveryTest(unittest.TestCase):
     def test_load_json_file_recovers_from_latest_valid_backup(self):
         with TemporaryDirectory() as tmp:

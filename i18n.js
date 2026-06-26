@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.6.2';
+const APP_VERSION_FALLBACK = '2.6.3';
 
 const I18N_MESSAGES = {
     ja: {
@@ -224,7 +224,7 @@ const I18N_MESSAGES = {
         'roleAdmin.description': 'ロールと権限を管理します',
         'roleAdmin.noRoles': 'ロールがありません。',
         'roleAdmin.noPermission': 'ロール管理権限がありません。',
-        'roleAdmin.filterHelp': '機能権限で画面操作を制御し、データ権限タグで表示データを制御します。存在しないタグはデータ権限として無効です。',
+        'roleAdmin.filterHelp': '表示権限で画面閲覧を制御し、データ権限タグで表示データを制御します。編集権限と管理権限は管理者に固定され、他ロールは読み取り専用です。',
         'roleAdmin.dataTagsAll': '全データ',
         'roleAdmin.dataTagsNone': '有効なタグがありません',
         'proxyAdmin.description': '指定ロールで画面権限を確認します',
@@ -492,7 +492,7 @@ const I18N_MESSAGES = {
         'roleAdmin.description': '管理角色与权限',
         'roleAdmin.noRoles': '暂无角色。',
         'roleAdmin.noPermission': '没有角色管理权限。',
-        'roleAdmin.filterHelp': '功能权限控制画面操作，数据权限TAG控制可见数据。不存在的TAG不会作为有效数据权限。',
+        'roleAdmin.filterHelp': '查看权限控制页面访问，数据权限TAG控制可见数据。编辑权限和管理权限固定仅管理员有效，其他角色均为只读。',
         'roleAdmin.dataTagsAll': '全部数据',
         'roleAdmin.dataTagsNone': '没有有效TAG',
         'proxyAdmin.description': '用指定角色检查画面权限',
@@ -952,7 +952,7 @@ function setSystemMenuVisible(visible) {
 }
 
 function isSystemAdmin(profile) {
-    return Boolean(profile && (profile.role === 'admin' || profile.canManageUsers === true));
+    return Boolean(profile && profile.role === 'admin');
 }
 
 document.addEventListener('DOMContentLoaded', initI18n);

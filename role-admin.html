@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnvPortal - ロール管理</title>
     <link rel="stylesheet" href="style.css">
-    <script src="i18n.js?v=2.6.2"></script>
+    <script src="i18n.js?v=2.6.3"></script>
     <style>
         .role-admin-container {
             width: calc(100% - 2rem);
@@ -203,19 +203,25 @@
         }
 
         function normalizeRoles(values) {
-            return values.map(role => ({
-                key: String(role.key || '').trim(),
-                label: String(role.label || role.key || '').trim(),
-                canViewPortal: roleFlag(role, 'canViewPortal', Boolean(role.canEdit)),
-                canEditPortal: roleFlag(role, 'canEditPortal', Boolean(role.canEdit)),
-                canViewProduction: roleFlag(role, 'canViewProduction', Boolean(role.canEdit)),
-                canEditProduction: roleFlag(role, 'canEditProduction', Boolean(role.canEdit)),
-                canEdit: Boolean(role.canEditPortal || role.canEditProduction || role.canEdit),
-                canManageUsers: Boolean(role.canManageUsers),
-                dataTags: normalizeDataTags(role.dataTags || role.filterTag || []),
-                filterTag: String(role.filterTag || '').trim(),
-                protected: Boolean(role.protected || role.key === 'admin')
-            })).filter(role => role.key);
+            return values.map(role => {
+                const key = normalizeRoleKey(role.key);
+                const isAdminRole = key === 'admin';
+                const requestedEditPortal = roleFlag(role, 'canEditPortal', Boolean(role.canEdit));
+                const requestedEditProduction = roleFlag(role, 'canEditProduction', Boolean(role.canEdit));
+                return {
+                    key,
+                    label: String(role.label || role.key || '').trim(),
+                    canViewPortal: roleFlag(role, 'canViewPortal', Boolean(role.canEdit)) || requestedEditPortal,
+                    canEditPortal: isAdminRole && requestedEditPortal,
+                    canViewProduction: roleFlag(role, 'canViewProduction', Boolean(role.canEdit)) || requestedEditProduction,
+                    canEditProduction: isAdminRole && requestedEditProduction,
+                    canEdit: isAdminRole && Boolean(requestedEditPortal || requestedEditProduction || role.canEdit),
+                    canManageUsers: isAdminRole && Boolean(role.canManageUsers),
+                    dataTags: normalizeDataTags(role.dataTags || role.filterTag || []),
+                    filterTag: String(role.filterTag || '').trim(),
+                    protected: Boolean(role.protected || isAdminRole)
+                };
+            }).filter(role => role.key);
         }
 
         function roleFlag(role, field, fallback) {
@@ -255,15 +261,16 @@
         function renderRoleRow(role, index) {
             const readonly = role.protected ? 'readonly' : '';
             const disabled = role.protected ? 'disabled' : '';
+            const adminOnlyDisabled = 'disabled';
             return `
                 <tr class="role-main-row">
                     <td><input type="text" data-index="${index}" data-field="key" value="${escapeHtml(role.key)}" ${readonly}></td>
                     <td><input type="text" data-index="${index}" data-field="label" value="${escapeHtml(role.label)}"></td>
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canViewPortal" ${role.canViewPortal ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
-                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEditPortal" ${role.canEditPortal ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
+                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEditPortal" ${role.canEditPortal ? 'checked' : ''} ${adminOnlyDisabled}></label></td>
                     <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canViewProduction" ${role.canViewProduction ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
-                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEditProduction" ${role.canEditProduction ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
-                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canManageUsers" ${role.canManageUsers ? 'checked' : ''} ${role.key === 'admin' ? 'disabled' : ''}></label></td>
+                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canEditProduction" ${role.canEditProduction ? 'checked' : ''} ${adminOnlyDisabled}></label></td>
+                    <td><label class="role-check"><input type="checkbox" data-index="${index}" data-field="canManageUsers" ${role.canManageUsers ? 'checked' : ''} ${adminOnlyDisabled}></label></td>
                     <td>${role.protected ? '' : `<button type="button" class="secondary-btn" onclick="deleteRole(${index})" ${disabled}>${t('button.delete')}</button>`}</td>
                 </tr>
                 <tr class="role-tag-row">
@@ -338,15 +345,16 @@
             roles.forEach(role => {
                 const key = normalizeRoleKey(role.key);
                 if (!key) return;
+                const isAdminRole = key === 'admin';
                 payload[key] = {
                     key,
                     label: role.label || key,
                     canViewPortal: Boolean(role.canViewPortal || role.canEditPortal),
-                    canEditPortal: Boolean(role.canEditPortal),
+                    canEditPortal: isAdminRole && Boolean(role.canEditPortal),
                     canViewProduction: Boolean(role.canViewProduction || role.canEditProduction),
-                    canEditProduction: Boolean(role.canEditProduction),
-                    canEdit: Boolean(role.canEditPortal || role.canEditProduction),
-                    canManageUsers: Boolean(role.canManageUsers),
+                    canEditProduction: isAdminRole && Boolean(role.canEditProduction),
+                    canEdit: isAdminRole && Boolean(role.canEditPortal || role.canEditProduction),
+                    canManageUsers: isAdminRole && Boolean(role.canManageUsers),
                     dataTags: key === 'admin' ? [] : normalizeDataTags(role.dataTags),
                     filterTag: key === 'admin' ? '' : (normalizeDataTags(role.dataTags)[0] || ''),
                     protected: Boolean(role.protected || key === 'admin')
