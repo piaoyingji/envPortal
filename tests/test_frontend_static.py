@@ -130,18 +130,30 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertNotIn("clearBtn.textContent = 'All';", self.index_html)
 
     def test_page_edit_buttons_use_page_specific_permissions(self):
+        self.assertIn("function pageCanView(profile)", self.index_html)
         self.assertIn("function pageCanEdit(profile)", self.index_html)
         self.assertIn("canEdit = pageCanEdit(payload);", self.index_html)
         self.assertIn("canEdit = pageCanEdit(result);", self.index_html)
         self.assertIn("if (!profile || profile.role !== 'admin') return false;", self.index_html)
+        self.assertIn("Boolean(profile.canViewPortal || profile.canViewProduction)", self.index_html)
+        self.assertIn("const canViewPage = pageCanView(payload);", self.index_html)
         self.assertIn("Boolean(profile.canEditProduction)", self.index_html)
         self.assertIn("Boolean(profile.canEditPortal)", self.index_html)
         self.assertIn("function canEditEnvironment(env)", self.index_html)
-        self.assertIn("const canViewPage = pageMode === 'production'", self.index_html)
         self.assertIn("isAuthenticated = canViewPage;", self.index_html)
         self.assertNotIn("payload.canEditPortal || payload.canEdit", self.index_html)
         self.assertNotIn("result.canEditPortal || result.canEdit", self.index_html)
         self.assertIn("index.html?mode=production", self.production_html)
+
+    def test_production_tab_uses_page_scope_and_hides_empty_orgs(self):
+        self.assertIn("function rowInPageScope(row)", self.index_html)
+        self.assertIn("return pageMode !== 'production' || envPurposeValue(row) === '生産';", self.index_html)
+        self.assertIn("function pageScopedData()", self.index_html)
+        self.assertIn("return fullData.filter(rowInPageScope);", self.index_html)
+        self.assertIn("pageScopedData().forEach(item =>", self.index_html)
+        self.assertIn("return pageScopedData().filter(row =>", self.index_html)
+        self.assertIn("if (pageMode !== 'production') {", self.index_html)
+        self.assertIn("Object.values(envGroupStore.records || {}).forEach(record =>", self.index_html)
 
     def test_role_admin_keeps_non_admin_roles_read_only(self):
         self.assertIn("const isAdminRole = key === 'admin';", self.role_admin_html)
@@ -158,7 +170,7 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn('data-feature-nav="production"', self.index_html)
         self.assertIn("index.html?mode=production", self.production_html)
         self.assertIn("function applyFeatureNavigation(profile)", self.i18n_js)
-        self.assertIn("portal: Boolean(profile && profile.canViewPortal)", self.i18n_js)
+        self.assertIn("portal: Boolean(profile && (profile.canViewPortal || profile.canViewProduction))", self.i18n_js)
         self.assertIn("production: Boolean(profile && profile.canViewProduction)", self.i18n_js)
         self.assertIn("link.hidden = !visible;", self.i18n_js)
         self.assertIn("return Boolean(profile && profile.role === 'admin');", self.i18n_js)

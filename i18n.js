@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.6.4';
+const APP_VERSION_FALLBACK = '2.6.5';
 
 const I18N_MESSAGES = {
     ja: {
@@ -825,7 +825,7 @@ function setCurrentUser(profile) {
 
 function applyFeatureNavigation(profile) {
     const permissions = {
-        portal: Boolean(profile && profile.canViewPortal),
+        portal: Boolean(profile && (profile.canViewPortal || profile.canViewProduction)),
         production: Boolean(profile && profile.canViewProduction)
     };
     document.querySelectorAll('[data-feature-nav]').forEach(link => {

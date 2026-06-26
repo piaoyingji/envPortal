@@ -2,6 +2,17 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.5] - 2026-06-26
+
+### Changed
+
+- Treated the production tab as a strict subset of the environment search tab by applying the `用途=生産` page scope consistently.
+- Made the environment search navigation visible when a role has either environment view or production view permission, so production-view roles can still see production servers from the parent search page.
+
+### Fixed
+
+- Hid organizations with no visible production environment cards from the production tab while preserving empty organization support in the environment search tab.
+
 ## [2.6.4] - 2026-06-26
 
 ### Fixed

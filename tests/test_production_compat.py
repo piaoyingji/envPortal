@@ -87,6 +87,22 @@ class LegacyProductionCompatibilityTest(unittest.TestCase):
         self.assertEqual(production_only, [production])
         self.assertEqual(portal_only, [portal])
 
+    def test_view_permission_filter_treats_both_permissions_as_superset(self):
+        production = server.legacy_production_data_row(self.production_row())
+        portal = {
+            "組織名": "筑波大学",
+            "構築環境名": "UHR",
+            "環境種別": "社内",
+            "用途": "テスト",
+        }
+
+        rows = server.portal_rows_for_view_permissions(
+            [production, portal],
+            {"canViewPortal": True, "canViewProduction": True},
+        )
+
+        self.assertEqual(rows, [production, portal])
+
 
 if __name__ == "__main__":
     unittest.main()
