@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.6.5"></script>
+    <script src="i18n.js?v=2.6.6"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -2157,6 +2157,91 @@
             refreshEnvironmentCardInPlace(rowId);
         }
 
+        function currentEnvironmentEditorSnapshot(env, editor) {
+            const envSnapshot = {};
+            DATA_FIELDS.forEach(field => {
+                envSnapshot[field] = String(env[field] || '').trim();
+            });
+            envSnapshot['環境グループ'] = envGroupValue(env);
+            envSnapshot['環境種別'] = envKindValue(env);
+            envSnapshot['用途'] = envPurposeValue(env);
+
+            const originalRdpIds = String(editor ? editor.dataset.originalRdpIds || '' : '')
+                .split(',')
+                .map(id => id.trim())
+                .filter(Boolean);
+            const originalRdpRows = originalRdpIds.length
+                ? originalRdpIds.map(id => rdpData.find(row => row.__rowId === id)).filter(Boolean)
+                : relatedRdpRowsForEnv(env);
+
+            return {
+                env: envSnapshot,
+                tags: uniqueTags(tagsForRowRaw(env).map(tag => String(tag || '').trim())),
+                rdp: normalizeRdpRowsForCompare(originalRdpRows),
+            };
+        }
+
+        function draftEnvironmentEditorSnapshot(env, editor) {
+            const envSnapshot = {};
+            DATA_FIELDS.forEach(field => {
+                envSnapshot[field] = String(env[field] || '').trim();
+            });
+            envSnapshot['環境グループ'] = envGroupValue(env);
+            envSnapshot['環境種別'] = envKindValue(env);
+            envSnapshot['用途'] = envPurposeValue(env);
+
+            editor.querySelectorAll('[data-env-field]').forEach(control => {
+                if (DATA_FIELDS.includes(control.dataset.envField)) {
+                    envSnapshot[control.dataset.envField] = String(control.value || '').trim();
+                }
+            });
+            envSnapshot['環境グループ'] = normalizeGroupName(envSnapshot['環境グループ']);
+
+            const retainedStructuralTags = tagsForRowRaw(env).filter(isStructuralTag);
+            const tagsInput = editor.querySelector('input[data-env-tags]');
+            const tags = uniqueTags(retainedStructuralTags.concat(String(tagsInput ? tagsInput.value : '')
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag && !isStructuralTag(tag))));
+
+            return {
+                env: envSnapshot,
+                tags,
+                rdp: draftRdpRowsForEditor(env, editor),
+            };
+        }
+
+        function normalizeRdpRowsForCompare(rows) {
+            return (rows || []).map(row => {
+                const normalized = {};
+                RDP_FIELDS.forEach(field => {
+                    normalized[field] = String((row || {})[field] || '').trim();
+                });
+                return normalized;
+            }).filter(row => ['RDPユーザー名', 'RDPパスワード', '接続先(IP:Port)']
+                .some(field => String(row[field] || '').trim()));
+        }
+
+        function draftRdpRowsForEditor(env, editor) {
+            const rows = [];
+            editor.querySelectorAll('[data-rdp-kind]').forEach(group => {
+                const values = rdpEditorValues(group);
+                const row = { '組織名': env['組織名'] || '' };
+                RDP_FIELDS.forEach(field => {
+                    if (field !== '組織名') row[field] = values[field] || '';
+                });
+                rows.push(row);
+            });
+            return normalizeRdpRowsForCompare(rows);
+        }
+
+        function isEnvironmentEditorDirty(rowId) {
+            const editor = document.querySelector(`[data-card-editor="${CSS.escape(rowId)}"]`);
+            const env = fullData.find(row => row.__rowId === rowId);
+            if (!editor || !env) return false;
+            return JSON.stringify(currentEnvironmentEditorSnapshot(env, editor)) !== JSON.stringify(draftEnvironmentEditorSnapshot(env, editor));
+        }
+
         function refreshEnvironmentCardInPlace(rowId) {
             const env = fullData.find(row => row.__rowId === rowId);
             const currentCard = document.querySelector(`.env-card[data-env-row-id="${CSS.escape(rowId)}"]`);
@@ -2740,11 +2825,11 @@
                 .catch(err => alert(t('error.save') + err.message));
         }
 
-        function saveEnvironmentCard(rowId) {
+        function saveEnvironmentCard(rowId, options = {}) {
             const editor = document.querySelector(`[data-card-editor="${CSS.escape(rowId)}"]`);
             const env = fullData.find(row => row.__rowId === rowId);
-            if (!canEditEnvironment(env)) return;
-            if (!editor || !env) return;
+            if (!canEditEnvironment(env)) return Promise.resolve(false);
+            if (!editor || !env) return Promise.resolve(false);
             const beforeEnv = cloneForLog(env);
             const beforeRdp = cloneForLog(relatedRdpRowsForEnv(env));
             const beforeTags = cloneForLog(tagsForRow(env));
@@ -2802,18 +2887,26 @@
                 beforeTags,
                 afterTags: tagsForRow(env),
             });
-            savePortalFiles(summary)
+            return savePortalFiles(summary)
                 .then(() => {
                     showToast(t('toast.savedDetail'));
                     editingEnvId = '';
                     renderTagFilters();
+                    if (options.renderAfterSave === false) {
+                        return true;
+                    }
                     if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds)) {
                         renderActiveView();
                     } else {
                         refreshEnvironmentCardInPlace(rowId);
                     }
+                    return true;
                 })
-                .catch(err => alert(t('error.save') + err.message));
+                .catch(err => {
+                    alert(t('error.save') + err.message);
+                    if (options.propagateError) throw err;
+                    return false;
+                });
         }
 
         function addEnvironmentToOrg(orgKey, groupName = '') {
@@ -3657,19 +3750,40 @@
 
         function collapseInlineEnvFromButton(button) {
             if (!button) return;
-            collapseInlineEnv(button.dataset.orgKey || '', button.closest('.env-flow-item'));
+            const item = button.closest('.env-flow-item');
+            const card = button.closest('.env-card');
+            const rowId = card ? card.dataset.envRowId || '' : '';
+            if (rowId && editingEnvId === rowId) {
+                if (isEnvironmentEditorDirty(rowId) && confirm(t('confirm.saveBeforeCollapse'))) {
+                    button.disabled = true;
+                    saveEnvironmentCard(rowId, { renderAfterSave: false, propagateError: true })
+                        .then(saved => {
+                            if (saved) collapseInlineEnv(button.dataset.orgKey || '', item, rowId);
+                            else button.disabled = false;
+                        })
+                        .catch(() => {
+                            button.disabled = false;
+                        });
+                    return;
+                }
+                editingEnvId = '';
+            }
+            collapseInlineEnv(button.dataset.orgKey || '', item, rowId);
         }
 
-        function collapseInlineEnv(orgKey, item) {
+        function collapseInlineEnv(orgKey, item, preferredRowId = '') {
             if (!item) return;
             const match = item.id.match(/_(\d+)$/);
             const envIndex = match ? Number(match[1]) : -1;
             if (envIndex < 0) return;
             const envs = sortEnvironmentsByDisplayOrder(getFilteredData().filter(row => getOrgGroup(row).key === orgKey));
-            const env = envs[envIndex];
+            const preferredEnvIndex = preferredRowId ? envs.findIndex(row => row.__rowId === preferredRowId) : -1;
+            const summaryIndex = preferredEnvIndex >= 0 ? preferredEnvIndex : envIndex;
+            const env = envs[summaryIndex];
             if (!env) return;
             item.classList.remove('expanded');
-            item.innerHTML = renderEnvSummaryContent(orgKey, env, envIndex);
+            item.id = `env_item_${sanitizeId(orgKey)}_${summaryIndex}`;
+            item.innerHTML = renderEnvSummaryContent(orgKey, env, summaryIndex);
         }
 
         function sanitizeId(str) {

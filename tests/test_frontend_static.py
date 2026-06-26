@@ -29,6 +29,18 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("const beforeVisibleRowIds = currentVisibleEnvRowIds();", self.index_html)
         self.assertIn("if (shouldRenderActiveViewAfterEnvSave(rowId, beforeGroup, beforeVisibleRowIds))", self.index_html)
 
+    def test_collapsing_editing_card_prompts_to_save_dirty_changes(self):
+        self.assertIn("function currentEnvironmentEditorSnapshot(env, editor)", self.index_html)
+        self.assertIn("function draftEnvironmentEditorSnapshot(env, editor)", self.index_html)
+        self.assertIn("function isEnvironmentEditorDirty(rowId)", self.index_html)
+        self.assertIn("if (rowId && editingEnvId === rowId) {", self.index_html)
+        self.assertIn("isEnvironmentEditorDirty(rowId) && confirm(t('confirm.saveBeforeCollapse'))", self.index_html)
+        self.assertIn("saveEnvironmentCard(rowId, { renderAfterSave: false, propagateError: true })", self.index_html)
+        self.assertIn("editingEnvId = '';", self.index_html)
+        self.assertIn("collapseInlineEnv(button.dataset.orgKey || '', item, rowId);", self.index_html)
+        self.assertIn("'confirm.saveBeforeCollapse': '編集内容が変更されています。折りたたむ前に保存しますか？'", self.i18n_js)
+        self.assertIn("'confirm.saveBeforeCollapse': '当前编辑内容已修改，收起前是否保存？'", self.i18n_js)
+
     def test_environment_groups_can_rename_default_and_delete_last_empty_group(self):
         self.assertIn("record.groups = nextGroups.length ? nextGroups : [DEFAULT_ENV_GROUP];", self.index_html)
         self.assertIn("const canDeleteGroup = canManageGroup && group.rows.length === 0;", self.index_html)

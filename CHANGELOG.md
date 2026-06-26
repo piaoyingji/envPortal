@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.6] - 2026-06-26
+
+### Fixed
+
+- Collapsing an expanded environment card while it is in edit mode now exits edit mode.
+- If the edit form has unsaved changes, collapsing prompts the user to save first; confirmed saves complete before the card returns to summary view.
+
 ## [2.6.5] - 2026-06-26
 
 ### Changed

@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.6.5';
+const APP_VERSION_FALLBACK = '2.6.6';
 
 const I18N_MESSAGES = {
     ja: {
@@ -114,6 +114,7 @@ const I18N_MESSAGES = {
         'confirm.delete': 'このデータを完全に削除してもよろしいですか？（※即座にサーバーから削除されます）',
         'confirm.deleteEnv': 'この環境を削除しますか？',
         'confirm.deleteGroup': 'この空グループを削除しますか？',
+        'confirm.saveBeforeCollapse': '編集内容が変更されています。折りたたむ前に保存しますか？',
         'admin.stat': '組織 <strong>{org}</strong> / 環境 <strong>{env}</strong>',
         'admin.sectionAccess': 'アクセス情報',
         'admin.sectionDatabase': 'データベース接続',
@@ -382,6 +383,7 @@ const I18N_MESSAGES = {
         'confirm.delete': '确定要永久删除这条数据吗？（会立即从服务器删除）',
         'confirm.deleteEnv': '确定要删除这个环境吗？',
         'confirm.deleteGroup': '确定要删除这个空分组吗？',
+        'confirm.saveBeforeCollapse': '当前编辑内容已修改，收起前是否保存？',
         'admin.stat': '机构 <strong>{org}</strong> / 环境 <strong>{env}</strong>',
         'admin.sectionAccess': '访问信息',
         'admin.sectionDatabase': '数据库连接',
