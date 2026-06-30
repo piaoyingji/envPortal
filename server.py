@@ -266,6 +266,134 @@ def clean_cell(value):
     return str(value or "").strip()
 
 
+def parse_endpoint_value(value):
+    text = clean_cell(value)
+    if not text:
+        return {"host": "", "port": ""}
+    try:
+        if "://" in text:
+            parsed = urllib.parse.urlparse(text)
+            return {"host": clean_cell(parsed.hostname), "port": clean_cell(parsed.port)}
+        first_part = text.split("/", 1)[0]
+        match = re.match(r"^(.+):(\d+)$", first_part)
+        if match:
+            return {"host": clean_cell(match.group(1)), "port": clean_cell(match.group(2))}
+        return {"host": clean_cell(first_part), "port": ""}
+    except Exception:
+        first_part = text.split("/", 1)[0]
+        match = re.match(r"^(.+):(\d+)$", first_part)
+        if match:
+            return {"host": clean_cell(match.group(1)), "port": clean_cell(match.group(2))}
+        return {"host": clean_cell(first_part.split(":", 1)[0]), "port": ""}
+
+
+def endpoint_host(value):
+    return clean_cell(parse_endpoint_value(value).get("host")).casefold()
+
+
+def rdp_parent_key(row):
+    return (
+        clean_cell(row.get("組織名")).casefold(),
+        clean_cell(row.get("構築環境名")).casefold(),
+    )
+
+
+def rdp_dirty_row_payload(index, row, reason, candidates=None):
+    return {
+        "rowNumber": index + 2,
+        "reason": reason,
+        "org": clean_cell(row.get("組織名")),
+        "env": clean_cell(row.get("構築環境名")),
+        "serverName": clean_cell(row.get("サーバ名")),
+        "target": clean_cell(row.get("接続先(IP:Port)")),
+        "candidates": candidates or [],
+    }
+
+
+def infer_rdp_parent_candidates(remote_row, data_rows):
+    org_name = clean_cell(remote_row.get("組織名")).casefold()
+    target_host = endpoint_host(remote_row.get("接続先(IP:Port)"))
+    if not org_name or not target_host:
+        return []
+    candidates = []
+    seen = set()
+    for row in data_rows:
+        if clean_cell(row.get("組織名")).casefold() != org_name:
+            continue
+        env_name = clean_cell(row.get("構築環境名"))
+        if not env_name:
+            continue
+        url_host = endpoint_host(row.get("URL"))
+        db_host = endpoint_host(row.get("DB名"))
+        matched_by = []
+        if url_host and url_host == target_host:
+            matched_by.append("URL")
+        if db_host and db_host == target_host:
+            matched_by.append("DB")
+        if not matched_by:
+            continue
+        key = (clean_cell(row.get("組織名")).casefold(), env_name.casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        candidates.append({
+            "org": clean_cell(row.get("組織名")),
+            "env": env_name,
+            "matchedBy": "+".join(matched_by),
+        })
+    return candidates
+
+
+def upgrade_rdp_env_links(data_rows, rdp_rows):
+    parent_keys = {
+        (clean_cell(row.get("組織名")).casefold(), clean_cell(row.get("構築環境名")).casefold())
+        for row in data_rows
+        if clean_cell(row.get("組織名")) and clean_cell(row.get("構築環境名"))
+    }
+    upgraded = []
+    dirty_rows = []
+    updated_count = 0
+    valid_count = 0
+    for index, row in enumerate(rdp_rows):
+        next_row = {field: row.get(field, "") for field in RDP_CSV_FIELDS}
+        org = clean_cell(next_row.get("組織名"))
+        target = clean_cell(next_row.get("接続先(IP:Port)"))
+        env_name = clean_cell(next_row.get("構築環境名"))
+        if env_name:
+            if rdp_parent_key(next_row) in parent_keys:
+                valid_count += 1
+            else:
+                dirty_rows.append(rdp_dirty_row_payload(index, next_row, "missing-parent"))
+            upgraded.append(next_row)
+            continue
+        if not org:
+            dirty_rows.append(rdp_dirty_row_payload(index, next_row, "missing-org"))
+            upgraded.append(next_row)
+            continue
+        if not target:
+            dirty_rows.append(rdp_dirty_row_payload(index, next_row, "missing-target"))
+            upgraded.append(next_row)
+            continue
+        candidates = infer_rdp_parent_candidates(next_row, data_rows)
+        if len(candidates) == 1:
+            next_row["構築環境名"] = candidates[0]["env"]
+            updated_count += 1
+            valid_count += 1
+        elif len(candidates) > 1:
+            dirty_rows.append(rdp_dirty_row_payload(index, next_row, "ambiguous-parent", candidates))
+        else:
+            dirty_rows.append(rdp_dirty_row_payload(index, next_row, "orphan-rdp"))
+        upgraded.append(next_row)
+    report = {
+        "checkedRows": len(rdp_rows),
+        "validRows": valid_count,
+        "updatedRows": updated_count,
+        "dirtyRows": len(dirty_rows),
+        "dirty": dirty_rows,
+    }
+    return upgraded, report
+
+
 def portal_row_is_production(row):
     return clean_cell(row.get("用途")) == "生産" or clean_cell(row.get("環境種別")) == "本番"
 

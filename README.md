@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.6.7`
+当前版本：`2.6.8`
 
 ## 核心能力
 
@@ -183,7 +183,7 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `db_versions.json`：数据库类型和版本候选。
 - `data.csv`：环境档案数据，本地运行数据文件，包含 `環境グループ`、`環境種別`、`用途`。
 - `env_groups.json`：组织下环境组主数据，本地运行数据文件，用于保存空组和显式组顺序，缺失时自动补齐 `デフォルト`。
-- `rdp.csv`：远程连接档案数据，本地运行数据文件。`構築環境名` 是兼容新增字段，用于保存服务器信息所属环境，支持同一环境维护两台或多台服务器；旧文件缺失该列时按空值读取，并继续按 URL/DB 主机匹配。`サーバ名` 用于保存环境卡片中服务器信息的显示名；旧文件缺失该列时会按空值读取，并在下次保存时补齐。
+- `rdp.csv`：远程连接档案数据，本地运行数据文件。`構築環境名` 是兼容新增字段，用于保存服务器信息所属环境，支持同一环境维护两台或多台服务器；旧文件缺失该列时按空值读取，并继续按 URL/DB 主机匹配。`scripts/migrate-rdp-env-links.ps1` 可对旧 RDP 行执行一次受控升级，能唯一匹配到环境的行会补齐 `構築環境名`，找不到主环境或存在多个候选主环境的行会写入脏数据报告，不会自动删除。`サーバ名` 用于保存环境卡片中服务器信息的显示名；旧文件缺失该列时会按空值读取，并在下次保存时补齐。
 - `production.csv`：旧生产环境数据文件，当前主页面不再使用独立格式；后端会在读取环境数据时将尚未迁移的旧记录只读转换为 `用途=生産` 的统一环境记录，并补齐 AP、DB、VPN、踏み台等服务器信息。
 - `tags.json`：自由标签存储，本地运行数据文件。
 - `tag_categories.json`：TAG 分类、TAG 归属和 TAG 显示设定，本地运行数据文件，缺失时后端默认生成“其他”分类。
@@ -193,6 +193,17 @@ DOMAIN_AUTH_AUTO_PROBE=true
 - `images/sea01.jpg`：旧版顶部主题背景图保留文件，当前默认样式不再使用该背景。
 
 以下文件均为部署现场数据或配置，已加入 `.gitignore`，不要提交到 Git：`.env`、`data.csv`、`env_groups.json`、`rdp.csv`、`production.csv`、`tags.json`、`tag_categories.json`、`users.json`、`roles.json`、`org_readings.js`、`ip_auth_whitelist.txt`、`windows_auth_whitelist.txt`、`*.bak_*`。
+
+## 运行数据维护
+
+旧版 `rdp.csv` 没有 `構築環境名` 时，可以先预览再执行归属升级：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\migrate-rdp-env-links.ps1 -DryRun -ReportJson
+powershell -ExecutionPolicy Bypass -File .\scripts\migrate-rdp-env-links.ps1 -ReportJson
+```
+
+脚本会使用现有 CSV 安全写入机制，写入前生成 `rdp.csv.bak_autosave_*`。无法归属的 RDP 行不会被删除，会进入 `logs/rdp_env_link_report_*.json`，管理员确认后再手工补 `構築環境名` 或删除脏行。
 
 ## 版本规则
 
@@ -221,6 +232,8 @@ DOMAIN_AUTH_AUTO_PROBE=true
 `2.6.6` 修正环境卡片编辑态的收回行为。编辑中的展开卡片被收回时会退出编辑态；如果表单、TAG 或服务器信息已变化，会先询问是否保存，选择保存后等待保存成功再收回。该版本属于 PATCH 递进。
 
 `2.6.7` 修复同一环境下新增第二台或多台服务器后读回不稳定的问题。`rdp.csv` 新增兼容字段 `構築環境名` 作为服务器信息到环境的显式归属，新保存的服务器都会写入该字段；旧 RDP 行仍按 URL/DB 主机匹配兼容显示。该版本属于 PATCH 递进。
+
+`2.6.8` 增加旧 RDP 数据归属升级工具。脚本会备份并升级能唯一匹配主环境的 RDP 行，无法匹配任何环境或匹配到多个环境的行被视为脏数据并写入 `logs/rdp_env_link_report_*.json`。该版本属于 PATCH 递进。
 
 每次升级都应同步更新：
 
