@@ -42,6 +42,7 @@ class LegacyProductionCompatibilityTest(unittest.TestCase):
         names = {row["サーバ名"] for row in rdp_rows}
         self.assertEqual(names, {"VPN", "踏み台", "AP", "DB"})
         self.assertIn("10.148.0.142", {row["接続先(IP:Port)"] for row in rdp_rows})
+        self.assertEqual({row["構築環境名"] for row in rdp_rows}, {"UHR"})
 
     def test_existing_unified_production_record_is_not_duplicated(self):
         existing = {

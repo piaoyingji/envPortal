@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.6.6"></script>
+    <script src="i18n.js?v=2.6.7"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1367,7 +1367,7 @@
         const DISPLAY_SORT_ORDER = ['UPDS-V6', 'UHR', 'UPDS-V7', 'PHR'];
         const TAG_CATEGORY_CHANGE_KEY = 'envPortalTagCategoriesUpdatedAt';
         const DATA_FIELDS = ["組織コード","組織名","環境グループ","環境種別","用途","構築環境名","URL","ログインID","ログインパスワード","DBタイプ","DBバージョン","DB名","DBユーザー名","DBパスワード"];
-        const RDP_FIELDS = ["組織名","サーバ名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
+        const RDP_FIELDS = ["組織名","構築環境名","サーバ名","接続タイプ","RDPユーザー名","RDPパスワード","接続先(IP:Port)"];
         const SERVER_NAME_OPTION_KEYS = ['serverName.apRdp', 'serverName.dbRdp', 'serverName.shared', 'serverName.bastion', 'serverName.server'];
         window.addEventListener('DOMContentLoaded', () => {
             const orgSelect = document.getElementById('orgSelect');
@@ -2177,7 +2177,7 @@
             return {
                 env: envSnapshot,
                 tags: uniqueTags(tagsForRowRaw(env).map(tag => String(tag || '').trim())),
-                rdp: normalizeRdpRowsForCompare(originalRdpRows),
+                rdp: normalizeRdpRowsForCompare(originalRdpRows, env),
             };
         }
 
@@ -2211,12 +2211,14 @@
             };
         }
 
-        function normalizeRdpRowsForCompare(rows) {
+        function normalizeRdpRowsForCompare(rows, env = null) {
+            const envName = String(env && env['構築環境名'] || '').trim();
             return (rows || []).map(row => {
                 const normalized = {};
                 RDP_FIELDS.forEach(field => {
                     normalized[field] = String((row || {})[field] || '').trim();
                 });
+                if (envName && !normalized['構築環境名']) normalized['構築環境名'] = envName;
                 return normalized;
             }).filter(row => ['RDPユーザー名', 'RDPパスワード', '接続先(IP:Port)']
                 .some(field => String(row[field] || '').trim()));
@@ -2226,13 +2228,16 @@
             const rows = [];
             editor.querySelectorAll('[data-rdp-kind]').forEach(group => {
                 const values = rdpEditorValues(group);
-                const row = { '組織名': env['組織名'] || '' };
+                const row = {
+                    '組織名': env['組織名'] || '',
+                    '構築環境名': env['構築環境名'] || '',
+                };
                 RDP_FIELDS.forEach(field => {
-                    if (field !== '組織名') row[field] = values[field] || '';
+                    if (field !== '組織名' && field !== '構築環境名') row[field] = values[field] || '';
                 });
                 rows.push(row);
             });
-            return normalizeRdpRowsForCompare(rows);
+            return normalizeRdpRowsForCompare(rows, env);
         }
 
         function isEnvironmentEditorDirty(rowId) {
@@ -2488,11 +2493,25 @@
 
         function relatedRdpRowsForEnv(env) {
             if (!env) return [];
+            const envName = String(env['構築環境名'] || '').trim();
+            const orgName = String(env['組織名'] || '').trim();
+            const explicitMatches = envName
+                ? rdpData.filter(remote =>
+                    String(remote['組織名'] || '').trim() === orgName &&
+                    String(remote['構築環境名'] || '').trim() === envName)
+                : [];
             const envHost = getHost(env['URL']);
             const dbEndpoint = getEndpoint(env['DB名']);
-            const matchedDbRdps = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
-            const matchedApRdps = findRemotesByHost(envHost).filter(remote => !matchedDbRdps.includes(remote));
-            return matchedApRdps.concat(matchedDbRdps);
+            const matchedDbRdps = dbEndpoint.host
+                ? findRemotesByEndpoint(dbEndpoint).filter(remote => !rdpHasExplicitEnv(remote))
+                : [];
+            const matchedApRdps = findRemotesByHost(envHost)
+                .filter(remote => !rdpHasExplicitEnv(remote) && !matchedDbRdps.includes(remote));
+            return uniqueByReference(explicitMatches.concat(matchedApRdps, matchedDbRdps));
+        }
+
+        function rdpHasExplicitEnv(remote) {
+            return Boolean(String(remote && remote['構築環境名'] || '').trim());
         }
 
         function changeSummaryFor(action, beforeEnv, afterEnv, extra = {}) {
@@ -2870,8 +2889,9 @@
                 }
                 const target = existing || { __rowId: `rdp_${Date.now()}_${Math.random().toString(36).slice(2)}` };
                 target['組織名'] = env['組織名'] || '';
+                target['構築環境名'] = env['構築環境名'] || '';
                 RDP_FIELDS.forEach(field => {
-                    if (field !== '組織名') target[field] = values[field] || '';
+                    if (field !== '組織名' && field !== '構築環境名') target[field] = values[field] || '';
                 });
                 if (!existing) rdpData.push(target);
                 if (target.__rowId) retainedRdpIds.add(target.__rowId);
@@ -3080,15 +3100,12 @@
             const tags = tagsForRow(env).slice();
             if (tags.length) tagStore[getRowKey(newEnv)] = tags;
 
-            const envHost = getHost(env['URL']);
-            const dbEndpoint = getEndpoint(env['DB名']);
-            const dbMatches = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
-            const apMatches = findRemotesByHost(envHost).filter(remote => !dbMatches.includes(remote));
             const copiedRdpRows = [];
-            apMatches.concat(dbMatches).forEach(remote => {
+            relatedRdpRowsForEnv(env).forEach(remote => {
                 const copied = { ...remote };
                 copied.__rowId = `rdp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 copied['組織名'] = targetOrg.name || '';
+                copied['構築環境名'] = newEnv['構築環境名'] || '';
                 rdpData.push(copied);
                 copiedRdpRows.push(copied);
             });
@@ -3542,9 +3559,13 @@
             const envHost = getHost(safeUrl);
             const dbHost = getHost(env['DB名']);
             const dbEndpoint = getEndpoint(env['DB名']);
-            const matchedDbRdps = dbEndpoint.host ? findRemotesByEndpoint(dbEndpoint) : [];
-            const matchedRdps = findRemotesByHost(envHost)
-                .filter(remote => !matchedDbRdps.includes(remote));
+            const explicitRdps = relatedRdpRowsForEnv(env).filter(rdpHasExplicitEnv);
+            const matchedDbRdps = dbEndpoint.host
+                ? findRemotesByEndpoint(dbEndpoint).filter(remote => !rdpHasExplicitEnv(remote))
+                : [];
+            const matchedRdps = uniqueByReference(explicitRdps.concat(
+                findRemotesByHost(envHost).filter(remote => !rdpHasExplicitEnv(remote) && !matchedDbRdps.includes(remote))
+            ));
             const seenRemoteViewIds = new Set();
             const relatedRemoteItems = matchedRdps
                 .map(remote => ({ remote, fallbackName: t('section.apRdp') }))

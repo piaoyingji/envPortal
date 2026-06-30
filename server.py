@@ -128,6 +128,7 @@ PORTAL_CSV_FIELDS = [
 ]
 RDP_CSV_FIELDS = [
     "組織名",
+    "構築環境名",
     "サーバ名",
     "接続タイプ",
     "RDPユーザー名",
@@ -324,6 +325,7 @@ def legacy_production_rdp_rows(row):
             continue
         rows.append({
             "組織名": org_name,
+            "構築環境名": clean_cell(row.get("構築環境名")),
             "サーバ名": server_name,
             "接続タイプ": connection_type,
             "RDPユーザー名": user,

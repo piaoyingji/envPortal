@@ -76,10 +76,17 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
 
     def test_server_info_editor_uses_editable_server_name(self):
         self.assertIn('"サーバ名"', self.index_html)
+        self.assertIn('const RDP_FIELDS = ["組織名","構築環境名","サーバ名"', self.index_html)
         self.assertIn("SERVER_NAME_OPTION_KEYS", self.index_html)
         self.assertIn("function renderCardServerNameField(value)", self.index_html)
         self.assertIn("function addRdpEditorToCard(rowId)", self.index_html)
         self.assertIn("function removeRdpEditor(button)", self.index_html)
+        self.assertIn("String(remote['構築環境名'] || '').trim() === envName", self.index_html)
+        self.assertIn("target['構築環境名'] = env['構築環境名'] || '';", self.index_html)
+        self.assertIn("function rdpHasExplicitEnv(remote)", self.index_html)
+        self.assertIn("const explicitRdps = relatedRdpRowsForEnv(env).filter(rdpHasExplicitEnv);", self.index_html)
+        self.assertIn("!rdpHasExplicitEnv(remote)", self.index_html)
+        self.assertIn("relatedRdpRowsForEnv(env).forEach(remote =>", self.index_html)
         self.assertIn("savePortalFiles(changeSummaryFor('add-env', null, row))", self.index_html)
         self.assertIn("data-original-rdp-ids", self.index_html)
         self.assertIn("retainedRdpIds", self.index_html)

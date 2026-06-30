@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.7] - 2026-06-30
+
+### Fixed
+
+- Added compatible `rdp.csv` field `構築環境名` so multiple server records can be explicitly attached to the same environment.
+- Environment cards now read explicitly attached server rows first and only fall back to URL/DB host matching for legacy RDP rows.
+- Copying an environment now copies all server rows attached to that environment, including custom servers whose target is not the environment URL or DB host.
+
 ## [2.6.6] - 2026-06-26
 
 ### Fixed
