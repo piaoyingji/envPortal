@@ -1743,6 +1743,7 @@ def build_guacamole_uri(target, user="", password="", drive_path=""):
         "security": "any",
         "disable-audio": "true",
         "enable-wallpaper": "false",
+        "resize-method": "display-update",
     }
     if drive_path:
         params.update({

@@ -94,6 +94,21 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("flex: 0 0 30px;", self.index_html)
         self.assertIn("serverName.shared", self.i18n_js)
 
+    def test_mobile_guacamole_shell_uses_i18n_and_fullscreen_wrapper(self):
+        self.assertIn("function shouldUseMobileGuacamoleShell()", self.index_html)
+        self.assertIn("function mobileGuacamoleShellHtml()", self.index_html)
+        self.assertIn("function prepareMobileGuacamoleShell()", self.index_html)
+        self.assertIn("allow=\"fullscreen; clipboard-read; clipboard-write\"", self.index_html)
+        self.assertIn("screen.orientation.lock('landscape')", self.index_html)
+        self.assertIn("popup.envPortalOpenRemote", self.index_html)
+        self.assertIn("<\\/script>", self.index_html)
+        self.assertIn("const mobileShell = prepareMobileGuacamoleShell();", self.index_html)
+        self.assertIn("mobileShell && mobileShell.navigate(data.url)", self.index_html)
+        self.assertIn("'remote.mobileLoadingTitle': '横画面表示を準備中...'", self.i18n_js)
+        self.assertIn("'remote.mobileLoadingTitle': '正在准备横屏显示...'", self.i18n_js)
+        self.assertIn("'remote.openDirect': '直接開く'", self.i18n_js)
+        self.assertIn("'remote.openDirect': '直接打开'", self.i18n_js)
+
     def test_system_menu_contains_proxy_login(self):
         self.assertIn('href="proxy-admin.html"', self.i18n_js)
         self.assertIn("nav.proxyLogin", self.i18n_js)

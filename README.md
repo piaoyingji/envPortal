@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.6.8`
+当前版本：`2.6.9`
 
 ## 核心能力
 
@@ -235,6 +235,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\migrate-rdp-env-links.ps1 -Re
 
 `2.6.8` 增加旧 RDP 数据归属升级工具。脚本会备份并升级能唯一匹配主环境的 RDP 行，无法匹配任何环境或匹配到多个环境的行被视为脏数据并写入 `logs/rdp_env_link_report_*.json`。该版本属于 PATCH 递进。
 
+`2.6.9` 改进手机端 Guacamole 远程桌面打开方式。QuickConnect 和 REST 临时连接都启用 RDP 动态分辨率更新，手机触摸设备通过全屏外壳页打开远程桌面，以适配横屏视口并降低重复旋转造成的缩放异常。该版本属于 PATCH 递进。
+
 每次升级都应同步更新：
 
 - `VERSION`
@@ -264,6 +266,7 @@ GUACAMOLE_PASSWORD=...
 
 - 配置了 Guacamole 用户名/密码时，EnvPortal 会尝试调用 Guacamole QuickConnect API 并直接打开浏览器远程桌面。
 - 未配置用户名/密码时，EnvPortal 会复制 `rdp://...` QuickConnect URI 并打开 Guacamole 首页，用户可粘贴到 QuickConnect 输入框。
+- 通过手机触摸设备打开浏览器远程桌面时，EnvPortal 会先创建一个移动端远程外壳页，尽量进入全屏并锁定横屏，再在其中加载 Guacamole。RDP 连接统一启用 `resize-method=display-update`，手机横竖屏变化时由 Guacamole 向远端同步新的显示尺寸，减少手动横屏和浏览器自动旋转叠加造成的画面缩放问题。
 
 Guacamole 侧需要安装并启用 QuickConnect extension。
 

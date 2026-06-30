@@ -1,6 +1,6 @@
 const I18N_STORAGE_KEY = 'envPortalLang';
 const I18N_DEFAULT_LANG = 'ja';
-const APP_VERSION_FALLBACK = '2.6.8';
+const APP_VERSION_FALLBACK = '2.6.9';
 
 const I18N_MESSAGES = {
     ja: {
@@ -87,6 +87,9 @@ const I18N_MESSAGES = {
         'modal.rdpUnlockDesc': 'サーバ接続情報を表示するにはパスワードを入力してください',
         'remote.loadingTitle': '遠隔操作を準備中...',
         'remote.loadingMessage': '接続画面が開くまでお待ちください',
+        'remote.mobileLoadingTitle': '横画面表示を準備中...',
+        'remote.mobileLoadingMessage': 'スマートフォンでは全画面表示を優先し、画面回転に合わせて接続先の解像度を調整します。',
+        'remote.openDirect': '直接開く',
         'toast.copied': 'コピーしました',
         'toast.passwordCopiedForRdp': 'RDPパスワードをクリップボードへコピーしました',
         'toast.rdpConnecting': 'RDP接続を開始しました',
@@ -356,6 +359,9 @@ const I18N_MESSAGES = {
         'modal.rdpUnlockDesc': '请输入密码后查看远程连接信息',
         'remote.loadingTitle': '正在准备远程操作...',
         'remote.loadingMessage': '请稍等，连接画面即将打开',
+        'remote.mobileLoadingTitle': '正在准备横屏显示...',
+        'remote.mobileLoadingMessage': '手机端会优先使用全屏显示，并随屏幕旋转调整远程桌面分辨率。',
+        'remote.openDirect': '直接打开',
         'toast.copied': '已复制',
         'toast.passwordCopiedForRdp': 'RDP密码已复制到剪贴板',
         'toast.rdpConnecting': '已启动RDP连接',

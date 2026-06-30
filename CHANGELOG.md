@@ -2,6 +2,14 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.9] - 2026-06-30
+
+### Changed
+
+- Added `resize-method=display-update` to Guacamole QuickConnect RDP URIs so mobile orientation changes can resize the remote desktop.
+- Mobile touch devices now open Guacamole through a lightweight full-screen remote shell before loading the Guacamole client.
+- Added localized mobile remote loading text for Japanese and Chinese.
+
 ## [2.6.8] - 2026-06-30
 
 ### Added
