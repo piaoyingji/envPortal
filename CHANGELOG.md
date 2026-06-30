@@ -9,6 +9,7 @@ All notable changes to EnvPortal are documented here.
 - Added a controlled RDP ownership migration tool for existing runtime data.
 - RDP rows that can be uniquely matched to an environment now get `構築環境名` filled during migration.
 - RDP rows with no parent, missing key fields, invalid explicit parent, or multiple possible parents are reported as dirty data in `logs/rdp_env_link_report_*.json`.
+- The PowerShell migration wrapper now works in WinRM sessions that do not expose a valid console handle.
 
 ## [2.6.7] - 2026-06-30
 

@@ -7,7 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding $false
-[Console]::OutputEncoding = $utf8
+try {
+    [Console]::OutputEncoding = $utf8
+} catch {
+    # WinRM can run without a valid console handle; Python output is still UTF-8.
+}
 $OutputEncoding = $utf8
 
 $pythonArgs = @((Join-Path $PSScriptRoot "migrate_rdp_env_links.py"), "--base-dir", $BaseDir)
