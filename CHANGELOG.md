@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.11] - 2026-07-02
+
+### Changed
+
+- Changed organization kana tabs to wrapping link-style controls so longer labels such as `その他` move as a whole instead of being clipped behind a horizontal scroller.
+
 ## [2.6.10] - 2026-07-02
 
 ### Fixed

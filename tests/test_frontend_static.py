@@ -173,6 +173,15 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("""<div class="active-org-name">${sanitizeHTML(org.label)}</div>
                         ${orgLevelActionsHtml(org.key)}""", self.index_html)
 
+    def test_org_kana_tabs_are_wrapping_links(self):
+        self.assertIn(".org-filter-tabs {\n            display: flex;\n            flex-wrap: wrap;", self.index_html)
+        self.assertIn("const tab = document.createElement('a');", self.index_html)
+        self.assertIn("tab.href = '#';", self.index_html)
+        self.assertIn("event.preventDefault();", self.index_html)
+        self.assertIn("white-space: nowrap;", self.index_html)
+        self.assertNotIn("overflow-x: auto;\n            padding: 0 0.35rem 0.25rem;", self.index_html)
+        self.assertNotIn("const tab = document.createElement('button');", self.index_html)
+
     def test_page_edit_buttons_use_page_specific_permissions(self):
         self.assertIn("function pageCanView(profile)", self.index_html)
         self.assertIn("function pageCanEdit(profile)", self.index_html)
