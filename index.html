@@ -6,7 +6,7 @@
     <title>EnvPortal - 環境検索</title>
     <link rel="stylesheet" href="style.css">
     <script src="vendor/papaparse.min.js"></script>
-    <script src="i18n.js?v=2.6.9"></script>
+    <script src="i18n.js?v=2.6.10"></script>
     <script src="org_readings.js"></script>
     <style>
         .org-summary-card {
@@ -1926,6 +1926,17 @@
             `;
         }
 
+        function orgLevelActionsHtml(orgKey, envGroupName = DEFAULT_ENV_GROUP) {
+            if (!orgKey || (!canEdit && !canManageEnvGroups())) return '';
+            return `
+                <span class="org-level-actions">
+                    ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(orgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
+                    ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(orgKey)}', '${escapeJs(envGroupName)}')">${t('button.addEnvToOrg')}</button>` : ''}
+                    ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(orgKey)}', event)">${t('button.addGroup')}</button>` : ''}
+                </span>
+            `;
+        }
+
         function modalFieldLabel(field) {
             const labels = {
                 '組織コード': 'label.orgCode',
@@ -3216,13 +3227,7 @@
                         <div class="org-name-header" onclick="selectOrg('${escapeJs(org.key)}')">
                             <span class="org-name-header-main">${sanitizeHTML(org.label)}</span>
                         </div>
-                        ${(canEdit || canManageEnvGroups()) ? `
-                            <span class="org-level-actions">
-                                ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(org.key)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
-                                ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(org.key)}', '${escapeJs(DEFAULT_ENV_GROUP)}')">${t('button.addEnvToOrg')}</button>` : ''}
-                                ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(org.key)}', event)">${t('button.addGroup')}</button>` : ''}
-                            </span>
-                        ` : ''}
+                        ${orgLevelActionsHtml(org.key)}
                     </div>
                     <div class="org-badges-wrapper">
                         ${envHtml}
@@ -3354,13 +3359,7 @@
             banner.className = 'active-org-banner';
             banner.innerHTML = `
                 <div class="active-org-name">${sanitizeHTML(orgInfo.label)}</div>
-                ${(canEdit || canManageEnvGroups()) ? `
-                    <div class="org-level-actions">
-                        ${canEdit ? `<button type="button" class="secondary-btn" onclick="openOrganizationEdit('${escapeJs(selectedOrgKey)}', event)" title="${t('button.edit')}" aria-label="${t('button.edit')}">${editActionIcon()}</button>` : ''}
-                        ${canEdit ? `<button type="button" class="secondary-btn env-add-btn" onclick="addEnvironmentToOrg('${escapeJs(selectedOrgKey)}', '${escapeJs(DEFAULT_ENV_GROUP)}')">${t('button.addEnvToOrg')}</button>` : ''}
-                        ${canManageEnvGroups() ? `<button type="button" class="secondary-btn group-add-btn" onclick="openGroupAdd('${escapeJs(selectedOrgKey)}', event)">${t('button.addGroup')}</button>` : ''}
-                    </div>
-                ` : ''}
+                ${orgLevelActionsHtml(selectedOrgKey)}
             `;
             resultsArea.appendChild(banner);
 
@@ -3480,6 +3479,7 @@
                 section.innerHTML = `
                     <div class="active-org-banner">
                         <div class="active-org-name">${sanitizeHTML(org.label)}</div>
+                        ${orgLevelActionsHtml(org.key)}
                     </div>
                     <div class="org-badges-wrapper">
                         ${renderOrgSummaryGroups(org.key, org.envs)}

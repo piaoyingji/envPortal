@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.10] - 2026-07-02
+
+### Fixed
+
+- Kept administrator organization actions visible in global TAG-filtered environment results, including organization edit, environment add, and group add.
+
 ## [2.6.9] - 2026-06-30
 
 ### Changed

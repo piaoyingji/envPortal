@@ -163,6 +163,16 @@ class FrontendStaticBehaviorTest(unittest.TestCase):
         self.assertIn("clearBtn.textContent = t('filter.clear');", self.index_html)
         self.assertNotIn("clearBtn.textContent = 'All';", self.index_html)
 
+    def test_global_tag_filter_keeps_admin_org_actions(self):
+        self.assertIn("function orgLevelActionsHtml(orgKey, envGroupName = DEFAULT_ENV_GROUP)", self.index_html)
+        self.assertIn("${orgLevelActionsHtml(org.key)}", self.index_html)
+        self.assertIn("${orgLevelActionsHtml(selectedOrgKey)}", self.index_html)
+        self.assertIn("openOrganizationEdit('${escapeJs(orgKey)}', event)", self.index_html)
+        self.assertIn("addEnvironmentToOrg('${escapeJs(orgKey)}', '${escapeJs(envGroupName)}')", self.index_html)
+        self.assertIn("openGroupAdd('${escapeJs(orgKey)}', event)", self.index_html)
+        self.assertIn("""<div class="active-org-name">${sanitizeHTML(org.label)}</div>
+                        ${orgLevelActionsHtml(org.key)}""", self.index_html)
+
     def test_page_edit_buttons_use_page_specific_permissions(self):
         self.assertIn("function pageCanView(profile)", self.index_html)
         self.assertIn("function pageCanEdit(profile)", self.index_html)
