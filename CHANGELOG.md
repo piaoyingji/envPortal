@@ -2,6 +2,12 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.12] - 2026-07-07
+
+### Fixed
+
+- Treated non-admin roles whose data permissions cover every effective TAG as full data-scope roles, so organization selection no longer collapses to organizations that happen to span every TAG category.
+
 ## [2.6.11] - 2026-07-02
 
 ### Changed

@@ -1014,7 +1014,8 @@ def role_data_tags_unrestricted(role_info, known_tags):
     valid_known_tags = set(unique_tags(known_tags))
     if not valid_known_tags:
         return True
-    return False
+    allowed_tags = set(effective_role_data_tags(role_info or {}, valid_known_tags))
+    return valid_known_tags.issubset(allowed_tags)
 
 
 def role_data_tag_groups(role_info, known_tags, tag_categories=None):

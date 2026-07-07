@@ -227,34 +227,49 @@ class ProxyLoginTest(unittest.TestCase):
 
         self.assertEqual(visible, rows)
 
-    def test_role_with_all_data_tags_still_uses_data_filter(self):
+    def test_role_with_all_data_tags_is_unrestricted_across_categories(self):
         rows = [
             {"組織コード": "1", "組織名": "A", "構築環境名": "A1", "URL": "http://a1", "ログインID": "a1"},
             {"組織コード": "2", "組織名": "B", "構築環境名": "B1", "URL": "http://b1", "ログインID": "b1"},
             {"組織コード": "3", "組織名": "C", "構築環境名": "C1", "URL": "http://c1", "ログインID": "c1"},
+            {"組織コード": "4", "組織名": "D", "構築環境名": "D1", "URL": "http://d1", "ログインID": "d1"},
         ]
         tags_json = {
             server.row_key(rows[0]): ["UHR"],
             server.row_key(rows[1]): ["社内"],
-            server.row_key(rows[2]): ["無関係"],
+            server.row_key(rows[2]): ["UHR", "社内"],
+            server.row_key(rows[3]): ["PHR", "受入"],
         }
         roles = {
             "admin": server.normalize_role_record("admin", {}),
             "watcher": server.normalize_role_record("watcher", {
                 "canViewPortal": True,
-                "dataTags": ["UHR", "社内", "無関係"],
+                "dataTags": ["UHR", "PHR", "社内", "受入"],
             }),
         }
-        known_tags = ["UHR", "社内", "無関係"]
+        known_tags = ["UHR", "PHR", "社内", "受入"]
+        categories = server.normalize_tag_categories_config({
+            "categories": [
+                {"id": "product", "label": "製品"},
+                {"id": "environment", "label": "環境"},
+            ],
+            "assignments": {
+                "UHR": "product",
+                "PHR": "product",
+                "社内": "environment",
+                "受入": "environment",
+            },
+        }, known_tags)
 
-        with mock.patch.object(server, "load_roles", lambda: roles):
+        with mock.patch.object(server, "load_roles", lambda: roles), \
+                mock.patch.object(server, "read_tag_categories_json", lambda known_tags=None: categories):
             visible = server.portal_rows_for_role(rows, tags_json, [], "watcher", known_tags)
             filter_tags = server.portal_filter_tags_for_role("watcher", known_tags)
             active = server.role_uses_data_tag_filter("watcher", known_tags)
 
         self.assertEqual(visible, rows)
         self.assertEqual(filter_tags, known_tags)
-        self.assertTrue(active)
+        self.assertFalse(active)
 
     def test_role_with_partial_data_tags_keeps_scope_when_other_filters_change(self):
         rows = [
