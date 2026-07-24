@@ -248,6 +248,7 @@ sealed class ProxyWorker : BackgroundService
         {
             DisplayName = ReadJsonString(root, "displayName"),
             Email = ReadJsonString(root, "email"),
+            Upn = ReadJsonString(root, "upn"),
             Department = ReadJsonString(root, "department"),
             Title = ReadJsonString(root, "title")
         };
@@ -282,7 +283,8 @@ if ($null -eq $result) {
     $userPrincipalName = Get-Prop 'userprincipalname'
     [pscustomobject]@{
         displayName = Get-Prop 'displayname'
-        email = if ($mail) { $mail } else { $userPrincipalName }
+        email = $mail
+        upn = $userPrincipalName
         department = Get-Prop 'department'
         title = Get-Prop 'title'
     } | ConvertTo-Json -Compress
@@ -344,6 +346,7 @@ if ($null -eq $result) {
         request.Headers.TryAddWithoutValidation("X-Forwarded-For", clientIp);
         AddOptionalHeader(request, "X-Remote-Display-Name", info.DisplayName);
         AddOptionalHeader(request, "X-Remote-Mail", info.Email);
+        AddOptionalHeader(request, "X-Remote-UPN", info.Upn);
         AddOptionalHeader(request, "X-Remote-Department", info.Department);
         AddOptionalHeader(request, "X-Remote-Title", info.Title);
     }
@@ -426,6 +429,7 @@ if ($null -eq $result) {
     {
         public string DisplayName { get; init; } = "";
         public string Email { get; init; } = "";
+        public string Upn { get; init; } = "";
         public string Department { get; init; } = "";
         public string Title { get; init; } = "";
     }

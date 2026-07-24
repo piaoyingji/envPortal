@@ -1236,6 +1236,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             "canManageUsers": False,
             "lastIp": client_ip or "",
             "email": metadata.get("email", ""),
+            "upn": metadata.get("upn", ""),
             "department": metadata.get("department", ""),
             "title": metadata.get("title", ""),
             "windowsDomain": metadata.get("windowsDomain", ""),
@@ -1254,7 +1255,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             "firstIp": client_ip or "",
             "lastIp": client_ip or "",
         }
-        for key in ("email", "department", "title", "windowsDomain"):
+        for key in ("email", "upn", "department", "title", "windowsDomain"):
             if metadata.get(key):
                 record[key] = metadata[key]
         users[normalized] = record
@@ -1272,7 +1273,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             record["role"] = "staff"
         if forced_admin:
             record["role"] = "admin"
-        for key in ("email", "department", "title", "windowsDomain"):
+        for key in ("email", "upn", "department", "title", "windowsDomain"):
             if metadata.get(key):
                 record[key] = metadata[key]
         users[normalized] = record
@@ -1291,6 +1292,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         "canManageUsers": bool(role_info.get("canManageUsers")),
         "lastIp": record.get("lastIp", ""),
         "email": record.get("email", ""),
+        "upn": record.get("upn", ""),
         "department": record.get("department", ""),
         "title": record.get("title", ""),
         "windowsDomain": record.get("windowsDomain", ""),
@@ -1620,6 +1622,7 @@ def windows_user_metadata_from_headers(headers):
     return {
         "displayName": decode_header("X-Remote-Display-Name"),
         "email": decode_header("X-Remote-Mail"),
+        "upn": decode_header("X-Remote-UPN"),
         "department": decode_header("X-Remote-Department"),
         "title": decode_header("X-Remote-Title"),
         "windowsDomain": windows_domain_from_identity(windows_user_from_headers(headers)),

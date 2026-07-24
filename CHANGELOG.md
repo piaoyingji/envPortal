@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.15] - 2026-07-24
+
+### Fixed
+
+- Kept AD `userPrincipalName` and `mail` as distinct profile fields so a domain UPN is never treated as the corporate email address.
+- Forwarded the AD UPN through `X-Remote-UPN` while retaining `X-Remote-Mail` exclusively for the corporate mailbox.
+
 ## [2.6.14] - 2026-07-24
 
 ### Fixed

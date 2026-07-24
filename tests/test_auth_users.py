@@ -92,7 +92,7 @@ class MachineAccountUsersTest(unittest.TestCase):
 
 
 class OneOpsSsoBridgeTest(unittest.TestCase):
-    def test_domain_proxy_uses_upn_when_ad_mail_is_empty(self):
+    def test_domain_proxy_keeps_upn_and_corporate_email_distinct(self):
         source = (
             Path(server.BASE_DIR)
             / "tools"
@@ -101,14 +101,18 @@ class OneOpsSsoBridgeTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("PropertiesToLoad.Add('userPrincipalName')", source)
-        self.assertIn("email = if ($mail) { $mail } else { $userPrincipalName }", source)
+        self.assertIn("email = $mail", source)
+        self.assertIn("upn = $userPrincipalName", source)
         self.assertIn('Email = ReadJsonString(root, "email")', source)
+        self.assertIn('Upn = ReadJsonString(root, "upn")', source)
+        self.assertIn('"X-Remote-UPN", info.Upn', source)
 
     def test_first_domain_visit_persists_ad_profile_fields(self):
         users = {}
         metadata = {
             "displayName": "孫 少宣",
             "email": "sun.shaoxuan@onehr.jp",
+            "upn": "x02851@tokyo.scientia.co.jp",
             "department": "技術部",
             "title": "担当",
             "windowsDomain": "onehr",
@@ -132,10 +136,15 @@ class OneOpsSsoBridgeTest(unittest.TestCase):
 
         self.assertEqual(profile["displayName"], "孫 少宣")
         self.assertEqual(profile["email"], "sun.shaoxuan@onehr.jp")
+        self.assertEqual(profile["upn"], "x02851@tokyo.scientia.co.jp")
         self.assertEqual(profile["department"], "技術部")
         self.assertEqual(profile["title"], "担当")
         self.assertEqual(profile["windowsDomain"], "onehr")
         self.assertEqual(users["x02851"]["email"], "sun.shaoxuan@onehr.jp")
+        self.assertEqual(
+            users["x02851"]["upn"],
+            "x02851@tokyo.scientia.co.jp",
+        )
         self.assertEqual(users["x02851"]["windowsDomain"], "onehr")
 
     def test_windows_domain_is_derived_from_trusted_identity_header(self):
