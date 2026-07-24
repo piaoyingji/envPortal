@@ -141,7 +141,7 @@ RDP 解锁密码框使用标准 form、label 和 autocomplete 属性，避免浏
 
 当 EnvPortal 服务器未加入 AD 域、且客户端 IP 可能被 NAT 改写时，可以在一台已加入域的 Windows 主机上运行 `EnvPortal Domain Proxy`。该代理使用 Windows Integrated Authentication 识别访问者，再把认证用户通过 `X-Remote-User` 转发给 20.38 上的 EnvPortal。
 
-同一代理的 `oneops_sso.jsp` 路径可把 EnvPortal 已验证的短期身份令牌通过表单提交给 OneOps。OneOps 服务端向 EnvPortal 验证令牌并读取用户档案，随后在 OneOps 自有用户库中完成建档和 `VIEWER` 角色分配。EnvPortal 的角色和权限不会传递给 OneOps。
+同一代理的 `oneops_sso.jsp` 路径可把 EnvPortal 已验证的短期身份令牌通过表单提交给 OneOps。OneOps 服务端向 EnvPortal 验证令牌并读取用户档案，随后在 OneOps 自有用户库中完成建档和 `VIEWER` 角色分配。EnvPortal 的角色和权限不会传递给 OneOps。OneOps 以 AD `mail` 为首选邮箱，属性为空时使用 `userPrincipalName`，并按 OneOps 允许的域名校验。
 
 如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。启用跨域探测后，前端会通过域代理获取一次当前域用户，并由 20.38 签发短期认证 token。token 会在浏览器本地缓存到过期时间，后续需要权限的业务接口会直连 20.38 并携带 token，使 20.38 按域用户角色判断权限，而不是按客户端 IP 判断权限。20.38 的 `.env` 中配置：
 
@@ -159,7 +159,7 @@ DOMAIN_AUTH_AUTO_PROBE=true
 
 域代理会对受信任的 EnvPortal 来源返回 CORS header，默认允许 `http://192.168.20.38:8999` 读取认证结果。业务数据接口不需要每次绕行域代理。
 
-域代理会尝试从 AD 读取 `displayName`、`mail`、`department`、`title`，并同步到 EnvPortal 本地用户档案。若 AD 中没有这些属性，则至少保留域账号名。
+域代理会尝试从 AD 读取 `displayName`、`mail`、`userPrincipalName`、`department`、`title`，并在域用户首次访问时同步到 EnvPortal 本地用户档案。邮箱优先采用 `mail`，为空时采用 `userPrincipalName`。若 AD 中没有这些属性，则至少保留域账号名。
 
 安装代理需要在已入域 Windows 主机上以管理员权限运行：
 

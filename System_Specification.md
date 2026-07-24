@@ -150,7 +150,7 @@ EnvPortal 是一个面向运维、实施和内部支持人员的轻量级环境�
 
 ### 4.3 用户档案
 
-首次访问的域用户自动写入 `users.json`。如果 AD 可返回 `displayName`、`mail`、`department`、`title`，系统同步保存这些字段。无法读取 AD 属性时，至少保存域账号。
+首次访问的域用户自动写入 `users.json`。如果 AD 可返回 `displayName`、`mail`、`userPrincipalName`、`department`、`title`，系统在首次注册时同步保存这些字段。邮箱优先采用 `mail`，为空时采用 `userPrincipalName`，用于 OneOps SSO 的允许域校验。无法读取 AD 属性时，至少保存域账号。
 
 运行 JSON 文件统一通过结构化安全读写函数处理。`users.json`、`roles.json`、`tags.json`、`tag_categories.json`、`env_groups.json` 读取失败时，后端会尝试读取最近的有效 `*.bak*` 备份，避免把解析异常误判为空数据。写入时会生成 `*.bak_autosave_*` 备份，再用临时文件替换。用户保存会过滤 Windows 机器账号。
 

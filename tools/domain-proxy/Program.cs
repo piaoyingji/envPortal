@@ -247,7 +247,7 @@ sealed class ProxyWorker : BackgroundService
         return new DomainUserInfo
         {
             DisplayName = ReadJsonString(root, "displayName"),
-            Email = ReadJsonString(root, "mail"),
+            Email = ReadJsonString(root, "email"),
             Department = ReadJsonString(root, "department"),
             Title = ReadJsonString(root, "title")
         };
@@ -265,6 +265,7 @@ $searcher = New-Object DirectoryServices.DirectorySearcher
 $searcher.Filter = "(&(objectCategory=person)(objectClass=user)(sAMAccountName=$account))"
 $null = $searcher.PropertiesToLoad.Add('displayName')
 $null = $searcher.PropertiesToLoad.Add('mail')
+$null = $searcher.PropertiesToLoad.Add('userPrincipalName')
 $null = $searcher.PropertiesToLoad.Add('department')
 $null = $searcher.PropertiesToLoad.Add('title')
 $result = $searcher.FindOne()
@@ -277,9 +278,11 @@ function Get-Prop($name) {
 if ($null -eq $result) {
     @{} | ConvertTo-Json -Compress
 } else {
+    $mail = Get-Prop 'mail'
+    $userPrincipalName = Get-Prop 'userprincipalname'
     [pscustomobject]@{
         displayName = Get-Prop 'displayname'
-        mail = Get-Prop 'mail'
+        email = if ($mail) { $mail } else { $userPrincipalName }
         department = Get-Prop 'department'
         title = Get-Prop 'title'
     } | ConvertTo-Json -Compress

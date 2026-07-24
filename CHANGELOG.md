@@ -1,8 +1,17 @@
 # Changelog
 
+All notable changes to EnvPortal are documented here.
+
+## [2.6.13] - 2026-07-24
+
+### Added
+
 - Added the `oneops_sso.jsp` bridge so OneOps can reuse EnvPortal Windows authentication while retaining its own users, sessions, and RBAC assignments.
 
-All notable changes to EnvPortal are documented here.
+### Fixed
+
+- Persisted AD display name, email, department, and title during the first domain user registration.
+- Used AD `userPrincipalName` when the `mail` attribute is empty so OneOps can validate the authenticated user's allowed domain.
 
 ## [2.6.12] - 2026-07-07
 

@@ -92,6 +92,49 @@ class MachineAccountUsersTest(unittest.TestCase):
 
 
 class OneOpsSsoBridgeTest(unittest.TestCase):
+    def test_domain_proxy_uses_upn_when_ad_mail_is_empty(self):
+        source = (
+            Path(server.BASE_DIR)
+            / "tools"
+            / "domain-proxy"
+            / "Program.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("PropertiesToLoad.Add('userPrincipalName')", source)
+        self.assertIn("email = if ($mail) { $mail } else { $userPrincipalName }", source)
+        self.assertIn('Email = ReadJsonString(root, "email")', source)
+
+    def test_first_domain_visit_persists_ad_profile_fields(self):
+        users = {}
+        metadata = {
+            "displayName": "孫 少宣",
+            "email": "sun.shaoxuan@onehr.jp",
+            "department": "技術部",
+            "title": "担当",
+        }
+
+        def save(next_users):
+            users.clear()
+            users.update(next_users)
+
+        with mock.patch.object(server, "load_users", lambda: dict(users)), \
+                mock.patch.object(server, "save_users", save), \
+                mock.patch.object(server, "load_roles", lambda: {
+                    "staff": server.normalize_role_record("staff", {}),
+                }), \
+                mock.patch.object(server, "FORCED_ADMIN_USERS", ""):
+            profile = server.user_profile_for(
+                "ONEHR\\x02851",
+                client_ip="192.168.20.100",
+                metadata=metadata,
+            )
+
+        self.assertEqual(profile["displayName"], "孫 少宣")
+        self.assertEqual(profile["email"], "sun.shaoxuan@onehr.jp")
+        self.assertEqual(profile["department"], "技術部")
+        self.assertEqual(profile["title"], "担当")
+        self.assertEqual(users["x02851"]["email"], "sun.shaoxuan@onehr.jp")
+
     def test_bridge_posts_only_signed_token_and_safe_return_path(self):
         page = server.oneops_sso_form(
             {

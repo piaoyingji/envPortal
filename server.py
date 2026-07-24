@@ -1253,6 +1253,9 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             "firstIp": client_ip or "",
             "lastIp": client_ip or "",
         }
+        for key in ("email", "department", "title"):
+            if metadata.get(key):
+                record[key] = metadata[key]
         users[normalized] = record
         save_users(users)
     else:
