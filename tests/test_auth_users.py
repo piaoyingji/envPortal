@@ -91,6 +91,43 @@ class MachineAccountUsersTest(unittest.TestCase):
         self.assertNotIn("win-bg8f1p9amb0$", filtered)
 
 
+class OneOpsSsoBridgeTest(unittest.TestCase):
+    def test_bridge_posts_only_signed_token_and_safe_return_path(self):
+        page = server.oneops_sso_form(
+            {
+                "ok": True,
+                "user": "ONEHR\\x02851",
+                "displayName": "孫 少宣",
+                "email": "sun.shaoxuan@onehr.jp",
+                "authToken": "signed-token",
+            },
+            "/environments",
+        )
+
+        self.assertIn('method="post"', page)
+        self.assertIn('value="signed-token"', page)
+        self.assertIn('value="/environments"', page)
+        self.assertNotIn("孫 少宣", page)
+        self.assertNotIn("sun.shaoxuan@onehr.jp", page)
+
+    def test_bridge_rejects_machine_accounts_and_missing_tokens(self):
+        with self.assertRaises(ValueError):
+            server.oneops_sso_form(
+                {"ok": True, "user": "SERVER$", "authToken": "signed-token"},
+                "/",
+            )
+        with self.assertRaises(ValueError):
+            server.oneops_sso_form({"ok": True, "user": "x02851"}, "/")
+
+    def test_bridge_rejects_external_return_paths(self):
+        page = server.oneops_sso_form(
+            {"ok": True, "user": "x02851", "authToken": "signed-token"},
+            "//outside.example/path",
+        )
+
+        self.assertIn('name="returnTo" value="/"', page)
+
+
 class RolePermissionNormalizationTest(unittest.TestCase):
     def test_non_admin_edit_flags_become_read_only_view_permissions(self):
         role = server.normalize_role_record("import_staff", {

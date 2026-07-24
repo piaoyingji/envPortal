@@ -1,5 +1,7 @@
 # Changelog
 
+- Added the `oneops_sso.jsp` bridge so OneOps can reuse EnvPortal Windows authentication while retaining its own users, sessions, and RBAC assignments.
+
 All notable changes to EnvPortal are documented here.
 
 ## [2.6.12] - 2026-07-07

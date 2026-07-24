@@ -3,6 +3,7 @@ import ctypes
 from ctypes import wintypes
 import hashlib
 import hmac
+import html
 import io
 import json
 import os
@@ -74,6 +75,10 @@ DOMAIN_AUTH_PROXY_URL = CONFIG.get("DOMAIN_AUTH_PROXY_URL", "").rstrip("/")
 DOMAIN_AUTH_AUTO_PROBE = env_bool("DOMAIN_AUTH_AUTO_PROBE", False)
 AUTH_TOKEN_SECRET = CONFIG.get("AUTH_TOKEN_SECRET", AUTH_PASSWORD)
 AUTH_TOKEN_TTL_SECONDS = int(CONFIG.get("AUTH_TOKEN_TTL_SECONDS", "28800"))
+ONEOPS_SSO_CALLBACK_URL = CONFIG.get(
+    "ONEOPS_SSO_CALLBACK_URL",
+    "https://192.168.20.54/api/work-center/v1/auth/sso/envportal/callback",
+)
 GUACAMOLE_STATUS_CACHE = {"checked_at": 0, "available": False, "message": "not checked"}
 GUACAMOLE_STATUS_REFRESHING = False
 GUACAMOLE_STATUS_LOCK = threading.Lock()
@@ -1175,6 +1180,42 @@ def attach_auth_token(profile):
     profile["authToken"] = sign_auth_token(profile["user"], expires_at)
     profile["authTokenExpiresAt"] = expires_at
     return profile
+
+
+def safe_return_path(value):
+    path = str(value or "").strip()
+    if not path.startswith("/") or path.startswith("//") or "\\" in path:
+        return "/"
+    return path[:2048]
+
+
+def oneops_sso_form(profile, return_to, callback_url=ONEOPS_SSO_CALLBACK_URL):
+    user = normalize_windows_user(profile.get("user"))
+    token = str(profile.get("authToken") or "").strip()
+    callback = str(callback_url or "").strip()
+    if (
+        not profile.get("ok")
+        or not user
+        or is_machine_account_user(user)
+        or not token
+        or not callback.startswith("https://")
+    ):
+        raise ValueError("OneOps SSO identity is incomplete")
+    return f"""<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>OneOps SSO</title>
+</head>
+<body onload="document.forms[0].submit()">
+<form method="post" action="{html.escape(callback, quote=True)}">
+<input type="hidden" name="token" value="{html.escape(token, quote=True)}">
+<input type="hidden" name="returnTo" value="{html.escape(safe_return_path(return_to), quote=True)}">
+<noscript><button type="submit">OneOps に進む</button></noscript>
+</form>
+</body>
+</html>"""
 
 
 def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
@@ -2526,6 +2567,16 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
             self.send_bytes(json_bytes(self.request_profile()), "application/json; charset=utf-8")
             return
 
+        if path == "/oneops_sso.jsp":
+            profile = self.request_profile()
+            try:
+                page = oneops_sso_form(profile, parse_form(body).get("returnTo", ""))
+            except ValueError:
+                self.send_bytes(b"Forbidden", status=403)
+                return
+            self.send_bytes(page.encode("utf-8"), "text/html; charset=utf-8")
+            return
+
         portal_edit_post_paths = {
             "/db_probe.jsp",
             "/rdp_file.jsp",
@@ -2800,6 +2851,16 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
 
         if path == "/auth_windows.jsp":
             self.send_bytes(json_bytes(self.request_profile()), "application/json; charset=utf-8")
+            return
+
+        if path == "/oneops_sso.jsp":
+            profile = self.request_profile()
+            try:
+                page = oneops_sso_form(profile, query.get("returnTo", [""])[0])
+            except ValueError:
+                self.send_bytes(b"Forbidden", status=403)
+                return
+            self.send_bytes(page.encode("utf-8"), "text/html; charset=utf-8")
             return
 
         if path == "/portal_data.jsp":
