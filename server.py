@@ -1238,6 +1238,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             "email": metadata.get("email", ""),
             "department": metadata.get("department", ""),
             "title": metadata.get("title", ""),
+            "windowsDomain": metadata.get("windowsDomain", ""),
         }
     forced_admin = is_forced_admin_user(normalized)
     users = load_users()
@@ -1253,7 +1254,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             "firstIp": client_ip or "",
             "lastIp": client_ip or "",
         }
-        for key in ("email", "department", "title"):
+        for key in ("email", "department", "title", "windowsDomain"):
             if metadata.get(key):
                 record[key] = metadata[key]
         users[normalized] = record
@@ -1271,7 +1272,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
             record["role"] = "staff"
         if forced_admin:
             record["role"] = "admin"
-        for key in ("email", "department", "title"):
+        for key in ("email", "department", "title", "windowsDomain"):
             if metadata.get(key):
                 record[key] = metadata[key]
         users[normalized] = record
@@ -1292,6 +1293,7 @@ def user_profile_for(user, is_initial_admin=False, client_ip="", metadata=None):
         "email": record.get("email", ""),
         "department": record.get("department", ""),
         "title": record.get("title", ""),
+        "windowsDomain": record.get("windowsDomain", ""),
     }
 
 
@@ -1597,6 +1599,15 @@ def windows_user_from_headers(headers):
     return ""
 
 
+def windows_domain_from_identity(value):
+    text = str(value or "").strip()
+    if "\\" in text:
+        return text.rsplit("\\", 1)[0].strip().lower()
+    if "@" in text:
+        return text.rsplit("@", 1)[1].strip().lower()
+    return ""
+
+
 def request_windows_auth(headers):
     raw_user = windows_user_from_headers(headers)
     user = normalize_windows_user(raw_user)
@@ -1611,7 +1622,14 @@ def windows_user_metadata_from_headers(headers):
         "email": decode_header("X-Remote-Mail"),
         "department": decode_header("X-Remote-Department"),
         "title": decode_header("X-Remote-Title"),
+        "windowsDomain": windows_domain_from_identity(windows_user_from_headers(headers)),
     }
+
+
+def trusted_windows_metadata(auth_source, headers):
+    if auth_source != "windows":
+        return {}
+    return windows_user_metadata_from_headers(headers)
 
 
 def local_windows_user_fallback(client_address):
@@ -2548,7 +2566,8 @@ class EnvPortalHandler(SimpleHTTPRequestHandler):
     def request_profile(self):
         user, initial_admin, auth_source = self.request_auth()
         client_ip = client_ip_from_request(self.headers, self.client_address)
-        profile = user_profile_for(user, initial_admin, client_ip, windows_user_metadata_from_headers(self.headers))
+        metadata = trusted_windows_metadata(auth_source, self.headers)
+        profile = user_profile_for(user, initial_admin, client_ip, metadata)
         profile = apply_proxy_role(profile, self.headers.get("X-EnvPortal-Proxy-Role", ""))
         if auth_source == "windows":
             attach_auth_token(profile)

@@ -111,6 +111,7 @@ class OneOpsSsoBridgeTest(unittest.TestCase):
             "email": "sun.shaoxuan@onehr.jp",
             "department": "技術部",
             "title": "担当",
+            "windowsDomain": "onehr",
         }
 
         def save(next_users):
@@ -133,7 +134,24 @@ class OneOpsSsoBridgeTest(unittest.TestCase):
         self.assertEqual(profile["email"], "sun.shaoxuan@onehr.jp")
         self.assertEqual(profile["department"], "技術部")
         self.assertEqual(profile["title"], "担当")
+        self.assertEqual(profile["windowsDomain"], "onehr")
         self.assertEqual(users["x02851"]["email"], "sun.shaoxuan@onehr.jp")
+        self.assertEqual(users["x02851"]["windowsDomain"], "onehr")
+
+    def test_windows_domain_is_derived_from_trusted_identity_header(self):
+        metadata = server.windows_user_metadata_from_headers({
+            "X-Remote-User": "TOKYO\\X02851",
+        })
+
+        self.assertEqual(metadata["windowsDomain"], "tokyo")
+
+    def test_token_requests_cannot_replace_trusted_windows_metadata(self):
+        metadata = server.trusted_windows_metadata("token", {
+            "X-Remote-User": "OUTSIDE\\attacker",
+            "X-Remote-Mail": "attacker@example.com",
+        })
+
+        self.assertEqual(metadata, {})
 
     def test_bridge_posts_only_signed_token_and_safe_return_path(self):
         page = server.oneops_sso_form(

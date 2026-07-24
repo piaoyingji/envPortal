@@ -2,6 +2,13 @@
 
 All notable changes to EnvPortal are documented here.
 
+## [2.6.14] - 2026-07-24
+
+### Fixed
+
+- Preserved the trusted Windows domain in EnvPortal profiles so OneOps SSO can validate users when an older domain proxy returns no AD email.
+- Restricted forwarded identity metadata updates to requests authenticated through the trusted Windows proxy.
+
 ## [2.6.13] - 2026-07-24
 
 ### Added

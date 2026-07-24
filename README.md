@@ -2,7 +2,7 @@
 
 EnvPortal 是一个面向运维和实施人员的轻量级环境档案门户，用来集中维护客户/机构、环境地址、登录信息、数据库信息、远程连接信息和自由标签。
 
-当前版本：`2.6.12`
+当前版本：`2.6.14`
 
 ## 核心能力
 
@@ -141,7 +141,7 @@ RDP 解锁密码框使用标准 form、label 和 autocomplete 属性，避免浏
 
 当 EnvPortal 服务器未加入 AD 域、且客户端 IP 可能被 NAT 改写时，可以在一台已加入域的 Windows 主机上运行 `EnvPortal Domain Proxy`。该代理使用 Windows Integrated Authentication 识别访问者，再把认证用户通过 `X-Remote-User` 转发给 20.38 上的 EnvPortal。
 
-同一代理的 `oneops_sso.jsp` 路径可把 EnvPortal 已验证的短期身份令牌通过表单提交给 OneOps。OneOps 服务端向 EnvPortal 验证令牌并读取用户档案，随后在 OneOps 自有用户库中完成建档和 `VIEWER` 角色分配。EnvPortal 的角色和权限不会传递给 OneOps。OneOps 以 AD `mail` 为首选邮箱，属性为空时使用 `userPrincipalName`，并按 OneOps 允许的域名校验。
+同一代理的 `oneops_sso.jsp` 路径可把 EnvPortal 已验证的短期身份令牌通过表单提交给 OneOps。OneOps 服务端向 EnvPortal 验证令牌并读取用户档案，随后在 OneOps 自有用户库中完成建档和 `VIEWER` 角色分配。EnvPortal 的角色和权限不会传递给 OneOps。OneOps 以 AD `mail` 为首选邮箱，属性为空时使用 `userPrincipalName`。旧版域代理无法提供邮箱时，EnvPortal 保存可信 Windows 身份中的域名，由 OneOps 按配置的 Windows 域名映射到 `onehr.jp`。
 
 如果希望用户仍然直接打开 20.38 页面，也可以让页面跨域访问域代理获取当前 Windows 域用户。启用跨域探测后，前端会通过域代理获取一次当前域用户，并由 20.38 签发短期认证 token。token 会在浏览器本地缓存到过期时间，后续需要权限的业务接口会直连 20.38 并携带 token，使 20.38 按域用户角色判断权限，而不是按客户端 IP 判断权限。20.38 的 `.env` 中配置：
 
@@ -244,6 +244,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\migrate-rdp-env-links.ps1 -Re
 `2.6.11` 调整组织选择五十音索引显示。索引项改为链接式换行布局，较长标签按整体换行，避免窄侧栏中出现截断和横向滚动。该版本属于 PATCH 递进。
 
 `2.6.12` 修正角色全选数据权限 TAG 后的组织选择范围。非管理员角色覆盖当前全部有效 TAG 时视为全量数据范围，避免跨分类 AND 规则把全选解释为组织必须同时覆盖所有 TAG 分类。该版本属于 PATCH 递进。
+
+`2.6.14` 保存可信域代理提供的 Windows 域名，使 OneOps 在旧版 8998 无法读取 AD 邮箱时仍可按允许的 Windows 域名完成 `onehr.jp` SSO 校验。只有经过可信代理认证的请求可以更新域身份元数据。该版本属于 PATCH 递进。
 
 每次升级都应同步更新：
 
